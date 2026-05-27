@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Form view: statusbar, botones y bloqueo de edición en estado Contrato. -->
+    <record id="view_order_form_biocreto_contract" model="ir.ui.view">
+        <field name="name">sale.order.form.biocreto.contract</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Statusbar visible: incluir 'contract' entre 'sent' y 'sale'. -->
+            <xpath expr="//header/field[@name='state']" position="attributes">
+                <attribute name="statusbar_visible">draft,sent,contract,sale</attribute>
+            </xpath>
+
+            <!-- Botón Confirmar primario: visible también en estado Contrato. -->
+            <xpath expr="//header/button[@id='action_confirm']" position="attributes">
+                <attribute name="invisible">state not in ('sent', 'contract')</attribute>
+            </xpath>
+
+            <!-- Botón Cancelar: permitir cancelar también desde Contrato. -->
+            <xpath expr="//header/button[@name='action_cancel']" position="attributes">
+                <attribute name="invisible">state not in ['draft', 'sent', 'contract', 'sale'] or not id or locked</attribute>
+            </xpath>
+
+            <!-- Bloqueo de edición en estado Contrato: extender los readonly nativos. -->
+
+            <xpath expr="//field[@name='partner_id'][@widget='res_partner_many2one']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'sale', 'contract']</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='partner_invoice_id']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'contract'] or locked</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='partner_shipping_id']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'contract'] or locked</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='validity_date']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'sale', 'contract']</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='date_order'][@groups='base.group_no_one']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'sale', 'contract']</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='date_order'][not(@groups)]" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'sale', 'contract']</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='pricelist_id'][@options=&quot;{'no_open': True, 'no_create': True}&quot;]" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'sale', 'contract']</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='pricelist_id'][@groups='!product.group_product_pricelist']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'sale', 'contract']</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='payment_term_id']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'sale', 'contract']</attribute>
+            </xpath>
+
+            <!-- Líneas de pedido: desde biocreto_sale_extension v1.2 es una
+                 sola order_line nativa (tabla minimalista + popup). Se bloquea
+                 su edición en estado Contrato. -->
+            <xpath expr="//field[@name='order_line']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'contract'] or locked</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='require_signature']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'sale', 'contract']</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='require_payment']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'sale', 'contract']</attribute>
+            </xpath>
+
+            <!-- Pestaña BIOCRETO "Información de suministro": bloquear edición
+                 de sus campos en Contrato. Los campos a nivel de línea
+                 (estructura, cemento, huso, slump, etc.) ya quedan bloqueados
+                 porque viven dentro de los order_line readonly de arriba. -->
+            <xpath expr="//field[@name='biocreto_direccion_proyecto']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'sale', 'contract']</attribute>
+            </xpath>
+            <xpath expr="//field[@name='biocreto_coordenadas']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'sale', 'contract']</attribute>
+            </xpath>
+            <xpath expr="//field[@name='biocreto_tipo_proyecto']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'sale', 'contract']</attribute>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- List view base: decoración amarilla para órdenes en Contrato. -->
+    <record id="sale_order_tree_biocreto_contract" model="ir.ui.view">
+        <field name="name">sale.order.list.biocreto.contract</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.sale_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                <attribute name="decoration-warning">state == 'contract'</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Search view: filtro "En Contrato". -->
+    <record id="view_sales_order_filter_biocreto_contract" model="ir.ui.view">
+        <field name="name">sale.order.search.biocreto.contract</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='my_sale_orders_filter']" position="after">
+                <separator/>
+                <filter name="filter_state_contract"
+                        string="En Contrato"
+                        domain="[('state', '=', 'contract')]"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

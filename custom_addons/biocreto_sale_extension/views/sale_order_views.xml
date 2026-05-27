@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         1. HERENCIA DEL FORM DE COTIZACIÓN
+            - Pestaña "Información de Suministro" (grupo "Datos de Obra").
+            - Campos técnicos BIOCRETO en el form INLINE de la línea
+              (el popup que abre el widget sol_o2m al expandir una fila).
+              En Odoo 19 ese popup NO es una vista ir.ui.view independiente:
+              es el <form> embebido dentro de <field name="order_line">.
+         ══════════════════════════════════════════════════════════════ -->
+    <record id="view_order_form_biocreto" model="ir.ui.view">
+        <field name="name">sale.order.form.biocreto</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Pestaña "Información de Suministro" — inmediatamente
+                 DESPUÉS de la pestaña de líneas de pedido (name="order_lines").
+                 v1.3.0: reposicionada (antes iba al final del notebook). -->
+            <xpath expr="//page[@name='order_lines']" position="after">
+                <page name="biocreto_supply_info"
+                      string="Información de Suministro">
+                    <group string="DATOS DE OBRA" name="biocreto_obra_group">
+                        <group>
+                            <field name="biocreto_direccion_proyecto"/>
+                            <field name="biocreto_coordenadas"
+                                   widget="biocreto_geo_field"/>
+                            <field name="biocreto_tipo_proyecto"/>
+                        </group>
+                        <group/>
+                    </group>
+                </page>
+            </xpath>
+
+            <!-- Popup de la línea: grupos condicionales BIOCRETO añadidos
+                 al form inline nativo de order_line (el popup automático que
+                 usa el widget sol_o2m, p. ej. en móvil). -->
+            <xpath expr="//field[@name='order_line']/form" position="inside">
+
+                <!-- Campo puente invisible — necesario para las condiciones -->
+                <field name="biocreto_product_categ" invisible="1"/>
+
+                <!-- Grupo CONCRETO -->
+                <group string="Especificaciones técnicas — Concreto"
+                       name="biocreto_concreto_group"
+                       invisible="biocreto_product_categ != 'Concreto'">
+                    <group>
+                        <field name="biocreto_estructura"
+                               required="biocreto_product_categ == 'Concreto'"/>
+                        <field name="biocreto_tipo_cemento"
+                               required="biocreto_product_categ == 'Concreto'"/>
+                    </group>
+                    <group>
+                        <field name="biocreto_huso_tmn"
+                               required="biocreto_product_categ == 'Concreto'"/>
+                        <field name="biocreto_slump"
+                               required="biocreto_product_categ == 'Concreto'"/>
+                    </group>
+                </group>
+
+                <!-- Grupo BOMBEO -->
+                <group string="Especificaciones técnicas — Bombeo"
+                       name="biocreto_bombeo_group"
+                       invisible="biocreto_product_categ != 'Bombeo'">
+                    <group>
+                        <field name="biocreto_vehiculo_id"/>
+                        <field name="biocreto_tuberia_adicional"/>
+                        <field name="biocreto_slump_bombeable"/>
+                    </group>
+                    <group/>
+                </group>
+
+            </xpath>
+
+            <!-- Acceso visible al popup en PC.
+
+                 (1) biocreto_product_categ como column_invisible: necesario
+                     para evaluar la condición 'invisible' del botón por fila.
+                     Sin este field declarado en la <list>, el evaluador no
+                     tiene acceso al valor.
+
+                 (2) Botón "expandir" con type="object" + visibility condicional.
+                     Sólo aparece en líneas cuyo producto pertenezca a Concreto
+                     o Bombeo (productos sin campos técnicos BIOCRETO no
+                     necesitan el ícono).
+
+                 Notas sobre el approach:
+                   - 'type="edit"' no funciona en el list renderer custom
+                     'sol_o2m' (lanza "Missing type for doActionButton").
+                   - 'widget="open_form"' no existe en Odoo 19 (0 ocurrencias
+                     en el core); 'open_form_view="True"' (atributo de <list>)
+                     es el equivalente nativo pero NO permite condición por
+                     fila — agrega el ícono a todas las líneas.
+                   - 'type="object"' obliga a persistir la línea antes de
+                     invocar el método. Esto NO genera el bucle anterior
+                     porque @api.constrains fue movido a action_confirm (sale_order.py).
+                     Guardar un borrador con campos técnicos vacíos ya no falla. -->
+            <xpath expr="//field[@name='order_line']/list" position="inside">
+                <field name="biocreto_product_categ" column_invisible="1"/>
+                <button name="action_open_biocreto_line_form"
+                        type="object"
+                        icon="fa-expand"
+                        title="Abrir detalle BIOCRETO de la línea"
+                        invisible="biocreto_product_categ not in ('Concreto', 'Bombeo')"/>
+            </xpath>
+
+        </field>
+    </record>
+
+
+    <!-- ══════════════════════════════════════════════════════════════
+         2. FORM STANDALONE DE LÍNEA — destino del botón "expandir"
+            El act_window del botón apunta explícitamente a esta vista.
+            El form por defecto de sale.order.line no contiene los grupos
+            BIOCRETO (la herencia del fix de Bloque 1 se aplica al <form>
+            INLINE dentro de sale.view_order_form, no al form standalone
+            del modelo).
+            priority=99 → nunca se usa como form por defecto del modelo.
+         ══════════════════════════════════════════════════════════════ -->
+    <record id="sale_order_line_view_form_biocreto" model="ir.ui.view">
+        <field name="name">sale.order.line.form.biocreto</field>
+        <field name="model">sale.order.line</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <form string="Detalle de línea">
+                <field name="biocreto_product_categ" invisible="1"/>
+                <group>
+                    <group>
+                        <field name="product_id" readonly="1"/>
+                        <field name="product_uom_qty"/>
+                        <field name="price_unit"/>
+                    </group>
+                    <group>
+                        <field name="name" string="Descripción"/>
+                    </group>
+                </group>
+
+                <!-- Grupo CONCRETO -->
+                <group string="Especificaciones técnicas — Concreto"
+                       name="biocreto_concreto_group_form"
+                       invisible="biocreto_product_categ != 'Concreto'">
+                    <group>
+                        <field name="biocreto_estructura"
+                               required="biocreto_product_categ == 'Concreto'"/>
+                        <field name="biocreto_tipo_cemento"
+                               required="biocreto_product_categ == 'Concreto'"/>
+                    </group>
+                    <group>
+                        <field name="biocreto_huso_tmn"
+                               required="biocreto_product_categ == 'Concreto'"/>
+                        <field name="biocreto_slump"
+                               required="biocreto_product_categ == 'Concreto'"/>
+                    </group>
+                </group>
+
+                <!-- Grupo BOMBEO -->
+                <group string="Especificaciones técnicas — Bombeo"
+                       name="biocreto_bombeo_group_form"
+                       invisible="biocreto_product_categ != 'Bombeo'">
+                    <group>
+                        <field name="biocreto_vehiculo_id"/>
+                        <field name="biocreto_tuberia_adicional"/>
+                        <field name="biocreto_slump_bombeable"/>
+                    </group>
+                    <group/>
+                </group>
+            </form>
+        </field>
+    </record>
+
+
+    <!-- ══════════════════════════════════════════════════════════════
+         3. HERENCIA DEL SEARCH VIEW (FILTROS)
+         ══════════════════════════════════════════════════════════════ -->
+    <record id="view_sales_order_filter_biocreto" model="ir.ui.view">
+        <field name="name">sale.order.filter.biocreto</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="filter_proyecto_mayor"
+                        string="Proyecto Mayor"
+                        domain="[('biocreto_tipo_proyecto','=','mayor')]"/>
+                <filter name="filter_proyecto_menor"
+                        string="Proyecto Menor"
+                        domain="[('biocreto_tipo_proyecto','=','menor')]"/>
+                <separator/>
+                <filter name="groupby_tipo_proyecto"
+                        string="Tipo de proyecto"
+                        context="{'group_by': 'biocreto_tipo_proyecto'}"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

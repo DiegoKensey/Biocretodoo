@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Banner verde post-firma: texto custom cuando la orden quedó en 'contract'. -->
+    <template id="sale_order_portal_template_inherit_contract"
+              inherit_id="sale.sale_order_portal_template"
+              name="BIOCRETO Contract Sign Banner">
+        <xpath expr="//div[@t-if=&quot;message == 'sign_ok'&quot;]" position="replace">
+            <div t-if="message == 'sign_ok'"
+                 class="alert alert-success alert-dismissible d-print-none"
+                 role="status">
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"/>
+                <t t-if="sale_order.state == 'contract'">
+                    <strong>¡Gracias! Hemos recibido su firma.</strong>
+                    <br/>
+                    <span>Su asesor comercial le enviará el contrato pronto.</span>
+                </t>
+                <t t-else="">
+                    <strong>Thank You!</strong>
+                    <br/>
+                    <t t-if="sale_order.state == 'sale'">
+                        Your order has been confirmed.
+                    </t>
+                    <t t-elif="sale_order._has_to_be_paid()">
+                        Your order has been signed but still needs to be paid to be confirmed.
+                    </t>
+                    <t t-else="">Your order has been signed.</t>
+                </t>
+            </div>
+        </xpath>
+    </template>
+
+    <!-- Breadcrumb: ruta padre dinámica para órdenes en estado 'contract'. -->
+    <template id="portal_my_home_menu_sale_inherit_contract"
+              inherit_id="sale.portal_my_home_menu_sale"
+              name="BIOCRETO Contract Breadcrumb">
+        <!-- Excluir 'contract' del t-elif nativo que apunta a /my/orders. -->
+        <xpath expr="//li[@id='portal_breadcrumbs_sale']" position="after">
+            <li t-if="page_name == 'contract' or sale_order and sale_order.state == 'contract'"
+                t-attf-class="breadcrumb-item #{'active ' if not sale_order else ''}">
+                <a t-if="sale_order" t-attf-href="/my/contracts?{{ keep_query() }}">Contratos</a>
+                <t t-else="">Contratos</t>
+            </li>
+        </xpath>
+        <xpath expr="//li[contains(@t-elif, 'page_name == ')]" position="attributes">
+            <attribute name="t-elif">page_name == 'order' or sale_order and sale_order.state not in ('sent', 'cancel', 'contract')</attribute>
+        </xpath>
+    </template>
+
+    <!-- Menú lateral del portal: nueva entrada "Contratos". -->
+    <template id="portal_my_home_sale_inherit_contract"
+              inherit_id="sale.portal_my_home_sale"
+              name="BIOCRETO Contracts Menu Entry">
+        <xpath expr="//div[@id='portal_client_category']" position="inside">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="title">Contratos</t>
+                <t t-set="url" t-value="'/my/contracts'"/>
+                <t t-set="text">Sus cotizaciones firmadas pendientes de contrato</t>
+                <t t-set="placeholder_count" t-value="'contract_count'"/>
+            </t>
+        </xpath>
+    </template>
+
+    <!-- Página /my/contracts: listado de órdenes en estado 'contract' del cliente. -->
+    <template id="portal_my_contracts" name="BIOCRETO My Contracts">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">Contratos</t>
+            </t>
+
+            <div t-if="not contracts" class="alert alert-warning" role="alert">
+                No hay contratos pendientes en su cuenta.
+            </div>
+
+            <t t-if="contracts" t-call="portal.portal_table">
+                <thead>
+                    <tr class="active">
+                        <th>
+                            <span class="d-none d-md-inline">Contrato N°</span>
+                            <span class="d-block d-md-none">Ref.</span>
+                        </th>
+                        <th class="text-end">Fecha</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-end">Total</th>
+                    </tr>
+                </thead>
+                <t t-foreach="contracts" t-as="contract">
+                    <tr>
+                        <td>
+                            <a t-att-href="contract.get_portal_url()">
+                                <t t-out="contract.name"/>
+                            </a>
+                        </td>
+                        <td class="text-end">
+                            <span t-field="contract.date_order" t-options="{'widget': 'date'}"/>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge rounded-pill text-bg-success">Contrato</span>
+                        </td>
+                        <td class="text-end">
+                            <span t-field="contract.amount_total"/>
+                        </td>
+                    </tr>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

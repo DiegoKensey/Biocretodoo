@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="biocreto_sale_extension.GeoField">
+        <div class="o_field_biocreto_geo d-flex align-items-center gap-1 w-100">
+            <input
+                t-ref="input"
+                type="text"
+                class="o_input flex-grow-1"
+                t-att-id="props.id"
+                t-att-placeholder="props.placeholder"
+                t-att-readonly="props.readonly"
+                autocomplete="off"
+            />
+            <button
+                t-if="!props.readonly"
+                type="button"
+                class="btn btn-sm btn-secondary text-nowrap"
+                title="Obtener coordenadas GPS actuales"
+                t-on-click="onClickGetLocation"
+            >
+                <i class="fa fa-map-marker me-1"/>Obtener ubicación
+            </button>
+        </div>
+    </t>
+
+</templates>

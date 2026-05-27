@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <!--
+        Secuencia plantilla.
+        Las secuencias reales por empresa se crean en runtime desde
+        models/sale_order.py (_biocreto_ensure_sequence) al detectar
+        empresas con plant_code.
+    -->
+    <record id="seq_biocreto_sale_order_template" model="ir.sequence">
+        <field name="name">BIOCRETO Cotización - Plantilla</field>
+        <field name="code">biocreto.sale.order</field>
+        <field name="prefix"></field>
+        <field name="padding">4</field>
+        <field name="number_increment">1</field>
+        <field name="implementation">standard</field>
+        <field name="use_date_range" eval="True"/>
+    </record>
+
+</odoo>

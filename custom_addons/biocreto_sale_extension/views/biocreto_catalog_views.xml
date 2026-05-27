@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         VISTAS — TIPO DE ESTRUCTURA
+         ══════════════════════════════════════════════════════════════ -->
+    <record id="view_biocreto_estructura_list" model="ir.ui.view">
+        <field name="name">biocreto.estructura.list</field>
+        <field name="model">biocreto.estructura</field>
+        <field name="arch" type="xml">
+            <list string="Tipos de Estructura" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_biocreto_estructura" model="ir.actions.act_window">
+        <field name="name">Tipo de estructura</field>
+        <field name="res_model">biocreto.estructura</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Cree los tipos de estructura para sus cotizaciones de concreto.
+            </p>
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         VISTAS — TIPO DE CEMENTO
+         ══════════════════════════════════════════════════════════════ -->
+    <record id="view_biocreto_tipo_cemento_list" model="ir.ui.view">
+        <field name="name">biocreto.tipo.cemento.list</field>
+        <field name="model">biocreto.tipo.cemento</field>
+        <field name="arch" type="xml">
+            <list string="Tipos de Cemento" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_biocreto_tipo_cemento" model="ir.actions.act_window">
+        <field name="name">Tipo de cemento</field>
+        <field name="res_model">biocreto.tipo.cemento</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Cree los tipos de cemento para sus cotizaciones de concreto.
+            </p>
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         VISTAS — HUSO TMN
+         ══════════════════════════════════════════════════════════════ -->
+    <record id="view_biocreto_huso_tmn_list" model="ir.ui.view">
+        <field name="name">biocreto.huso.tmn.list</field>
+        <field name="model">biocreto.huso.tmn</field>
+        <field name="arch" type="xml">
+            <list string="Husos TMN" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_biocreto_huso_tmn" model="ir.actions.act_window">
+        <field name="name">Tipo de Huso TMN</field>
+        <field name="res_model">biocreto.huso.tmn</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Cree los husos TMN para sus cotizaciones de concreto.
+            </p>
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         MENÚS — bajo Ventas → Configuración (sale.menu_sale_config)
+         Sección "Concreto / Bombeo" al final de los items existentes.
+         ══════════════════════════════════════════════════════════════ -->
+    <menuitem id="menu_biocreto_catalog_section"
+              name="Concreto / Bombeo"
+              parent="sale.menu_sale_config"
+              sequence="99"/>
+
+    <menuitem id="menu_biocreto_estructura"
+              name="Tipo de estructura"
+              parent="menu_biocreto_catalog_section"
+              action="action_biocreto_estructura"
+              sequence="10"/>
+
+    <menuitem id="menu_biocreto_tipo_cemento"
+              name="Tipo de cemento"
+              parent="menu_biocreto_catalog_section"
+              action="action_biocreto_tipo_cemento"
+              sequence="20"/>
+
+    <menuitem id="menu_biocreto_huso_tmn"
+              name="Tipo de Huso TMN"
+              parent="menu_biocreto_catalog_section"
+              action="action_biocreto_huso_tmn"
+              sequence="30"/>
+
+</odoo>
