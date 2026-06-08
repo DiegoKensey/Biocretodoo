@@ -1,6 +1,6 @@
 {
     'name': 'BIOCRETO - Estado Contrato en Cotizaciones',
-    'version': '19.0.1.0.2',
+    'version': '19.0.1.0.4',
     'category': 'Sales',
     'summary': 'Estado intermedio "Contrato" entre Enviada y Orden de Venta para BIOCRETO.',
     'description': """

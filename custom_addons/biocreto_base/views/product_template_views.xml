@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Resistencia f'c en el form de producto, justo debajo de "Category".
+         El field 'categ_id' del form 'product.product_template_form_view'
+         aparece una única vez (línea ~127), por lo que el xpath sin más
+         calificadores es seguro. -->
+    <record id="view_product_template_form_biocreto_fc" model="ir.ui.view">
+        <field name="name">product.template.form.biocreto.fc</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='categ_id'][not(ancestor::group[@name='upsell'])]" position="after">
+                <field name="biocreto_fc_resistencia"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

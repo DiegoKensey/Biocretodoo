@@ -61,6 +61,63 @@
         </xpath>
     </template>
 
+    <!-- Bloque "Customer Information" del portal: divide la dirección única
+         de facturación-y-envío del nativo en DOS apartados:
+           A) Dirección de facturación: datos del partner (igual que el nativo,
+              widget contact con name/address/phone/email del partner_invoice_id).
+           B) Dirección de envío: dirección de la OBRA (campos estructurados
+              de biocreto_sale_extension), apilada. Se OCULTA si la cotización
+              no tiene ningún campo BIOCRETO de dirección.
+         El partner_shipping_id nativo se ignora — en BIOCRETO la "dirección de
+         envío" es la ubicación de la obra, no el shipping address del partner. -->
+    <template id="portal_order_address_split_biocreto"
+              inherit_id="sale.sale_order_portal_content"
+              name="BIOCRETO Split Billing/Shipping Address">
+        <xpath expr="//div[@id='customer_info']" position="replace">
+            <div id="customer_info" class="col-12 col-lg-6 mb-4">
+
+                <!-- ──── Bloque A: Dirección de facturación ──── -->
+                <h5 class="mb-1">
+                    Dirección de facturación
+                    <small t-if="sale_order.partner_id == sale_order.partner_invoice_id == sale_order.env.user.partner_id">
+                        <a class="small" t-attf-href="/my/account?redirect={{sale_order.get_portal_url()}}">
+                            <i class="fa fa-fw fa-pencil"/>
+                        </a>
+                    </small>
+                </h5>
+                <hr class="mt-1 mb-2"/>
+                <div t-field="sale_order.partner_invoice_id"
+                     t-options="{'widget': 'contact', 'fields': ['name', 'address', 'phone', 'email']}"/>
+
+                <!-- ──── Bloque B: Dirección de envío (obra) ──── -->
+                <t t-if="sale_order.biocreto_street or sale_order.biocreto_district_id or sale_order.biocreto_city_id or sale_order.biocreto_state_id">
+                    <br/>
+                    <h5 class="mb-1">Dirección de envío</h5>
+                    <hr class="mt-1 mb-2"/>
+                    <div class="d-flex align-items-baseline gap-1">
+                        <i class="fa fa-map-marker fa-fw" role="img"
+                           aria-label="Dirección" title="Dirección"/>
+                        <span class="w-100 lh-sm text-break d-block" itemprop="streetAddress">
+                            <t t-if="sale_order.biocreto_street">
+                                <span t-field="sale_order.biocreto_street"/><br/>
+                            </t>
+                            <t t-if="sale_order.biocreto_district_id">
+                                <span t-field="sale_order.biocreto_district_id.name"/><br/>
+                            </t>
+                            <t t-if="sale_order.biocreto_city_id">
+                                <span t-field="sale_order.biocreto_city_id.name"/><br/>
+                            </t>
+                            <t t-if="sale_order.biocreto_state_id">
+                                <span t-field="sale_order.biocreto_state_id.name"/><br/>
+                            </t>
+                            Perú
+                        </span>
+                    </div>
+                </t>
+            </div>
+        </xpath>
+    </template>
+
     <!-- Página /my/contracts: listado de órdenes en estado 'contract' del cliente. -->
     <template id="portal_my_contracts" name="BIOCRETO My Contracts">
         <t t-call="portal.portal_layout">

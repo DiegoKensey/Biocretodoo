@@ -79,8 +79,21 @@
             <!-- Pestaña BIOCRETO "Información de suministro": bloquear edición
                  de sus campos en Contrato. Los campos a nivel de línea
                  (estructura, cemento, huso, slump, etc.) ya quedan bloqueados
-                 porque viven dentro de los order_line readonly de arriba. -->
-            <xpath expr="//field[@name='biocreto_direccion_proyecto']" position="attributes">
+                 porque viven dentro de los order_line readonly de arriba.
+
+                 v1.0.3 (acopla con biocreto_sale_extension v1.4.0): el viejo
+                 'biocreto_direccion_proyecto' (Char) se sustituyó por dirección
+                 estructurada (4 campos). Los xpaths se reapuntan a los nuevos. -->
+            <xpath expr="//field[@name='biocreto_street']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'sale', 'contract']</attribute>
+            </xpath>
+            <xpath expr="//field[@name='biocreto_district_id']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'sale', 'contract']</attribute>
+            </xpath>
+            <xpath expr="//field[@name='biocreto_city_id']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'sale', 'contract']</attribute>
+            </xpath>
+            <xpath expr="//field[@name='biocreto_state_id']" position="attributes">
                 <attribute name="readonly">state in ['cancel', 'sale', 'contract']</attribute>
             </xpath>
             <xpath expr="//field[@name='biocreto_coordenadas']" position="attributes">

@@ -51,6 +51,14 @@ class SaleOrder(models.Model):
         orders_to_sale = self.filtered(lambda o: o.state == 'contract')
 
         if orders_to_contract:
+            # Validaciones pre-confirmación BIOCRETO ANTES de cambiar el estado.
+            # Este flujo no llama super() (sólo hace write), así que el
+            # action_confirm de biocreto_sale_extension nunca correría.
+            # Invocamos su helper explícitamente para que las validaciones
+            # (al menos 1 línea de producto + campos técnicos de Concreto)
+            # también disparen en draft/sent → contract, no sólo en
+            # contract → sale.
+            orders_to_contract._biocreto_validate_before_confirm()
             orders_to_contract.write({'state': 'contract'})
             user_name = self.env.user.name
             for order in orders_to_contract:

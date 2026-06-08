@@ -1,4 +1,4 @@
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 
 
 class SaleOrderLine(models.Model):
@@ -59,6 +59,102 @@ class SaleOrderLine(models.Model):
         string="Slump bombeable (pulg.)",
         digits=(5, 2),
     )
+
+    # ─────────────────────────────────────────────────────────────────
+    # Volumen operativo y costo compensado (sólo Concreto).
+    # Fase 1: costo compensado se calcula con el VOLUMEN OPERATIVO
+    # PLANEADO. La fase 2 (producido real) la añade biocreto_fabricacion
+    # extendiendo este @api.depends y la lógica del compute.
+    # ─────────────────────────────────────────────────────────────────
+    biocreto_volumen_operativo = fields.Float(
+        string="Volumen operativo",
+        digits='Product Unit of Measure',
+        help="Volumen real de producción (m³). Base del costo compensado.",
+    )
+    biocreto_costo_compensado = fields.Float(
+        string="Costo compensado",
+        compute='_compute_biocreto_costo_compensado',
+        store=True,
+        digits='Product Price',
+        help="Precio efectivo por m³ entregado. "
+             "Fase 1: usa el volumen operativo planeado. "
+             "biocreto_fabricacion extenderá este compute para usar el "
+             "producido real cuando la OF esté terminada.",
+    )
+
+    @api.depends('price_unit', 'product_uom_qty', 'biocreto_volumen_operativo')
+    def _compute_biocreto_costo_compensado(self):
+        for line in self:
+            divisor = line.biocreto_volumen_operativo
+            line.biocreto_costo_compensado = (
+                (line.price_unit * line.product_uom_qty) / divisor
+            ) if divisor else 0.0
+
+    # ─────────────────────────────────────────────────────────────────
+    # Boom (Lista de materiales nativa de mrp). Se asigna desde Laboratorio.
+    # El domain por producto se aplica en la vista (reacciona a product_id).
+    # ─────────────────────────────────────────────────────────────────
+    bom_id = fields.Many2one(
+        comodel_name='mrp.bom',
+        string="Diseño de mezcla",
+        help="Diseño de mezcla (lista de materiales nativa). "
+             "Se asigna en Laboratorio cuando la orden pasa al estado Programado.",
+    )
+
+    # ─────────────────────────────────────────────────────────────────
+    # Tipo de colocación (sólo Concreto). Sección "Especificaciones de envío".
+    # ─────────────────────────────────────────────────────────────────
+    biocreto_tipo_colocacion = fields.Selection(
+        selection=[
+            ('directo', 'Directo'),
+            ('pluma', 'Pluma'),
+        ],
+        string="Tipo de colocación",
+    )
+
+    # ─────────────────────────────────────────────────────────────────
+    # Dominios dinámicos para Vehículo y Boom.
+    #
+    # Patrón canónico Odoo 19 para domains que dependen de otros campos:
+    # un Binary computed sirve como contenedor del domain y la vista
+    # lo referencia por nombre (domain="<field_name>"). Verificado en
+    # account/models/account_tax.py:4952 (tag_ids_domain) y
+    # account_intrastat/views (intrastat_code_domain).
+    #
+    # ¿Por qué Binary y no Char/escribir el domain como lista?
+    # El widget many2one lee el campo como list-of-tuples directamente,
+    # sin pasar por safe_eval del string XML. Esto permite:
+    #   - usar identificadores Python normales (no hay que serializar)
+    #   - retornar [] cuando no hay filtro (= mostrar todos)
+    #   - retornar [('id','in',[])] para "ninguno" si fuera necesario
+    # ─────────────────────────────────────────────────────────────────
+    biocreto_vehiculo_domain = fields.Binary(
+        compute='_compute_biocreto_vehiculo_domain',
+        help="Domain dinámico para biocreto_vehiculo_id: filtra por la "
+             "categoría de Bomba parametrizada en la Compañía. Si la Compañía "
+             "no tiene categoría configurada, retorna [] (muestra todos).",
+    )
+    biocreto_bom_domain = fields.Binary(
+        compute='_compute_biocreto_bom_domain',
+        help="Domain dinámico para bom_id: BoMs del producto de la línea. "
+             "Si no hay producto seleccionado, retorna [] (muestra todas).",
+    )
+
+    @api.depends('company_id', 'company_id.biocreto_bomba_categ_id')
+    def _compute_biocreto_vehiculo_domain(self):
+        for line in self:
+            categ = line.company_id.biocreto_bomba_categ_id
+            line.biocreto_vehiculo_domain = (
+                [('category_id', '=', categ.id)] if categ else []
+            )
+
+    @api.depends('product_id', 'product_id.product_tmpl_id')
+    def _compute_biocreto_bom_domain(self):
+        for line in self:
+            tmpl = line.product_id.product_tmpl_id
+            line.biocreto_bom_domain = (
+                [('product_tmpl_id', '=', tmpl.id)] if tmpl else []
+            )
 
     # ─────────────────────────────────────────────────────────────────
     # Acceso al detalle de la línea como dialog modal

@@ -16,21 +16,75 @@
         <field name="arch" type="xml">
 
             <!-- Pestaña "Información de Suministro" — inmediatamente
-                 DESPUÉS de la pestaña de líneas de pedido (name="order_lines").
-                 v1.3.0: reposicionada (antes iba al final del notebook). -->
+                 DESPUÉS de la pestaña de líneas de pedido (name="order_lines"). -->
             <xpath expr="//page[@name='order_lines']" position="after">
                 <page name="biocreto_supply_info"
                       string="Información de Suministro">
                     <group string="DATOS DE OBRA" name="biocreto_obra_group">
                         <group>
-                            <field name="biocreto_direccion_proyecto"/>
+                            <!-- Dirección estructurada (mismo apilado que
+                                 res.partner: clases o_address_* nativas).
+                                 Orden visual: Calle → Distrito → Provincia
+                                 → Departamento (de lo específico a lo
+                                 general, como contactos en Odoo). -->
+                            <label for="biocreto_street" string="Dirección"/>
+                            <div class="o_address_format">
+                                <field name="biocreto_street"
+                                       placeholder="Calle / Av. / Jr. y número..."
+                                       class="o_address_street"/>
+                                <field name="biocreto_district_id"
+                                       placeholder="Distrito"
+                                       class="o_address_city"
+                                       options="{'no_open': True, 'no_create': True}"/>
+                                <field name="biocreto_city_id"
+                                       placeholder="Provincia"
+                                       class="o_address_city"
+                                       options="{'no_open': True, 'no_create': True}"/>
+                                <field name="biocreto_state_id"
+                                       placeholder="Departamento"
+                                       class="o_address_state"
+                                       options="{'no_open': True, 'no_create': True}"/>
+                            </div>
                             <field name="biocreto_coordenadas"
                                    widget="biocreto_geo_field"/>
                             <field name="biocreto_tipo_proyecto"/>
                         </group>
                         <group/>
                     </group>
+
+                    <!-- Fecha de vaceo (rango fecha+hora).
+                         Widget daterange = patrón event.event (date_begin/end).
+                         required en la vista; readonly cuando ya es OV.
+                         El campo fin se declara invisible para que el widget
+                         tenga acceso a él dentro del view (sin duplicar UI). -->
+                    <group string="FECHA DE VACEO" name="biocreto_vaceo_group">
+                        <group>
+                            <field name="biocreto_fecha_vaceo_inicio"
+                                   widget="daterange"
+                                   options="{'end_date_field': 'biocreto_fecha_vaceo_fin'}"
+                                   required="1"
+                                   readonly="state == 'sale'"/>
+                            <field name="biocreto_fecha_vaceo_fin"
+                                   invisible="1"/>
+                        </group>
+                        <group/>
+                    </group>
                 </page>
+            </xpath>
+
+            <!-- Tag de estado de diseño: DENTRO del oe_title, justo encima
+                 del campo `name` (Order Reference). Visible desde el estado
+                 'programado' en adelante. Mientras 'programado' no exista
+                 (lo añade el Prompt 2), 'sale' y 'done' ya están en el
+                 Selection nativo — pero el tag depende también de que
+                 biocreto_estado_diseno tenga valor, lo cual sólo ocurre si
+                 hay líneas Concreto. -->
+            <xpath expr="//div[hasclass('oe_title')]//field[@name='name']" position="before">
+                <field name="biocreto_estado_diseno"
+                       widget="badge"
+                       decoration-danger="biocreto_estado_diseno == 'pendiente'"
+                       decoration-success="biocreto_estado_diseno == 'asignado'"
+                       invisible="state not in ('programado', 'sale', 'done') or not biocreto_estado_diseno"/>
             </xpath>
 
             <!-- Popup de la línea: grupos condicionales BIOCRETO añadidos
@@ -41,6 +95,31 @@
                 <!-- Campo puente invisible — necesario para las condiciones -->
                 <field name="biocreto_product_categ" invisible="1"/>
 
+                <!-- state (related order_id.state) — necesario para el
+                     invisible del Diseño de mezcla (visible desde 'programado'). -->
+                <field name="state" invisible="1"/>
+
+                <!-- Domains dinámicos invisibles (necesarios para que el
+                     widget many2one los pueda evaluar en esta vista). -->
+                <field name="biocreto_vehiculo_domain" invisible="1"/>
+                <field name="biocreto_bom_domain" invisible="1"/>
+
+                <!-- Volumen operativo + costo compensado (sólo Concreto).
+                     biocreto_costo_compensado solo se ve en modo desarrollador
+                     (groups=base.group_no_one) — hoy es un valor planeado;
+                     biocreto_fabricacion lo reemplazará con el real. -->
+                <group name="biocreto_volumen_inline"
+                       invisible="biocreto_product_categ != 'Concreto'">
+                    <group>
+                        <field name="biocreto_volumen_operativo"/>
+                    </group>
+                    <group>
+                        <field name="biocreto_costo_compensado"
+                               readonly="1"
+                               groups="base.group_no_one"/>
+                    </group>
+                </group>
+
                 <!-- Grupo CONCRETO -->
                 <group string="Especificaciones técnicas — Concreto"
                        name="biocreto_concreto_group"
@@ -50,6 +129,9 @@
                                required="biocreto_product_categ == 'Concreto'"/>
                         <field name="biocreto_tipo_cemento"
                                required="biocreto_product_categ == 'Concreto'"/>
+                        <field name="bom_id"
+                               domain="biocreto_bom_domain"
+                               invisible="state not in ('programado', 'sale', 'done')"/>
                     </group>
                     <group>
                         <field name="biocreto_huso_tmn"
@@ -59,12 +141,28 @@
                     </group>
                 </group>
 
-                <!-- Grupo BOMBEO -->
+                <!-- Especificaciones de envío (sólo Concreto).
+                     biocreto_laboratorio insertará "Especificaciones de
+                     calidad" ANTES de este grupo. -->
+                <group string="Especificaciones de envío"
+                       name="biocreto_envio_group"
+                       invisible="biocreto_product_categ != 'Concreto'">
+                    <group>
+                        <field name="biocreto_tipo_colocacion"/>
+                    </group>
+                    <group/>
+                </group>
+
+                <!-- Grupo BOMBEO.
+                     Domain del vehículo via campo Binary computado: si la
+                     Compañía no tiene categoría parametrizada, domain=[] y
+                     se listan todos los vehículos (no error). -->
                 <group string="Especificaciones técnicas — Bombeo"
                        name="biocreto_bombeo_group"
                        invisible="biocreto_product_categ != 'Bombeo'">
                     <group>
-                        <field name="biocreto_vehiculo_id"/>
+                        <field name="biocreto_vehiculo_id"
+                               domain="biocreto_vehiculo_domain"/>
                         <field name="biocreto_tuberia_adicional"/>
                         <field name="biocreto_slump_bombeable"/>
                     </group>
@@ -125,6 +223,10 @@
         <field name="arch" type="xml">
             <form string="Detalle de línea">
                 <field name="biocreto_product_categ" invisible="1"/>
+                <field name="company_id" invisible="1"/>
+                <field name="state" invisible="1"/>
+                <field name="biocreto_vehiculo_domain" invisible="1"/>
+                <field name="biocreto_bom_domain" invisible="1"/>
                 <group>
                     <group>
                         <field name="product_id" readonly="1"/>
@@ -133,6 +235,20 @@
                     </group>
                     <group>
                         <field name="name" string="Descripción"/>
+                    </group>
+                </group>
+
+                <!-- Volumen operativo + costo compensado (sólo Concreto).
+                     biocreto_costo_compensado solo en modo desarrollador. -->
+                <group name="biocreto_volumen_form"
+                       invisible="biocreto_product_categ != 'Concreto'">
+                    <group>
+                        <field name="biocreto_volumen_operativo"/>
+                    </group>
+                    <group>
+                        <field name="biocreto_costo_compensado"
+                               readonly="1"
+                               groups="base.group_no_one"/>
                     </group>
                 </group>
 
@@ -145,6 +261,9 @@
                                required="biocreto_product_categ == 'Concreto'"/>
                         <field name="biocreto_tipo_cemento"
                                required="biocreto_product_categ == 'Concreto'"/>
+                        <field name="bom_id"
+                               domain="biocreto_bom_domain"
+                               invisible="state not in ('programado', 'sale', 'done')"/>
                     </group>
                     <group>
                         <field name="biocreto_huso_tmn"
@@ -154,12 +273,23 @@
                     </group>
                 </group>
 
+                <!-- Especificaciones de envío (sólo Concreto). -->
+                <group string="Especificaciones de envío"
+                       name="biocreto_envio_group_form"
+                       invisible="biocreto_product_categ != 'Concreto'">
+                    <group>
+                        <field name="biocreto_tipo_colocacion"/>
+                    </group>
+                    <group/>
+                </group>
+
                 <!-- Grupo BOMBEO -->
                 <group string="Especificaciones técnicas — Bombeo"
                        name="biocreto_bombeo_group_form"
                        invisible="biocreto_product_categ != 'Bombeo'">
                     <group>
-                        <field name="biocreto_vehiculo_id"/>
+                        <field name="biocreto_vehiculo_id"
+                               domain="biocreto_vehiculo_domain"/>
                         <field name="biocreto_tuberia_adicional"/>
                         <field name="biocreto_slump_bombeable"/>
                     </group>

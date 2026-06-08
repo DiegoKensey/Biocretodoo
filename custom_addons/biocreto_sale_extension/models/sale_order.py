@@ -6,12 +6,39 @@ class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
     # ─────────────────────────────────────────────────────────────────
-    # Campos de Datos de Obra
+    # Dirección estructurada de la obra (no afecta res.partner)
+    # Cascada: Departamento → Provincia → Distrito.
+    # Modelos:
+    #   - res.country.state           (provisto por base, filtrado a PE)
+    #   - res.city                    (provisto por base_address_extended)
+    #   - l10n_pe.res.city.district   (provisto por l10n_pe)
     # ─────────────────────────────────────────────────────────────────
-    biocreto_direccion_proyecto = fields.Char(
-        string="Dirección del proyecto",
-        help="Dirección física de la obra o proyecto.",
+    biocreto_state_id = fields.Many2one(
+        comodel_name='res.country.state',
+        string="Departamento",
+        domain="[('country_id.code', '=', 'PE')]",
     )
+    biocreto_city_id = fields.Many2one(
+        comodel_name='res.city',
+        string="Provincia",
+        domain="[('state_id', '=', biocreto_state_id)]",
+    )
+    biocreto_district_id = fields.Many2one(
+        comodel_name='l10n_pe.res.city.district',
+        string="Distrito",
+        domain="[('city_id', '=', biocreto_city_id)]",
+    )
+    biocreto_street = fields.Char(
+        string="Calle / Dirección",
+        help="Calle, avenida, jirón y número de la obra.",
+    )
+    biocreto_direccion_completa = fields.Char(
+        string="Dirección completa",
+        compute='_compute_biocreto_direccion_completa',
+        store=True,
+        help="Línea concatenada de la dirección de obra para el reporte.",
+    )
+
     biocreto_coordenadas = fields.Char(
         string="Coordenadas",
         help="Coordenadas GPS en formato decimal (latitud, longitud). "
@@ -25,6 +52,98 @@ class SaleOrder(models.Model):
         string="Tipo de proyecto",
         default='menor',
     )
+
+    # ─────────────────────────────────────────────────────────────────
+    # Fecha de vaceo (rango fecha+hora). El widget 'daterange' usa el
+    # mismo patrón que event.event (date_begin/date_end). El inicio se
+    # sincroniza a commitment_date (campo nativo de sale.order) — así
+    # los procesos de Programación/Stock leen una sola fuente.
+    # ─────────────────────────────────────────────────────────────────
+    biocreto_fecha_vaceo_inicio = fields.Datetime(string="Fecha de vaceo (inicio)")
+    biocreto_fecha_vaceo_fin = fields.Datetime(string="Fecha de vaceo (fin)")
+
+    # ─────────────────────────────────────────────────────────────────
+    # Estado de diseño (computed): tag rojo/verde según si las líneas
+    # de Concreto tienen ya bom_id (Boom) asignado.
+    # ─────────────────────────────────────────────────────────────────
+    biocreto_estado_diseno = fields.Selection(
+        selection=[
+            ('pendiente', 'Pendiente diseño'),
+            ('asignado', 'Diseño asignado'),
+        ],
+        string="Estado de diseño",
+        compute='_compute_biocreto_estado_diseno',
+        store=True,
+    )
+
+    @api.depends(
+        'order_line.bom_id',
+        'order_line.biocreto_product_categ',
+        'order_line.product_id',
+        'order_line.display_type',
+    )
+    def _compute_biocreto_estado_diseno(self):
+        for order in self:
+            concreto_lines = order.order_line.filtered(
+                lambda l: not l.display_type and l.biocreto_product_categ == 'Concreto'
+            )
+            if not concreto_lines:
+                order.biocreto_estado_diseno = False
+            elif all(line.bom_id for line in concreto_lines):
+                order.biocreto_estado_diseno = 'asignado'
+            else:
+                order.biocreto_estado_diseno = 'pendiente'
+
+    # ─────────────────────────────────────────────────────────────────
+    # Sincronización Fecha de vaceo (inicio) → commitment_date.
+    # Se hace en onchange (UI) y se asegura también en create/write para
+    # entradas vía RPC / import / portal.
+    # ─────────────────────────────────────────────────────────────────
+    @api.onchange('biocreto_fecha_vaceo_inicio')
+    def _onchange_biocreto_fecha_vaceo_inicio(self):
+        if self.biocreto_fecha_vaceo_inicio:
+            self.commitment_date = self.biocreto_fecha_vaceo_inicio
+
+    # ─────────────────────────────────────────────────────────────────
+    # Concatenación: "Distrito, Provincia, Departamento - Calle"
+    # ─────────────────────────────────────────────────────────────────
+    @api.depends(
+        'biocreto_street',
+        'biocreto_district_id',
+        'biocreto_city_id',
+        'biocreto_state_id',
+    )
+    def _compute_biocreto_direccion_completa(self):
+        for order in self:
+            partes = []
+            if order.biocreto_district_id:
+                partes.append(order.biocreto_district_id.name)
+            if order.biocreto_city_id:
+                partes.append(order.biocreto_city_id.name)
+            if order.biocreto_state_id:
+                partes.append(order.biocreto_state_id.name)
+            ubicacion = ", ".join(partes)
+            if order.biocreto_street:
+                order.biocreto_direccion_completa = (
+                    "%s - %s" % (ubicacion, order.biocreto_street)
+                    if ubicacion else order.biocreto_street
+                )
+            else:
+                order.biocreto_direccion_completa = ubicacion or False
+
+    # ─────────────────────────────────────────────────────────────────
+    # Cascada: limpiar campos hijos cuando cambia el padre
+    # ─────────────────────────────────────────────────────────────────
+    @api.onchange('biocreto_state_id')
+    def _onchange_biocreto_state_id(self):
+        if self.biocreto_city_id and self.biocreto_city_id.state_id != self.biocreto_state_id:
+            self.biocreto_city_id = False
+            self.biocreto_district_id = False
+
+    @api.onchange('biocreto_city_id')
+    def _onchange_biocreto_city_id(self):
+        if self.biocreto_district_id and self.biocreto_district_id.city_id != self.biocreto_city_id:
+            self.biocreto_district_id = False
 
     # ─────────────────────────────────────────────────────────────────
     # Naming custom: AÑO-CFC-NV-0001
@@ -42,7 +161,18 @@ class SaleOrder(models.Model):
                 if custom_name:
                     vals['name'] = custom_name
                 # Si custom_name es None, deja que Odoo asigne el name nativo
+            # Replicar el onchange en create: si entra fecha de vaceo (RPC,
+            # import, portal) pero no commitment_date, propagar el inicio.
+            if vals.get('biocreto_fecha_vaceo_inicio') and not vals.get('commitment_date'):
+                vals['commitment_date'] = vals['biocreto_fecha_vaceo_inicio']
         return super().create(vals_list)
+
+    def write(self, vals):
+        # Idem create: mantener commitment_date alineado con el inicio del
+        # rango cuando el cliente edita la fecha desde cualquier canal.
+        if 'biocreto_fecha_vaceo_inicio' in vals and 'commitment_date' not in vals:
+            vals['commitment_date'] = vals['biocreto_fecha_vaceo_inicio']
+        return super().write(vals)
 
     @api.model
     def _biocreto_build_name(self, company_id, user_id):
@@ -81,26 +211,47 @@ class SaleOrder(models.Model):
 
     # ─────────────────────────────────────────────────────────────────
     # Validación al CONFIRMAR (no en cada guardado)
-    # Reemplaza al antiguo @api.constrains en sale.order.line, que creaba
-    # un bucle: para llenar el popup había que guardar, y al guardar el
-    # constrains bloqueaba si los campos técnicos aún no estaban llenos.
+    #
+    # Por qué está en un helper público y no SOLO dentro de action_confirm:
+    # biocreto_sale_contract_state sobreescribe action_confirm e intercepta
+    # el flujo draft/sent → contract SIN llamar super() (sólo escribe el
+    # estado). En ese tránsito, nuestro action_confirm nunca corre. Para
+    # que la validación dispare ANTES de pasar a Contrato, contract_state
+    # debe poder invocarla explícitamente — por eso la lógica vive en un
+    # helper público (_biocreto_validate_before_confirm) que contract_state
+    # llama antes de su write({'state': 'contract'}).
+    #
+    # No usa @api.constrains a propósito: causaría un bucle al impedir
+    # guardar la cotización en borrador para abrir el popup de la línea.
     # ─────────────────────────────────────────────────────────────────
-    def action_confirm(self):
-        """Valida que las líneas de Concreto tengan sus campos técnicos
-        completos antes de confirmar la cotización.
+    def _biocreto_validate_before_confirm(self):
+        """Validaciones pre-confirmación (en orden):
+        1. Debe existir al menos una línea de producto (no sección/nota).
+        2. Las líneas de Concreto deben tener completos sus 4 campos técnicos.
+        3. Debe existir Fecha de vaceo (inicio y fin) y fin >= inicio.
 
-        Nota sobre la cadena con biocreto_sale_contract_state: ese módulo
-        depende de éste y también sobreescribe action_confirm. En su flujo
-        draft/sent → contract NO llama super(), así que esta validación
-        no corre en ese tránsito. Sí corre en contract → sale (donde
-        contract_state sí llama super), evitando que una orden con datos
-        BIOCRETO incompletos se convierta en venta confirmada.
+        Lanza ValidationError ante el primer problema encontrado.
+
+        Llamado desde:
+        - SaleOrder.action_confirm (este módulo): valida en contract → sale.
+        - SaleOrder.action_confirm (biocreto_sale_contract_state): valida
+          en draft/sent → contract, ANTES del write que cambia el estado.
         """
         for order in self:
+            # ── Validación 1: al menos una línea de producto real ──
+            lineas_producto = order.order_line.filtered(
+                lambda l: not l.display_type
+            )
+            if not lineas_producto:
+                raise ValidationError(_(
+                    "No se puede confirmar la cotización porque no tiene "
+                    "ningún producto. Agregue al menos una línea de producto "
+                    "(Concreto o Bombeo) antes de confirmar."
+                ))
+
+            # ── Validación 2: campos técnicos de Concreto completos ──
             missing_lines = []
-            for line in order.order_line:
-                if line.display_type:
-                    continue  # saltar secciones y notas
+            for line in lineas_producto:
                 if line.biocreto_product_categ == 'Concreto':
                     faltantes = []
                     if not line.biocreto_estructura:
@@ -122,8 +273,24 @@ class SaleOrder(models.Model):
                 raise ValidationError(_(
                     "No se puede confirmar la cotización. Las siguientes "
                     "líneas de Concreto tienen campos técnicos incompletos:"
-                    "\n\n%s"
+                    "\n\n%s\n\n"
+                    "Complete los campos abriendo el detalle de cada línea "
+                    "(ícono de expandir) antes de confirmar."
                 ) % "\n".join(missing_lines))
+
+            # ── Validación 3: Fecha de vaceo (inicio y fin) ──
+            if not order.biocreto_fecha_vaceo_inicio or not order.biocreto_fecha_vaceo_fin:
+                raise ValidationError(_(
+                    "Debe registrar la Fecha de vaceo (inicio y fin) en "
+                    "Información de Suministro antes de continuar."
+                ))
+            if order.biocreto_fecha_vaceo_fin < order.biocreto_fecha_vaceo_inicio:
+                raise ValidationError(_(
+                    "La Fecha de vaceo (fin) no puede ser anterior al inicio."
+                ))
+
+    def action_confirm(self):
+        self._biocreto_validate_before_confirm()
         return super().action_confirm()
 
     @api.model

@@ -1,4 +1,7 @@
-from odoo import http
+import binascii
+
+from odoo import _, fields, http
+from odoo.exceptions import AccessError, MissingError
 from odoo.http import request
 
 from odoo.addons.portal.controllers.portal import pager as portal_pager
@@ -29,11 +32,74 @@ class BiocretoCustomerPortal(CustomerPortal):
         type='jsonrpc', auth='public', website=True,
     )
     def portal_quote_accept(self, order_id, access_token=None, name=None, signature=None):
-        """Inyecta flag de contexto para que action_confirm sepa que viene del portal."""
+        """Reescritura del portal_quote_accept de sale para:
+        - Inyectar 'biocreto_from_portal=True' (lo necesita action_confirm BIOCRETO).
+        - Cambiar el body del message_post: 'Order signed by ...' → BIOCRETO.
+
+        Estrategia B (reescritura): el helper que devuelve el texto no existe
+        en el nativo (verificado: no hay '_get_portal_order_signature_message'
+        ni '_portal_quote_signed' en addons/sale). El body se construye
+        inline en sale/controllers/portal.py:339. Replicamos el resto del
+        método tal cual.
+
+        Si en una futura versión de Odoo este método cambia, esta
+        reescritura debe re-sincronizarse contra el nuevo nativo.
+        """
         request.update_context(biocreto_from_portal=True)
-        return super().portal_quote_accept(
-            order_id, access_token=access_token, name=name, signature=signature,
+        access_token = access_token or request.httprequest.args.get('access_token')
+        try:
+            order_sudo = self._document_check_access(
+                'sale.order', order_id, access_token=access_token,
+            )
+        except (AccessError, MissingError):
+            return {'error': _('Invalid order.')}
+
+        if not order_sudo._has_to_be_signed():
+            return {'error': _('The order is not in a state requiring customer signature.')}
+        if not signature:
+            return {'error': _('Signature is missing.')}
+
+        try:
+            order_sudo.write({
+                'signed_by': name,
+                'signed_on': fields.Datetime.now(),
+                'signature': signature,
+            })
+            # flush para que el PDF disponga de la firma
+            request.env.cr.flush()
+        except (TypeError, binascii.Error):
+            return {'error': _('Invalid signature data.')}
+
+        if not order_sudo._has_to_be_paid():
+            order_sudo._validate_order()
+
+        pdf = request.env['ir.actions.report'].sudo()._render_qweb_pdf(
+            'sale.action_report_saleorder', [order_sudo.id],
+        )[0]
+
+        order_sudo.message_post(
+            attachments=[('%s.pdf' % order_sudo.name, pdf)],
+            author_id=(
+                order_sudo.partner_id.id
+                if request.env.user._is_public()
+                else request.env.user.partner_id.id
+            ),
+            body=_(
+                "Cotización %(numero)s firmada por %(nombre)s",
+                numero=order_sudo.name,
+                nombre=name,
+            ),
+            message_type='comment',
+            subtype_xmlid='mail.mt_comment',
         )
+
+        query_string = '&message=sign_ok'
+        if order_sudo._has_to_be_paid():
+            query_string += '&allow_payment=yes'
+        return {
+            'force_refresh': True,
+            'redirect_url': order_sudo.get_portal_url(query_string=query_string),
+        }
 
     @http.route(
         ['/my/contracts', '/my/contracts/page/<int:page>'],

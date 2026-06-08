@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Parámetro: categoría de fleet usada para filtrar Vehículos en líneas
+         de Bombeo. Se ubica justo después de 'currency_id' en la pestaña
+         "General Information" del form de Compañía nativo. -->
+    <record id="view_res_company_form_biocreto_bomba" model="ir.ui.view">
+        <field name="name">res.company.form.biocreto.bomba</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='currency_id']" position="after">
+                <field name="biocreto_bomba_categ_id"
+                       options="{'no_create_edit': True}"
+                       groups="base.group_no_one"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
