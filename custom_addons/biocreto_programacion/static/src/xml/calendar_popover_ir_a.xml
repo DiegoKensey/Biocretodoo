@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!--
+        Inyecta el botón "Ir a" en el footer del popover del calendario,
+        DESPUÉS del enlace "Editar/Vista" (clase o_cw_popover_edit) y antes
+        del tacho (o_cw_popover_delete) cuando exista.
+
+        Template base verificado en v19 (odoo/addons/web/static/src/views/
+        calendar/calendar_common/calendar_common_popover.xml:72-82):
+
+            <t t-name="web.CalendarCommonPopover.footer">
+                <t t-if="isEventEditable or isEventViewable">
+                    <a href="#" class="btn btn-primary o_cw_popover_edit" ...>...</a>
+                </t>
+                <t t-if="isEventDeletable">
+                    <a href="#" class="btn btn-secondary o_cw_popover_delete" ...>
+                        <i class="fa fa-trash"/>
+                    </a>
+                </t>
+            </t>
+
+        Anclamos DESPUÉS de o_cw_popover_edit (siempre se renderiza:
+        isEventViewable retorna true incondicionalmente —
+        calendar_common_popover.js:53). NO antes del tacho: si canDelete=false
+        no habría ancla.
+
+        Resultado visual:
+            [Editar/Vista] [Ir a] [Tacho]      ← cuando se puede borrar
+            [Editar/Vista] [Ir a]              ← cuando no
+    -->
+    <t t-name="biocreto_programacion.CalendarPopoverIrA"
+       t-inherit="web.CalendarCommonPopover.footer"
+       t-inherit-mode="extension">
+        <xpath expr="//a[hasclass('o_cw_popover_edit')]" position="after">
+            <!-- btn-primary: misma clase de color que el botón Editar/Vista nativo
+                 (verificado en calendar_common_popover.xml:74 →
+                 class="btn btn-primary o_cw_popover_edit"). Resultado visual:
+                 ambos botones tienen el mismo color morado primario.
+                 SIN icono: solo el texto "Ir a". -->
+            <a t-if="biocretoGmapsUrl"
+               href="#"
+               class="btn btn-primary o_biocreto_gmaps_button"
+               title="Ir a la obra en Google Maps"
+               t-on-click.prevent="biocretoOpenGmaps">Ir a</a>
+        </xpath>
+    </t>
+
+</templates>

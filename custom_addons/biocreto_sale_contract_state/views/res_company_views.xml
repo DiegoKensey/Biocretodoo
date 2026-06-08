@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Parámetros BIOCRETO del flujo Programado:
+         - Buffer de horas para auto-confirmación por cron.
+         - Candado opcional: exigir Diseño de mezcla antes de pasar a OV.
+
+         Visibles solo en modo desarrollador (group_no_one). Anclados después
+         de biocreto_bomba_categ_id (proveído por biocreto_sale_extension) para
+         agrupar los 3 parámetros BIOCRETO juntos en el form de Compañía. -->
+    <record id="view_res_company_form_biocreto_programado" model="ir.ui.view">
+        <field name="name">res.company.form.biocreto.programado</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='biocreto_bomba_categ_id']" position="after">
+                <field name="biocreto_buffer_confirmacion_horas"
+                       groups="base.group_no_one"/>
+                <field name="biocreto_candado_diseno"
+                       groups="base.group_no_one"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
@@ -61,6 +63,64 @@ class SaleOrder(models.Model):
     # ─────────────────────────────────────────────────────────────────
     biocreto_fecha_vaceo_inicio = fields.Datetime(string="Fecha de vaceo (inicio)")
     biocreto_fecha_vaceo_fin = fields.Datetime(string="Fecha de vaceo (fin)")
+
+    # ─────────────────────────────────────────────────────────────────
+    # URL de Google Maps Directions hacia la obra (computed, no-store).
+    #
+    # Vive en sale_extension (no en biocreto_programacion) porque la URL
+    # depende DIRECTAMENTE de campos de extension (biocreto_coordenadas y
+    # biocreto_direccion_completa). Otros módulos —reportes, portal,
+    # programación, etc.— pueden consumir esta misma URL sin acoplarse al
+    # módulo de vistas.
+    #
+    # Formato esperado de biocreto_coordenadas: "lat, lng" con 6 decimales,
+    # producido por el widget biocreto_geo_field (geo_button.js:38-42 →
+    # `${lat}, ${lng}`). El usuario también puede editarlo manualmente;
+    # str.replace(" ", "") en Python reemplaza TODAS las ocurrencias, así
+    # que tolera espacios extra.
+    #
+    # Fallback: si no hay coordenadas, usa biocreto_direccion_completa
+    # URL-encoded (Maps busca por texto). Si tampoco hay dirección, queda
+    # False y el botón "Ir a" no se muestra.
+    # ─────────────────────────────────────────────────────────────────
+    biocreto_gmaps_url = fields.Char(
+        string="URL Google Maps",
+        compute='_compute_biocreto_gmaps_url',
+        help="URL de Google Maps Directions hacia la obra. Computada al vuelo "
+             "desde biocreto_coordenadas (preferente) o biocreto_direccion_completa. "
+             "No se almacena.",
+    )
+
+    @api.depends('biocreto_coordenadas', 'biocreto_direccion_completa')
+    def _compute_biocreto_gmaps_url(self):
+        # Parseo robusto:
+        # · Formato canónico de biocreto_coordenadas: "lat, lng" con 6
+        #   decimales, producido por biocreto_geo_field
+        #   (custom_addons/biocreto_sale_extension/static/src/components/
+        #   geo_button/geo_button.js:38-42).
+        # · El usuario también puede editarlo a mano → validamos que sean
+        #   2 floats y que respeten rango (-90/90 en lat, -180/180 en lng,
+        #   mismos bounds que web_map/map_model.js:162-174).
+        # · Si las coords no son válidas: fallback a la dirección textual
+        #   URL-encoded. Si tampoco hay dirección: False (el botón "Ir a"
+        #   no se mostrará en el popup).
+        base = "https://www.google.com/maps/dir/?api=1&destination="
+        for order in self:
+            destino = False
+            coords = (order.biocreto_coordenadas or "").strip()
+            if coords:
+                partes = coords.replace(" ", "").split(",")
+                if len(partes) == 2:
+                    try:
+                        lat = float(partes[0])
+                        lng = float(partes[1])
+                        if -90 <= lat <= 90 and -180 <= lng <= 180:
+                            destino = f"{lat},{lng}"
+                    except ValueError:
+                        destino = False
+            if not destino and order.biocreto_direccion_completa:
+                destino = quote(order.biocreto_direccion_completa)
+            order.biocreto_gmaps_url = (base + destino) if destino else False
 
     # ─────────────────────────────────────────────────────────────────
     # Estado de diseño (computed): tag rojo/verde según si las líneas

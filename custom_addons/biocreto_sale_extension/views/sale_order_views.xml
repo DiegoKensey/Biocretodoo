@@ -63,7 +63,7 @@
                                    widget="daterange"
                                    options="{'end_date_field': 'biocreto_fecha_vaceo_fin'}"
                                    required="1"
-                                   readonly="state == 'sale'"/>
+                                   readonly="state in ('sale', 'done')"/>
                             <field name="biocreto_fecha_vaceo_fin"
                                    invisible="1"/>
                         </group>

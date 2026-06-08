@@ -1,22 +1,29 @@
 {
-    'name': 'BIOCRETO - Estado Contrato en Cotizaciones',
-    'version': '19.0.1.0.4',
+    'name': 'BIOCRETO - Estados Contrato y Programado en Cotizaciones',
+    'version': '19.0.1.1.0',
     'category': 'Sales',
-    'summary': 'Estado intermedio "Contrato" entre Enviada y Orden de Venta para BIOCRETO.',
+    'summary': 'Estados Contrato y Programado + cron de auto-confirmación + candado de diseño.',
     'description': """
-BIOCRETO - Estado Contrato
-===========================
-Inserta un estado intermedio 'contract' (Contrato) en el flujo de sale.order:
-Borrador → Enviada → Contrato → Orden de Venta.
+BIOCRETO - Estados intermedios Contrato y Programado
+=====================================================
+v1.0.x: Estado 'contract' entre 'sent' y 'sale'.
 
-Toda cotización debe pasar por Contrato antes de ser Orden de Venta.
-Aplica tanto al flujo backend como al flujo del portal.
+v1.1.0:
+- Nuevo estado 'programado' entre 'contract' y 'sale'.
+- Botón "Pasar a Programación" (contract → programado).
+- Botón "Confirmar" (programado → sale).
+- Cron de auto-confirmación con buffer parametrizable por compañía.
+- Candado opcional: exigir Diseño de mezcla antes de OV.
+- Colores tree: Programado amarillo, Contrato azul.
+- Filtros "En Contrato" y "En Programación".
 """,
     'author': 'BIOCRETO',
     'license': 'LGPL-3',
     'depends': ['sale_management', 'biocreto_sale_extension'],
     'data': [
+        'views/res_company_views.xml',
         'views/sale_order_views.xml',
+        'data/ir_cron.xml',
     ],
     'application': False,
     'installable': True,

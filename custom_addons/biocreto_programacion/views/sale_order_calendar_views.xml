@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         Herencia del calendar nativo de Ventas
+         (sale.view_sale_order_calendar, addons/sale/views/sale_order_views.xml:31-44).
+
+         Arch nativo de referencia:
+           <calendar string="Sales Orders" create="0" mode="month"
+                     date_start="activity_date_deadline" color="state"
+                     event_limit="5" quick_create="0">
+               <field name="currency_id" invisible="1"/>
+               <field name="state" filters="1" invisible="1"/>
+               <field name="activity_ids" options="{'icon': 'fa fa-clock-o'}"
+                      invisible="not activity_ids"/>
+               <field name="partner_id" avatar_field="avatar_128"
+                      options="{'icon': 'fa fa-users'}"/>
+               <field name="amount_total" widget="monetary"/>
+               <field name="payment_term_id"/>
+           </calendar>
+
+         Cambios aplicados por este módulo:
+           1. date_start → biocreto_fecha_vaceo_inicio   (Datetime → muestra hora)
+           2. + date_stop → biocreto_fecha_vaceo_fin     (calendar deja de ser puntual,
+                                                          se vuelve un rango)
+           3. + event_open_popup="true"                  (al click abre el popover)
+           4. activity_ids → biocreto_estado_diseno      (mismo lugar, icono fa-flask)
+           5. + partner_id filters="1"                   (checkbox lateral de cliente,
+                                                          el nativo no lo tenía;
+                                                          state ya viene con filters="1")
+           6. + biocreto_gmaps_url invisible="1"         (presente en rawRecord para
+                                                          que el patch JS lo lea)
+
+         Por qué inherit (no primary): el spec pide que el calendar de
+         Ventas QUEDE MODIFICADO desde Ventas (el usuario no debe ir a otro
+         menú). Al desinstalar este módulo, las herencias se eliminan
+         automáticamente y el calendar vuelve al nativo.
+         ══════════════════════════════════════════════════════════════ -->
+    <record id="view_sale_order_calendar_biocreto_vaceo" model="ir.ui.view">
+        <field name="name">sale.order.calendar.biocreto.vaceo</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sale_order_calendar"/>
+        <field name="arch" type="xml">
+
+            <!-- 1, 2, 3: atributos del <calendar>. -->
+            <xpath expr="//calendar" position="attributes">
+                <attribute name="date_start">biocreto_fecha_vaceo_inicio</attribute>
+                <attribute name="date_stop">biocreto_fecha_vaceo_fin</attribute>
+                <attribute name="event_open_popup">true</attribute>
+            </xpath>
+
+            <!-- 4: chip de actividades → estado de diseño.
+                 El nativo lo declara con invisible="not activity_ids" para
+                 no mostrar nada si no hay activities. Aquí queremos que se
+                 muestre cuando haya valor de biocreto_estado_diseno
+                 (Selection pendiente/asignado, computed). El campo lo da
+                 sale_extension. -->
+            <xpath expr="//field[@name='activity_ids']" position="replace">
+                <!-- options.icon → fa-flask en la etiqueta izquierda del row del popup.
+                     widget="badge" + decoration-danger/-success → valor renderizado
+                     como badge rojo (pendiente) / verde (asignado), idéntico al
+                     tag que ya aparece encima del name en el form de la orden
+                     (sale_order_views.xml de extension).
+
+                     El popup mezcla bien icono+badge: calendar_common_popover.xml:53-65
+                     separa el span de etiqueta (lee options.icon) del Field a la
+                     derecha (renderizado con type=fieldInfo.widget). -->
+                <field name="biocreto_estado_diseno"
+                       widget="badge"
+                       options="{'icon': 'fa fa-flask'}"
+                       decoration-danger="biocreto_estado_diseno == 'pendiente'"
+                       decoration-success="biocreto_estado_diseno == 'asignado'"/>
+            </xpath>
+
+            <!-- 5: filtro lateral por cliente. El nativo ya tiene state
+                 con filters="1" (línea 37 del arch). -->
+            <xpath expr="//field[@name='partner_id']" position="attributes">
+                <attribute name="filters">1</attribute>
+            </xpath>
+
+            <!-- 6: URL Maps invisible. Lo lee el patch del CalendarCommonPopover
+                 (calendar_popover_ir_a.js) vía this.props.record.rawRecord. -->
+            <xpath expr="//field[@name='payment_term_id']" position="after">
+                <field name="biocreto_gmaps_url" invisible="1"/>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

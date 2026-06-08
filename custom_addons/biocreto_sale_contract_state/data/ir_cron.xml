@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Auto-confirmación de órdenes en Programado.
+             Frecuencia 15 min; con buffer 0 la confirmación ocurre, en el
+             peor caso, hasta ~15 min después de la hora del vaceo. El método
+             siempre respeta el candado de diseño (ver sale_order.py). -->
+        <record id="ir_cron_biocreto_autoconfirmar_programado" model="ir.cron">
+            <field name="name">BIOCRETO: Auto-confirmar Programado a Orden de Venta</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="state">code</field>
+            <field name="code">model._biocreto_cron_autoconfirmar()</field>
+            <field name="interval_number">15</field>
+            <field name="interval_type">minutes</field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>
