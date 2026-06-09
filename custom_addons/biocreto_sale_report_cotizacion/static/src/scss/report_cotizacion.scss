@@ -1,0 +1,662 @@
+// =================================================================
+//  BIOCRETO Cotizacion - estilos del reporte QWeb
+//  Replica EXACTA del CSS del HTML de referencia (mismo CSS en menor
+//  y mayor). Scopeado bajo .biocreto-cot para no pisar otros reportes.
+//
+//  NOTA ANTI-PAGINA-EN-BLANCO (clave para wkhtmltopdf):
+//  Los estilos .page del HTML son de previsualizacion en pantalla
+//  (box-shadow, min-height:297mm, margin:12mm auto, background:#e8e8e8).
+//  Si se mantienen, wkhtmltopdf genera una pagina en blanco al final
+//  y bordes grises. En QWeb NO envolvemos en .page (la paginacion la
+//  maneja wkhtmltopdf desde el paperformat) pero, por defensa, si algun
+//  contenido inyecta .page nosotros la neutralizamos:
+//    box-shadow: none; min-height: auto; margin: 0; background: #fff.
+//  Tambien forzamos body { background: #fff } (quita el #e8e8e8).
+//  Los paddings laterales del <main> (40px) se conservan intactos.
+// =================================================================
+
+// --------- Tipografia: Century Gothic con fallbacks ---------
+@font-face {
+    font-family: 'Century Gothic Fallback';
+    src: local('Century Gothic'), local('CenturyGothic'),
+         local('URW Gothic'), local('AvantGarde'), local('Avant Garde');
+}
+
+// --------- Defensa anti-pagina-en-blanco a nivel body ---------
+body {
+    background: #ffffff;
+}
+.biocreto-cot.page,
+.biocreto-cot .page {
+    box-shadow: none !important;
+    background: #ffffff !important;
+    min-height: auto !important;
+    margin: 0 !important;
+}
+
+// --------- Tipografia base del wrapper ---------
+.biocreto-cot {
+    box-sizing: border-box;
+    font-family: 'Century Gothic', 'Century Gothic Fallback',
+                 'URW Gothic', 'AvantGarde', 'Trebuchet MS', sans-serif;
+    font-size: 10pt;
+    line-height: 1.35;
+    color: #1d1d1b;
+
+    *, *::before, *::after { box-sizing: border-box; }
+}
+
+// --------- Header / Footer wrappers (sangre + overlay) ---------
+// .header y .footer son los divs que wkhtmltopdf extrae y repite por
+// pagina. Los SVG van a 100% ancho y 100px de alto. Los overlays
+// (.header-code SIG y .footer-pagenum) van en position:absolute sobre
+// los cuadritos oscuros del SVG.
+.biocreto-cot .biocreto-cot-header-wrap,
+.biocreto-cot .biocreto-cot-footer-wrap {
+    position: relative;
+    width: 100%;
+    height: 100px;
+}
+.biocreto-cot .biocreto-cot-header-wrap svg,
+.biocreto-cot .biocreto-cot-footer-wrap svg {
+    display: block;
+    width: 100%;
+    height: 100px;
+}
+
+.biocreto-cot .header-code {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 14.6%;
+    height: 66.1px;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.4;
+    font-size: 8pt;
+    font-weight: bold;
+    letter-spacing: 0.2px;
+
+    .row {
+        display: block;
+        padding: 1px 4px;
+    }
+}
+
+.biocreto-cot .footer-pagenum {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 5.2%;
+    height: 37.45px;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9pt;
+    font-weight: bold;
+}
+
+// --------- Main: padding lateral del HTML ---------
+.biocreto-cot main {
+    padding: 4px 40px 14px 40px;
+}
+
+// =========== CABECERA DE LA COTIZACION ===========
+.biocreto-cot .cot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #1ea8e0;
+    padding-bottom: 6pt;
+    margin-bottom: 12pt;
+}
+.biocreto-cot .cot-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-left: 22px;
+}
+.biocreto-cot .cot-vertical-tag-inline {
+    width: 28px;
+    height: 115px;
+    background: #1ea8e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    span {
+        transform: rotate(-90deg);
+        color: #ffffff;
+        font-size: 9pt;
+        font-weight: bold;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+}
+.biocreto-cot .cot-number {
+    font-size: 19pt;
+    font-weight: bold;
+    color: #1d1d1b;
+    letter-spacing: 0.5px;
+    line-height: 1;
+}
+
+// =========== CINTA EN U QUE ENVUELVE LAS TABLAS ===========
+.biocreto-cot .tables-wrapper {
+    position: relative;
+    margin: 12pt 0 12pt 0;
+    padding: 18pt 24pt 18pt 0;
+
+    .ribbon-top {
+        position: absolute;
+        top: 0;
+        right: 0;
+        height: 12pt;
+        width: calc(100% - 50pt);
+        background: #1ea8e0;
+    }
+    .ribbon-right {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 12pt;
+        background: #1ea8e0;
+    }
+    .ribbon-bottom {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        height: 12pt;
+        width: 55%;
+        background: #1ea8e0;
+    }
+}
+
+.biocreto-cot .cot-meta {
+    text-align: right;
+    font-size: 9pt;
+
+    table {
+        border-collapse: collapse;
+        margin-left: auto;
+    }
+    td {
+        padding: 1pt 4pt;
+        font-family: inherit;
+    }
+    td:first-child {
+        color: #58595b;
+        font-weight: bold;
+        text-align: right;
+        text-transform: uppercase;
+        font-size: 8pt;
+        letter-spacing: 0.3px;
+    }
+    td:last-child {
+        text-align: left;
+        color: #1d1d1b;
+    }
+}
+
+// =========== BLOQUE DE CLIENTE ===========
+.biocreto-cot .cliente-block {
+    background: #f5f5f5;
+    border-left: 3px solid #1ea8e0;
+    padding: 8pt 14pt;
+    margin: 0 0 12pt 0;
+
+    .cliente-row {
+        display: flex;
+        margin: 2pt 0;
+    }
+    .cliente-cell {
+        flex: 1;
+        display: flex;
+        align-items: flex-start;
+        font-size: 9.5pt;
+        padding-right: 14pt;
+        line-height: 1.4;
+        gap: 12px;
+    }
+    .cliente-cell.cliente-cell-full {
+        padding-right: 0;
+        flex: 1 1 100%;
+    }
+    .cliente-label {
+        color: #58595b;
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 8pt;
+        letter-spacing: 0.3px;
+        min-width: 95px;
+        flex-shrink: 0;
+    }
+    .cliente-value {
+        flex: 1;
+        color: #1d1d1b;
+    }
+}
+
+// =========== SECCIONES (A. CONCRETO / B. BOMBEO) ===========
+.biocreto-cot .section-title {
+    font-size: 11pt;
+    font-weight: bold;
+    color: #58595b;
+    background: transparent;
+    padding: 0;
+    margin: 14pt 0 4pt 0;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+// =========== TABLA DE LINEAS ===========
+.biocreto-cot table.cot-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.5pt;
+    margin: 0;
+
+    thead th {
+        background: #58595b;
+        color: #ffffff;
+        padding: 7pt 5pt;
+        font-weight: bold;
+        text-align: center;
+        font-size: 8pt;
+        letter-spacing: 0.4px;
+        font-family: inherit;
+        border-bottom: 5px solid #1ea8e0;
+        text-transform: uppercase;
+    }
+    tbody td {
+        border: 1px solid #d4d4d4;
+        padding: 5pt 6pt;
+        text-align: center;
+        font-family: inherit;
+        background: #ffffff;
+        vertical-align: middle;
+    }
+    tbody td.text-left { text-align: left; }
+    tbody td.text-right {
+        text-align: right;
+        white-space: nowrap;
+        font-weight: 600;
+    }
+    tbody td.col-item {
+        font-weight: bold;
+        background: #f5f5f5;
+        color: #58595b;
+    }
+    tbody tr:nth-child(even) td:not(.col-item) {
+        background: #fafafa;
+    }
+}
+
+// =========== TOTALES POR SECCION ===========
+.biocreto-cot .totals-section {
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start;
+    margin-top: 0;
+    font-size: 9.5pt;
+}
+.biocreto-cot .volumen-total {
+    padding: 5pt 12pt;
+    background: #f5f5f5;
+    border-left: 3px solid #1ea8e0;
+    font-size: 9.5pt;
+    align-self: flex-start;
+
+    .v-label {
+        color: #58595b;
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 8pt;
+        letter-spacing: 0.3px;
+    }
+    .v-value {
+        font-weight: bold;
+        margin-left: 6pt;
+        font-size: 11pt;
+        color: #1d1d1b;
+    }
+}
+.biocreto-cot table.subtotals-table {
+    border-collapse: collapse;
+    font-size: 9pt;
+    margin-left: auto;
+
+    td {
+        padding: 3pt 14pt 3pt 20pt;
+        font-family: inherit;
+        text-align: right;
+        white-space: nowrap;
+    }
+    td.s-label {
+        color: #58595b;
+        font-weight: bold;
+        text-align: right;
+        text-transform: uppercase;
+        font-size: 8.5pt;
+        letter-spacing: 0.3px;
+    }
+    td.s-value {
+        font-weight: bold;
+        min-width: 90px;
+        color: #1d1d1b;
+    }
+    tr.subtotal-total td {
+        border-top: 2px solid #58595b;
+        padding-top: 5pt;
+        font-size: 10.5pt;
+    }
+    tr.subtotal-total td.s-value { color: #1ea8e0; }
+}
+
+// =========== INDICADOR BOMBEO (entre A y B) ===========
+.biocreto-cot .bombeo-indicator {
+    margin: 16pt 0 0 0;
+    padding: 9pt 14pt;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+
+    &.incluye {
+        background: #1ea8e0;
+        color: #ffffff;
+    }
+    &.no-incluye {
+        background: #f5f5f5;
+        color: #58595b;
+        border: 1.5px dashed #58595b;
+    }
+    .icon {
+        display: inline-block;
+        width: 18pt;
+        height: 18pt;
+        margin-right: 10pt;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 18pt;
+        font-size: 12pt;
+        font-weight: bold;
+    }
+    &.incluye .icon { background: #ffffff; color: #1ea8e0; }
+    &.no-incluye .icon { background: #58595b; color: #ffffff; }
+}
+
+// =========== GRAN TOTAL (A + B) ===========
+.biocreto-cot .grand-total {
+    margin-top: 14pt;
+    padding: 12pt 16pt;
+    background: #f9bc09;
+    color: #1d1d1b;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    letter-spacing: 0.5px;
+}
+.biocreto-cot .grand-total-label {
+    font-size: 11pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #1d1d1b;
+}
+.biocreto-cot .grand-total-value {
+    font-size: 17pt;
+    font-weight: bold;
+    color: #1d1d1b;
+    letter-spacing: 0.5px;
+}
+
+// =========== BLOQUE DE FIRMAS + QR (Pagina 2) ===========
+.biocreto-cot .firmas-block {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin: 20pt 0 20pt 0;
+    gap: 24pt;
+}
+.biocreto-cot .firma-area {
+    flex: 1;
+    text-align: center;
+
+    &.qr-area {
+        flex: 0 0 auto;
+        max-width: 130px;
+    }
+}
+.biocreto-cot .qr-placeholder {
+    width: 110px;
+    height: 110px;
+    background: #f5f5f5;
+    border: 1.5px solid #58595b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18pt;
+    font-weight: bold;
+    color: #58595b;
+    margin: 0 auto 6pt auto;
+    letter-spacing: 2px;
+    overflow: hidden;
+
+    // Cuando hay QR real (img), quitamos el borde gris/letras
+    &.qr-real {
+        background: #ffffff;
+        border: none;
+        padding: 0;
+    }
+    img.biocreto-cot-qr-img {
+        width: 110px;
+        height: 110px;
+        object-fit: contain;
+        display: block;
+    }
+}
+.biocreto-cot .firma-line {
+    position: relative;
+    height: 70pt;
+    border-bottom: 1px solid #58595b;
+    margin: 0 auto 6pt auto;
+    max-width: 230px;
+
+    img.firma-img {
+        position: absolute;
+        bottom: 2px;
+        left: 50%;
+        transform: translateX(-50%);
+        max-height: 90%;
+        max-width: 96%;
+        object-fit: contain;
+    }
+}
+.biocreto-cot .firma-label {
+    margin: 0;
+    font-weight: bold;
+    font-size: 9pt;
+    color: #1d1d1b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.biocreto-cot .firma-name {
+    margin: 2pt 0 0 0;
+    font-size: 8.5pt;
+    color: #58595b;
+}
+
+// =========== MAYOR ENVERGADURA: GRID 2x2 + BANDAS ===========
+.biocreto-cot .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10pt;
+    margin: 14pt 0 10pt 0;
+}
+.biocreto-cot .info-card {
+    border: 1px solid #d4d4d4;
+    border-left: 3px solid #1ea8e0;
+    background: #fafafa;
+    padding: 9pt 11pt;
+}
+.biocreto-cot .info-card-title {
+    margin: 0 0 5pt 0;
+    font-size: 9pt;
+    font-weight: bold;
+    color: #58595b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-bottom: 4pt;
+    border-bottom: 1px solid #d4d4d4;
+}
+.biocreto-cot .info-card ul,
+.biocreto-cot .info-band ul.banda-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.biocreto-cot .info-card li,
+.biocreto-cot .info-band ul.banda-list li {
+    font-size: 8.5pt;
+    color: #1d1d1b;
+    line-height: 1.35;
+    padding-left: 13pt;
+    text-indent: -13pt;
+    margin: 2pt 0;
+}
+.biocreto-cot .info-card li::before,
+.biocreto-cot .info-band ul.banda-list li::before {
+    content: "▸";
+    color: #1ea8e0;
+    font-weight: bold;
+    display: inline-block;
+    width: 11pt;
+    text-indent: 0;
+}
+.biocreto-cot .info-card.servicios li::before {
+    content: "✓";
+}
+
+// Bandas full-width: Cuentas y Capacidad
+.biocreto-cot .info-band {
+    margin: 8pt 0;
+    border: 1px solid #d4d4d4;
+    border-left: 3px solid #1ea8e0;
+    background: #fafafa;
+    padding: 9pt 12pt;
+}
+.biocreto-cot .info-band-title {
+    margin: 0 0 6pt 0;
+    font-size: 9pt;
+    font-weight: bold;
+    color: #58595b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-bottom: 4pt;
+    border-bottom: 1px solid #d4d4d4;
+}
+
+// Tabla de cuentas bancarias
+.biocreto-cot table.cuentas-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.5pt;
+    margin-top: 2pt;
+
+    thead th {
+        background: #58595b;
+        color: #ffffff;
+        padding: 4pt 6pt;
+        font-weight: bold;
+        text-align: center;
+        font-size: 8pt;
+        letter-spacing: 0.3px;
+        font-family: inherit;
+        text-transform: uppercase;
+        border-bottom: 3px solid #1ea8e0;
+    }
+    tbody td {
+        border: 1px solid #d4d4d4;
+        padding: 4pt 6pt;
+        font-family: inherit;
+        text-align: center;
+        background: #ffffff;
+        vertical-align: middle;
+    }
+    tbody td:first-child {
+        text-align: left;
+        font-weight: 600;
+        color: #58595b;
+    }
+    tbody td.empty-msg {
+        text-align: center;
+        color: #999;
+        font-style: italic;
+        padding: 10pt;
+    }
+}
+
+// Capacidad Operativa: 2 columnas para aprovechar el ancho
+.biocreto-cot .capacidad-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    columns: 2;
+    column-gap: 22pt;
+
+    li {
+        font-size: 8.5pt;
+        color: #1d1d1b;
+        line-height: 1.35;
+        padding-left: 13pt;
+        text-indent: -13pt;
+        margin: 2.5pt 0;
+        break-inside: avoid;
+
+        &::before {
+            content: "▸";
+            color: #1ea8e0;
+            font-weight: bold;
+            display: inline-block;
+            width: 11pt;
+            text-indent: 0;
+        }
+    }
+}
+
+// =========== NOTAS Y CONDICIONES (Menor) ===========
+.biocreto-cot .notas {
+    margin-top: 14pt;
+    padding: 8pt 0 0 0;
+    border-top: 1px solid #d4d4d4;
+    font-size: 8pt;
+    color: #58595b;
+    line-height: 1.5;
+
+    .notas-title {
+        font-weight: bold;
+        color: #1d1d1b;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        margin-bottom: 4pt;
+        font-size: 8.5pt;
+    }
+    ul {
+        margin: 0;
+        padding-left: 14pt;
+    }
+    li {
+        margin: 1.5pt 0;
+    }
+}

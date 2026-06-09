@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Firma del usuario con el WIDGET SIGNATURE nativo de Odoo
+        (pestanas Auto / Draw / Load - el mismo del flujo de firma de
+        ordenes de entrega).
+
+        Que aporta el widget:
+          · Componente: odoo/addons/web/static/src/views/fields/signature/signature_field.js
+            registry.category("fields").add("signature", signatureField);
+            supportedTypes: ["binary"]
+            supportedOptions: full_name, default_font, size, preview_image
+          · Dialog con las 3 pestanas:
+            odoo/addons/web/static/src/core/signature/name_and_signature.xml
+            buttons: o_web_sign_auto_button / draw_button / load_button.
+            La pestana Auto SOLO aparece si hay defaultName -> por eso
+            pasamos options.full_name = 'name' (el nombre del usuario).
+
+        Provedor: modulo 'web' (ya esta en biocreto_base.depends). NO se
+        agrega nueva dependencia.
+
+        Hay DOS forms a cubrir:
+          · base.view_users_form           - Ajustes > Usuarios (admin)
+            page name="preferences"
+          · base.view_users_form_simple_modif - "Mi perfil" (avatar dropdown)
+            page name="preferences_page"
+        Ambos exponen <group name="other_preferences"/> previsto para
+        overrides (odoo/addons/base/views/res_users_views.xml:184 y :449).
+        Inyectamos un <group string="Firmas digitales"> JUSTO DESPUES de
+        ese placeholder en cada form.
+    -->
+
+    <record id="view_users_form_biocreto_firma" model="ir.ui.view">
+        <field name="name">res.users.form.biocreto.firma</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='preferences']//group[@name='other_preferences']" position="after">
+                <group string="Firmas digitales">
+                    <field name="biocreto_firma"
+                           widget="signature"
+                           options="{'size': [600, 200], 'full_name': 'name'}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_users_form_simple_modif_biocreto_firma" model="ir.ui.view">
+        <field name="name">res.users.preferences.form.biocreto.firma</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form_simple_modif"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='preferences_page']//group[@name='other_preferences']" position="after">
+                <group string="Firmas digitales">
+                    <field name="biocreto_firma"
+                           widget="signature"
+                           options="{'size': [600, 200], 'full_name': 'name'}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

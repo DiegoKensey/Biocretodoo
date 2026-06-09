@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_documento_control_list" model="ir.ui.view">
+        <field name="name">biocreto.documento.control.list</field>
+        <field name="model">biocreto.documento.control</field>
+        <field name="arch" type="xml">
+            <list string="Documentos SIG">
+                <field name="codigo"/>
+                <field name="name"/>
+                <field name="version"/>
+                <field name="fecha_version"/>
+                <field name="codigo_documento"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_documento_control_form" model="ir.ui.view">
+        <field name="name">biocreto.documento.control.form</field>
+        <field name="model">biocreto.documento.control</field>
+        <field name="arch" type="xml">
+            <form string="Documento SIG">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="codigo"/>
+                            <field name="codigo_documento"/>
+                        </group>
+                        <group>
+                            <field name="version"/>
+                            <field name="fecha_version"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <group string="Formato oficial (PDF)">
+                        <field name="pdf_oficial" filename="pdf_oficial_filename"/>
+                        <field name="pdf_oficial_filename" invisible="1"/>
+                    </group>
+                    <group string="Descripcion">
+                        <field name="descripcion" nolabel="1"/>
+                    </group>
+                    <notebook>
+                        <page string="Historial de versiones" name="historial">
+                            <field name="version_ids" readonly="1">
+                                <list string="Historial">
+                                    <field name="version"/>
+                                    <field name="fecha_version"/>
+                                    <field name="codigo"/>
+                                    <field name="pdf_oficial" filename="pdf_oficial_filename" widget="binary"/>
+                                    <field name="pdf_oficial_filename" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_documento_control_search" model="ir.ui.view">
+        <field name="name">biocreto.documento.control.search</field>
+        <field name="model">biocreto.documento.control</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Documento SIG">
+                <field name="codigo"/>
+                <field name="name"/>
+                <field name="codigo_documento"/>
+                <filter name="archivados" string="Archivados" domain="[('active','=',False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_documento_control" model="ir.actions.act_window">
+        <field name="name">Control de Documentos</field>
+        <field name="res_model">biocreto.documento.control</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_documento_control_search"/>
+    </record>
+
+</odoo>

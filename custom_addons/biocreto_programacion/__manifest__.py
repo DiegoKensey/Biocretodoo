@@ -1,6 +1,6 @@
 {
     'name': 'BIOCRETO Programación',
-    'version': '19.0.1.0.1',
+    'version': '19.0.1.0.2',
     'category': 'Sales',
     'summary': 'Reconfigura el calendario de Ventas por fecha de vaceo + botón Ir a (módulo invisible).',
     'description': """
@@ -21,12 +21,17 @@ biocreto_gmaps_url vive en biocreto_sale_extension v19.0.1.5.5+, no aquí.
     'author': 'BIOCRETO',
     'license': 'LGPL-3',
     'depends': [
-        # contract_state arrastra biocreto_sale_extension v5.5+ (donde vive
-        # biocreto_gmaps_url) y el resto de la pila (sale, mrp, fleet…).
+        # contract_state arrastra biocreto_sale_extension v6.0+ (donde vive
+        # biocreto_gmaps_url + biocreto_latitud/longitud) y el resto de la
+        # pila (sale, mrp, fleet…).
         'biocreto_sale_contract_state',
+        # map_coord aporta el js_class biocreto_coord_map que el mapa de
+        # ventas usa para ubicar las órdenes por coords propias.
+        'biocreto_map_coord',
     ],
     'data': [
         'views/sale_order_calendar_views.xml',
+        'views/sale_order_map_views.xml',
     ],
     'assets': {
         'web.assets_backend': [

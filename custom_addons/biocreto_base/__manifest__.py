@@ -1,23 +1,17 @@
 {
     'name': 'BIOCRETO - Base',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.2.0',
     'category': 'Localization/Peru',
-    'summary': 'Capa base para la implementación BIOCRETO: campos de planta, DNI/RUC y atributos maestros de producto.',
-    'description': """
-BIOCRETO - Base
-===============
-Módulo base de la serie biocreto_*. Provee:
-- Campos custom en res.company (plant_code, manager_id).
-- Autoselección de tipo de identificación DNI/RUC en res.partner para Perú.
-- Validación ligera de longitud para DNI (8) y RUC (11).
-- Atributo maestro biocreto_fc_resistencia (Integer) en product.template.
-""",
-    'author': 'Diego Orcón Gómez',
+    'summary': 'Capa base para la implementacion BIOCRETO: campos de planta, DNI/RUC, atributos maestros de producto, CCI y firma de usuario.',
+    'description': "Modulo base de la serie biocreto_*. Provee campos custom en res.company (plant_code, manager_id), autoseleccion DNI/RUC en res.partner para Peru, validacion de longitud DNI(8)/RUC(11), atributo maestro biocreto_fc_resistencia en product.template, CCI en res.partner.bank y firma cargable en res.users (estilo v18).",
+    'author': 'Diego Orcon Gomez',
     'license': 'LGPL-3',
     'depends': ['base', 'mail', 'contacts', 'product', 'l10n_pe', 'l10n_latam_base'],
     'data': [
         'views/res_company_views.xml',
         'views/product_template_views.xml',
+        'views/res_partner_bank_views.xml',
+        'views/res_users_views.xml',
     ],
     'application': False,
     'installable': True,

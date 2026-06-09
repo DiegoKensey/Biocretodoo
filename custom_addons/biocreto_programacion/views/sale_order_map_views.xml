@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         Herencia de la vista mapa nativa de Ventas para usar el
+         js_class biocreto_coord_map (que ubica cada orden por sus
+         propias coordenadas en lugar de geocoder por res.partner).
+
+         Vista heredada:
+           sale_enterprise.sale_order_map
+           (addons/sale_enterprise/views/sale_order_views.xml:4-12):
+             <map res_partner="partner_id" routing="1">
+                 <field name="partner_id" string="Customer"/>
+             </map>
+
+         Cambio aplicado: agregar js_class="biocreto_coord_map".
+         · NO se tocan los <field> del popup → popup nativo intacto
+           (Nombre/Dirección del partner + Cliente + botones Abrir/Ir a).
+         · NO se declaran biocreto_latitud/biocreto_longitud como
+           <field> del <map>: los pide al webSearchRead el override de
+           _getRecordSpecification del BiocretoCoordMapModel
+           (biocreto_coord_map_model.js). Declararlos aquí los metería en
+           fieldNamesMarkerPopup (map_arch_parser.js:62-68) y aparecerían
+           como dos filas extra feas en el popup.
+         · res_partner="partner_id" se conserva (nativo). Sin ese campo,
+           map_model.js:204-209 retorna data vacía y el mapa no muestra
+           nada. Funcionalmente OBLIGATORIO. El popup sigue mostrando el
+           cliente; nuestro override solo sustituye las COORDENADAS por
+           las del record.
+         · Para sale.order no hace falta `context` con lat_field/lng_field
+           (defaults del Model = "biocreto_latitud"/"biocreto_longitud").
+           El context queda disponible para que OTROS modelos reutilicen
+           el mismo js_class con nombres distintos.
+         ══════════════════════════════════════════════════════════════ -->
+    <record id="view_order_map_biocreto_coord" model="ir.ui.view">
+        <field name="name">sale.order.map.biocreto.coord</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale_enterprise.sale_order_map"/>
+        <field name="arch" type="xml">
+            <xpath expr="//map" position="attributes">
+                <attribute name="js_class">biocreto_coord_map</attribute>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

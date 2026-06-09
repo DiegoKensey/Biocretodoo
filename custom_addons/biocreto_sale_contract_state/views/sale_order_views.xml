@@ -124,7 +124,25 @@
             <xpath expr="//field[@name='biocreto_state_id']" position="attributes">
                 <attribute name="readonly">state in ['cancel', 'sale', 'contract', 'programado']</attribute>
             </xpath>
-            <xpath expr="//field[@name='biocreto_coordenadas']" position="attributes">
+            <!-- v19.0.1.1.1 (acoplada con sale_extension v19.0.1.6.0):
+                 biocreto_coordenadas (Char) fue migrada a dos Float
+                 (biocreto_latitud, biocreto_longitud). En la vista de
+                 extension, biocreto_latitud aparece DOS veces:
+                   · una como Float nativo (sin widget) → input editable.
+                   · otra anclando widget="biocreto_geo_field" → botón GPS.
+                 Predicados de xpath para distinguirlos:
+                   [not(@widget)] → el Float nativo.
+                   [@widget='biocreto_geo_field'] → el botón GPS.
+                 Cuando ambos quedan readonly, el botón también se oculta
+                 (su template tiene t-if="!props.readonly").
+                 biocreto_longitud aparece una sola vez → xpath simple. -->
+            <xpath expr="//field[@name='biocreto_latitud'][not(@widget)]" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'sale', 'contract', 'programado']</attribute>
+            </xpath>
+            <xpath expr="//field[@name='biocreto_latitud'][@widget='biocreto_geo_field']" position="attributes">
+                <attribute name="readonly">state in ['cancel', 'sale', 'contract', 'programado']</attribute>
+            </xpath>
+            <xpath expr="//field[@name='biocreto_longitud']" position="attributes">
                 <attribute name="readonly">state in ['cancel', 'sale', 'contract', 'programado']</attribute>
             </xpath>
             <xpath expr="//field[@name='biocreto_tipo_proyecto']" position="attributes">

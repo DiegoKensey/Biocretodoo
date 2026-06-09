@@ -41,10 +41,33 @@ class SaleOrder(models.Model):
         help="Línea concatenada de la dirección de obra para el reporte.",
     )
 
-    biocreto_coordenadas = fields.Char(
-        string="Coordenadas",
-        help="Coordenadas GPS en formato decimal (latitud, longitud). "
-             "Use el botón 'Obtener ubicación' o ingrese manualmente.",
+    # ─────────────────────────────────────────────────────────────────
+    # Geolocalización de la obra (latitud / longitud).
+    #
+    # Migración v19.0.1.6.0: antes era un Char `biocreto_coordenadas`
+    # con formato "lat, lng". Ahora son DOS Float (mismo digits=(10,7)
+    # que res.partner.partner_latitude/longitude, addons/base/models/
+    # res_partner.py:270-271). El parseo del Char a los dos Float se
+    # ejecuta en migrations/19.0.1.6.0/post-migration.py.
+    #
+    # Por qué Float separados:
+    #   · Validables/consultables individualmente (range, group by, etc.).
+    #   · Consumibles por la vista <map> (web_map) cuando se inyecten
+    #     en un partner espejo (ver investigación documentada).
+    #   · Reflejan los mismos bounds que el validador del map_view:
+    #     -90 ≤ lat ≤ 90, -180 ≤ lng ≤ 180
+    #     (verificado en odoo/addons/web_map/static/src/map_view/
+    #     map_model.js:162-174).
+    # ─────────────────────────────────────────────────────────────────
+    biocreto_latitud = fields.Float(
+        string="Latitud",
+        digits=(10, 7),
+        help="Latitud de la obra en grados decimales. Ej.: -12.0653000",
+    )
+    biocreto_longitud = fields.Float(
+        string="Longitud",
+        digits=(10, 7),
+        help="Longitud de la obra en grados decimales. Ej.: -75.2049000",
     )
     biocreto_tipo_proyecto = fields.Selection(
         selection=[
@@ -68,57 +91,36 @@ class SaleOrder(models.Model):
     # URL de Google Maps Directions hacia la obra (computed, no-store).
     #
     # Vive en sale_extension (no en biocreto_programacion) porque la URL
-    # depende DIRECTAMENTE de campos de extension (biocreto_coordenadas y
+    # depende directamente de campos de extension (latitud/longitud y
     # biocreto_direccion_completa). Otros módulos —reportes, portal,
-    # programación, etc.— pueden consumir esta misma URL sin acoplarse al
-    # módulo de vistas.
+    # programación, etc.— pueden consumir esta misma URL.
     #
-    # Formato esperado de biocreto_coordenadas: "lat, lng" con 6 decimales,
-    # producido por el widget biocreto_geo_field (geo_button.js:38-42 →
-    # `${lat}, ${lng}`). El usuario también puede editarlo manualmente;
-    # str.replace(" ", "") en Python reemplaza TODAS las ocurrencias, así
-    # que tolera espacios extra.
-    #
-    # Fallback: si no hay coordenadas, usa biocreto_direccion_completa
-    # URL-encoded (Maps busca por texto). Si tampoco hay dirección, queda
-    # False y el botón "Ir a" no se muestra.
+    # Reglas:
+    #   · Si lat y lng son ambas distintas de 0 y respetan rango
+    #     (-90 ≤ lat ≤ 90, -180 ≤ lng ≤ 180): usa "lat,lng".
+    #   · "(0,0)" se trata como ausencia (default vacío) para no marcar
+    #     al Golfo de Guinea por accidente.
+    #   · Fallback: dirección textual URL-encoded.
+    #   · Si nada: False → el botón "Ir a" no se renderiza.
     # ─────────────────────────────────────────────────────────────────
     biocreto_gmaps_url = fields.Char(
         string="URL Google Maps",
         compute='_compute_biocreto_gmaps_url',
         help="URL de Google Maps Directions hacia la obra. Computada al vuelo "
-             "desde biocreto_coordenadas (preferente) o biocreto_direccion_completa. "
-             "No se almacena.",
+             "desde biocreto_latitud/biocreto_longitud (preferente) o "
+             "biocreto_direccion_completa. No se almacena.",
     )
 
-    @api.depends('biocreto_coordenadas', 'biocreto_direccion_completa')
+    @api.depends('biocreto_latitud', 'biocreto_longitud', 'biocreto_direccion_completa')
     def _compute_biocreto_gmaps_url(self):
-        # Parseo robusto:
-        # · Formato canónico de biocreto_coordenadas: "lat, lng" con 6
-        #   decimales, producido por biocreto_geo_field
-        #   (custom_addons/biocreto_sale_extension/static/src/components/
-        #   geo_button/geo_button.js:38-42).
-        # · El usuario también puede editarlo a mano → validamos que sean
-        #   2 floats y que respeten rango (-90/90 en lat, -180/180 en lng,
-        #   mismos bounds que web_map/map_model.js:162-174).
-        # · Si las coords no son válidas: fallback a la dirección textual
-        #   URL-encoded. Si tampoco hay dirección: False (el botón "Ir a"
-        #   no se mostrará en el popup).
         base = "https://www.google.com/maps/dir/?api=1&destination="
         for order in self:
+            lat = order.biocreto_latitud
+            lng = order.biocreto_longitud
             destino = False
-            coords = (order.biocreto_coordenadas or "").strip()
-            if coords:
-                partes = coords.replace(" ", "").split(",")
-                if len(partes) == 2:
-                    try:
-                        lat = float(partes[0])
-                        lng = float(partes[1])
-                        if -90 <= lat <= 90 and -180 <= lng <= 180:
-                            destino = f"{lat},{lng}"
-                    except ValueError:
-                        destino = False
-            if not destino and order.biocreto_direccion_completa:
+            if lat and lng and -90 <= lat <= 90 and -180 <= lng <= 180:
+                destino = f"{lat},{lng}"
+            elif order.biocreto_direccion_completa:
                 destino = quote(order.biocreto_direccion_completa)
             order.biocreto_gmaps_url = (base + destino) if destino else False
 
@@ -174,22 +176,25 @@ class SaleOrder(models.Model):
         'biocreto_state_id',
     )
     def _compute_biocreto_direccion_completa(self):
+        # v19.0.1.6.1: orden visual = "calle - distrito, provincia, depto".
+        # (Antes era "distrito, provincia, depto - calle"; el cliente prefiere
+        # la calle primero porque es lo más específico para identificar la
+        # obra en el reporte y en el popup del mapa.)
         for order in self:
-            partes = []
+            partes_zona = []
             if order.biocreto_district_id:
-                partes.append(order.biocreto_district_id.name)
+                partes_zona.append(order.biocreto_district_id.name)
             if order.biocreto_city_id:
-                partes.append(order.biocreto_city_id.name)
+                partes_zona.append(order.biocreto_city_id.name)
             if order.biocreto_state_id:
-                partes.append(order.biocreto_state_id.name)
-            ubicacion = ", ".join(partes)
-            if order.biocreto_street:
-                order.biocreto_direccion_completa = (
-                    "%s - %s" % (ubicacion, order.biocreto_street)
-                    if ubicacion else order.biocreto_street
-                )
+                partes_zona.append(order.biocreto_state_id.name)
+            zona = ", ".join(partes_zona)
+            calle = order.biocreto_street or ""
+            if calle and zona:
+                order.biocreto_direccion_completa = "%s - %s" % (calle, zona)
             else:
-                order.biocreto_direccion_completa = ubicacion or False
+                # Solo uno de los dos (o ninguno). Sin separador colgante.
+                order.biocreto_direccion_completa = calle or zona or False
 
     # ─────────────────────────────────────────────────────────────────
     # Cascada: limpiar campos hijos cuando cambia el padre

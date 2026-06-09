@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_partner_bank_form_biocreto_cci" model="ir.ui.view">
+        <field name="name">res.partner.bank.form.biocreto.cci</field>
+        <field name="model">res.partner.bank</field>
+        <field name="inherit_id" ref="base.view_partner_bank_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='acc_number']" position="after">
+                <field name="biocreto_cci"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

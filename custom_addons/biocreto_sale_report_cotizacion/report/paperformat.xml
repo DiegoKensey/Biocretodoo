@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!--
+            ============================================================
+            Paperformat  -  A4 BIOCRETO Cotizacion
+            ============================================================
+            A4 vertical, sangre lateral (margin_left/right=0) para que
+            el SVG header/footer toque ambos bordes.
+
+            Reserva vertical para SVGs:
+              header SVG = footer SVG = 100px de alto en viewBox 794x100.
+              A 96 dpi y ancho A4 (210mm = 794px), 100px = 26.46mm.
+              Redondeamos a 27 mm tanto arriba como abajo.
+
+            header_spacing=0: el header se pega al borde superior; el
+            cuerpo arranca despues de los 27mm. dpi=96 para que las
+            medidas pt/px del CSS (8pt/9pt/10pt) salgan calibradas.
+        -->
+
+        <record id="paperformat_biocreto_cot_a4" model="report.paperformat">
+            <field name="name">A4 BIOCRETO Cotizacion</field>
+            <field name="default" eval="False"/>
+            <field name="format">custom</field>
+            <field name="page_height">297</field>
+            <field name="page_width">210</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">27</field>
+            <field name="margin_bottom">27</field>
+            <field name="margin_left">0</field>
+            <field name="margin_right">0</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">0</field>
+            <field name="dpi">96</field>
+        </record>
+
+    </data>
+</odoo>

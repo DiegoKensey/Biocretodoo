@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_documento_control_user,documento.control.user,model_biocreto_documento_control,base.group_user,1,0,0,0
+access_documento_control_manager,documento.control.manager,model_biocreto_documento_control,base.group_system,1,1,1,1
+access_documento_version_user,documento.control.version.user,model_biocreto_documento_control_version,base.group_user,1,0,0,0
+access_documento_version_manager,documento.control.version.manager,model_biocreto_documento_control_version,base.group_system,1,1,1,1

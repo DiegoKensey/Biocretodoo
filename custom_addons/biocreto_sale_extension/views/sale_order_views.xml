@@ -45,8 +45,30 @@
                                        class="o_address_state"
                                        options="{'no_open': True, 'no_create': True}"/>
                             </div>
-                            <field name="biocreto_coordenadas"
-                                   widget="biocreto_geo_field"/>
+                            <!-- Geolocalización (obra): dos Float nativos
+                                 (Lat: / Long:) + botón GPS via widget
+                                 biocreto_geo_field anclado a la latitud.
+                                 El widget recibe el nombre del campo de
+                                 longitud por options.lng_field y, al
+                                 capturar GPS, rellena ambos. -->
+                            <label for="biocreto_latitud" string="Geolocalización (obra)"/>
+                            <div>
+                                <span>Lat:&#160;</span>
+                                <field name="biocreto_latitud"
+                                       nolabel="1"
+                                       class="oe_inline"/>
+                                <br/>
+                                <span>Long:&#160;</span>
+                                <field name="biocreto_longitud"
+                                       nolabel="1"
+                                       class="oe_inline"/>
+                                <br/>
+                                <field name="biocreto_latitud"
+                                       widget="biocreto_geo_field"
+                                       options="{'lng_field': 'biocreto_longitud'}"
+                                       nolabel="1"
+                                       class="oe_inline"/>
+                            </div>
                             <field name="biocreto_tipo_proyecto"/>
                         </group>
                         <group/>
