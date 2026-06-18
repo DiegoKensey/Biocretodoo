@@ -3,24 +3,49 @@
 
     <!--
         ============================================================
-        Snippet QR  -  biocreto_cot_qr
+        v19.0.2.0.3 - Desactivar inherit sale_stock que colisiona
         ============================================================
-        Replica del helper que vive en biocreto_sale_reports_common
-        (report_layout.xml:343). Lo replicamos aqui porque la spec
-        pide independencia del modulo _common.
-        Genera <img src="/report/barcode/QR/<url>?width=W&height=H"/>
-        con W=H=qr_size (default 120). El src de la URL ya viene
-        url-encoded desde el helper biocreto_cot_qr_url() en
-        models/sale_order.py.
+        sale_stock define `report_saleorder_document_inherit_sale_stock`
+        (verificado en odoo/addons/sale_stock/report/sale_order_report
+        _templates.xml:3) con xpath:
+            //div[@name='expiration_date']  position="after"
+        sobre `sale.report_saleorder_document`.
+
+        Nuestro inherit `report_cotizacion_document` (mas abajo en
+        este mismo archivo) reemplaza el `<t t-call="web.external_
+        layout">` entero del document. Eso elimina el arbol que
+        contiene el div[@name='expiration_date'] y el xpath de
+        sale_stock queda sin ancla -> QWeb falla la combinacion de
+        herencias y devuelve HTML vacio sin traceback.
+
+        Diagnostico cerrado en shell: con esta vista active=True el
+        render devuelve ~1267 chars; con active=False salta a ~115k
+        chars con el diseno BIOCRETO completo.
+
+        Patron: <record> sobre la vista existente con active=False.
+        sale_stock esta declarado en depends para garantizar que su
+        record exista cuando intentamos referenciarlo.
     -->
-    <template id="biocreto_cot_qr">
-        <t t-if="not qr_size">
-            <t t-set="qr_size" t-value="120"/>
-        </t>
-        <img class="biocreto-cot-qr-img"
-             t-att-src="'/report/barcode/QR/%s?width=%s&amp;height=%s' % (order.biocreto_cot_qr_url(), qr_size, qr_size)"
-             t-att-alt="'QR ' + (order.name or '')"/>
-    </template>
+    <record id="sale_stock.report_saleorder_document_inherit_sale_stock" model="ir.ui.view">
+        <field name="active" eval="False"/>
+    </record>
+
+    <!--
+        ============================================================
+        v19.0.2.0.11 - Template biocreto_cot_qr ELIMINADO
+        ============================================================
+        El QR del cliente se renderiza ahora con la funcion nativa
+        de PlutoPrint `-pluto-qrcode('<url>', #color)` dentro de un
+        `::before` en cot_firmas_block. Mas robusto que el viejo
+        <img src="/report/barcode/QR/...">: ese endpoint requiere
+        que PlutoPrint resuelva via HTTP y fallaba con file:///.
+        -pluto-qrcode es CSS pura, sin red.
+
+        El helper biocreto_cot_qr_url() en models/sale_order.py
+        SE CONSERVA (potencialmente usado en otros lugares); el
+        QR nuevo usa o.get_base_url() + o.get_portal_url() que ya
+        incluye access_token automaticamente.
+    -->
 
 
     <!--
@@ -56,9 +81,74 @@
         <t t-set="sig_key" t-value="'cotizacion_mayor' if o.biocreto_tipo_proyecto == 'mayor' else 'cotizacion_menor'"/>
         <t t-set="ctrl" t-value="o.env['biocreto.documento.control'].get_control_for_qweb(sig_key)"/>
 
-        <!-- ============= HEADER (repetido por wkhtmltopdf) ============= -->
-        <div class="header biocreto-cot">
-            <div class="biocreto-cot-header-wrap">
+        <!--
+            v19.0.2.0.4: @page como <style> literal en el QWeb.
+            Diagnostico cerrado en shell: el bundle CSS minificado
+            (446k) llega a PlutoPrint con el @page intacto, pero el
+            motor NO lo aplica cuando viene dentro del bundle
+            inlineado. Declarado aqui como <style> en el HTML que
+            PlutoPrint parsea directamente, SI lo honra: reserva
+            26.5mm arriba/abajo para el running header/footer y deja
+            laterales 0 (diseno a sangre). El resto del CSS sigue en
+            report_cotizacion.scss. Valores EXACTOS de la fuente de
+            verdad (cotizacion_biocreto_*_pluto.html), no
+            reinterpretados. QWeb emite el contenido de <style>
+            verbatim (no escapa > ni {), asi que el bloque va literal.
+        -->
+        <!--
+            v19.0.2.0.6: aplanar el wrapper nativo de Odoo SOLO para
+            este reporte. Diagnostico (reconocimiento previo): el
+            pipeline sale.report_saleorder -> _raw -> web.html_container
+            -> web.report_layout envuelve nuestro contenido en
+            `<body class="container"><div id="wrapwrap"><main>...`. La
+            clase `container` de Bootstrap centra y limita el body
+            a ~720px (apilado al centro); el `<main>` de Odoo rodea
+            nuestro `.page-header` y puede atrapar el `position:
+            running()` (no escapa al @top-center).
+
+            Por que el CSS va aqui (literal en el <style> del template),
+            NO en el SCSS:
+              - Las reglas son agresivas (!important) y aplicarian a
+                CUALQUIER reporte que cargue web.report_assets_common
+                si vivieran en el bundle -> regresion masiva.
+              - Aqui viven SOLO en el HTML de la cotizacion. Ningun
+                otro reporte ve este <style>. Aislamiento total.
+
+            Por que no inherit de web.report_layout: el template core
+            renderiza ANTES de que `o` exista en el contexto (la
+            variable se inyecta dentro del `t-out="0"` que es el
+            contenido). No hay forma de condicionar `t-att-class`
+            por `o.biocreto_tipo_proyecto` sin romper otros reportes.
+        -->
+        <style>
+            @page {
+                size: A4;
+                margin: 26.5mm 0 26.5mm 0;
+                @top-center    { content: element(hdr); }
+                @bottom-center { content: element(ftr); }
+            }
+            body.container, body.o_body_html {
+                max-width: none !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            #wrapwrap, #wrapwrap > main {
+                max-width: none !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                display: block !important;
+            }
+        </style>
+
+        <!-- ============= HEADER (running element en cada @page) ============= -->
+        <!-- v19.0.2.0.0: pivote a CSS Paged Media (PlutoPrint).            -->
+        <!-- El SCSS coloca .page-header con position: running(hdr) y el    -->
+        <!-- @page lo materializa en @top-center. SVG y .header-code se     -->
+        <!-- mantienen verbatim; solo cambian los nombres de los wrappers.  -->
+        <div class="page-header biocreto-cot">
+            <div class="hwrap">
                 <svg id="bio-cot-header-svg" xmlns="http://www.w3.org/2000/svg" width="100%" height="100" viewBox="0 0 794 100" preserveAspectRatio="none">
                     <polygon points="0 52.13 246.84 52.13 227.24 14.68 0 14.68 0 52.13" fill="#58595b"/>
                     <polygon points="249.85 57.88 224.02 8.53 399.19 8.53 425.03 57.88 249.85 57.88" fill="#1ea8e0"/>
@@ -178,18 +268,16 @@
             </div>
         </div>
 
-        <!-- ============= ARTICLE (cuerpo paginado) ============= -->
-        <div class="article biocreto-cot"
-             t-att-data-oe-model="o and o._name"
-             t-att-data-oe-id="o and o.id">
-            <main>
-                <t t-out="0"/>
-            </main>
-        </div>
+        <!-- ============= MAIN (cuerpo; PlutoPrint pagina dentro) ============= -->
+        <main class="biocreto-cot"
+              t-att-data-oe-model="o and o._name"
+              t-att-data-oe-id="o and o.id">
+            <t t-out="0"/>
+        </main>
 
-        <!-- ============= FOOTER (repetido por wkhtmltopdf) ============= -->
-        <div class="footer biocreto-cot">
-            <div class="biocreto-cot-footer-wrap">
+        <!-- ============= FOOTER (running element en cada @page) ============= -->
+        <div class="page-footer biocreto-cot">
+            <div class="fwrap">
                 <svg id="bio-cot-footer-svg" xmlns="http://www.w3.org/2000/svg" width="100%" height="100" viewBox="0 0 794 100" preserveAspectRatio="none">
                     <rect x="460.41" y="31.31" width="24.45" height="24.45" fill="#1ea8e0"/>
                     <rect x="317.26" y="31.31" width="24.45" height="24.45" fill="#1ea8e0"/>
@@ -349,10 +437,13 @@
                     <path d="M664.54,48.65c0,.33-.27.61-.6.61h-8.3c-.33,0-.61-.27-.61-.61v-6.95h-.86v6.95c0,.81.66,1.47,1.47,1.47h8.3c.81,0,1.47-.66,1.47-1.47v-6.95h-.86v6.95Z" fill="#fefefe" fill-rule="evenodd"/>
                     <path d="M663.93,38.88h-.38v-.42c0-.52-.41-.95-.92-.95s-.92.43-.92.95v.41h-.95v-.41c0-.52-.41-.95-.92-.95s-.92.43-.92.95v.41h-.95v-.41c0-.52-.41-.95-.92-.95s-.92.43-.92.95v.41h-.48c-.81,0-1.47.66-1.47,1.47v.69h11.23v-.69c0-.81-.66-1.47-1.47-1.47h0ZM657.45,40.16c0,.24-.18.43-.4.43s-.4-.19-.4-.43v-1.69c0-.24.18-.43.4-.43s.4.19.4.43v1.69ZM660.24,40.16c0,.24-.18.43-.4.43s-.4-.19-.4-.43v-1.69c0-.24.18-.43.4-.43s.4.19.4.43v1.69ZM663.03,40.16c0,.24-.18.43-.4.43s-.4-.19-.4-.43v-1.69c0-.24.18-.43.4-.43s.4.19.4.43v1.69Z" fill="#fefefe" fill-rule="evenodd"/>
                 </svg>
-                <!-- Cuadrito inferior derecho del footer: numero de pagina x/y -->
-                <div class="footer-pagenum">
-                    <span class="page"/>/<span class="topage"/>
-                </div>
+                <!-- Cuadrito inferior derecho del footer: numero de pagina x/y. -->
+                <!-- v19.0.2.0.0: PlutoPrint genera el "page/topage" via CSS     -->
+                <!-- counter(page) / counter(pages) declarado en el SCSS:        -->
+                <!--     .footer-pagenum::after { content: counter(page) "/"     -->
+                <!--                              counter(pages); }              -->
+                <!-- Dejamos el div vacio (el counter se renderiza con ::after). -->
+                <div class="footer-pagenum"></div>
             </div>
         </div>
     </template>
@@ -374,7 +465,8 @@
         <!-- ============ CABECERA DE LA COTIZACION ============ -->
         <div class="cot-header">
             <div class="cot-title">
-                <div class="cot-vertical-tag-inline"><span>Cotización</span></div>
+                <!-- v19.0.2.0.0: rotulo dinamico Cotizacion / Orden por estado. -->
+                <div class="cot-vertical-tag-inline"><span t-out="o.biocreto_cot_rotulo()"/></div>
                 <div class="cot-number">N° <span t-out="o.name or ''"/></div>
             </div>
             <div class="cot-meta">
@@ -402,39 +494,53 @@
         </div>
 
         <!-- ============ BLOQUE DE CLIENTE ============ -->
+        <!-- v19.0.2.0.0: logica empresa/persona via commercial_partner_id. -->
+        <!--   Cliente   = la EMPRESA (cp.name)                              -->
+        <!--   Atencion  = la PERSONA contacto (partner_id.name)             -->
+        <!--   Cargo     = function del contacto -> fallback empresa -> '—'  -->
+        <!--   RUC/DNI   = vat de la empresa (no del contacto)               -->
+        <!-- Si la cotizacion es a una persona suelta, cp == partner_id      -->
+        <!-- y todo sigue funcionando.                                       -->
+        <t t-set="cp" t-value="o.partner_id.commercial_partner_id"/>
         <div class="cliente-block">
             <div class="cliente-row">
                 <div class="cliente-cell">
                     <span class="cliente-label">Cliente</span>
-                    <span class="cliente-value"><t t-out="o.partner_id.name or ''"/></span>
+                    <span class="cliente-value"><t t-out="cp.name or ''"/></span>
                 </div>
                 <div class="cliente-cell">
                     <span class="cliente-label">Teléfono</span>
-                    <span class="cliente-value"><t t-out="o.partner_id.phone or ''"/></span>
+                    <span class="cliente-value"><t t-out="o.partner_id.phone or cp.phone or '—'"/></span>
                 </div>
             </div>
             <div class="cliente-row">
                 <div class="cliente-cell">
                     <span class="cliente-label"><t t-out="o.biocreto_cot_doc_tipo()"/></span>
-                    <span class="cliente-value"><t t-out="o.partner_id.vat or ''"/></span>
+                    <span class="cliente-value"><t t-out="cp.vat or '—'"/></span>
                 </div>
                 <div class="cliente-cell">
                     <span class="cliente-label">Cargo</span>
                     <span class="cliente-value">
-                        <t t-if="o.partner_id.is_company and contacto" t-out="contacto.function or ''"/>
+                        <t t-out="o.partner_id.function or cp.function or '—'"/>
                     </span>
                 </div>
             </div>
             <div class="cliente-row">
                 <div class="cliente-cell">
                     <span class="cliente-label">Atención</span>
-                    <span class="cliente-value">
-                        <t t-if="contacto" t-out="contacto.name or ''"/>
-                    </span>
+                    <span class="cliente-value"><t t-out="o.partner_id.name or ''"/></span>
                 </div>
                 <div class="cliente-cell">
                     <span class="cliente-label">Fecha vaciado</span>
-                    <span class="cliente-value"><t t-out="o.biocreto_cot_fecha_vaceo_label()"/></span>
+                    <span class="cliente-value cliente-vaciado">
+                        <!-- v19.0.2.0.0: flecha Font Awesome intercalada entre  -->
+                        <!-- inicio y fin; ambas fechas en hora Peru (helper tz).-->
+                        <t t-out="o.biocreto_cot_fecha_vaceo_ini()"/>
+                        <t t-if="o.biocreto_fecha_vaceo_inicio and o.biocreto_fecha_vaceo_fin">
+                            <i class="fa fa-long-arrow-right" style="color:#1ea8e0;"/>&#160;
+                        </t>
+                        <t t-out="o.biocreto_cot_fecha_vaceo_fin()"/>
+                    </span>
                 </div>
             </div>
             <div class="cliente-row">
@@ -457,14 +563,14 @@
                 <thead>
                     <tr>
                         <th style="width:5%;">Ítem</th>
-                        <th style="width:18%;">Estructura</th>
-                        <th style="width:11%;">F'c (kg/cm²)</th>
-                        <th style="width:20%;">Tipo Cemento</th>
-                        <th style="width:8%;">Huso TMN</th>
+                        <th style="width:21%;">Estructura</th>
+                        <th style="width:9%;">F'c (kg/cm²)</th>
+                        <th style="width:23%;">Tipo Cemento</th>
+                        <th style="width:6%;">Huso TMN</th>
                         <th style="width:7%;">Slump</th>
                         <th style="width:9%;">Volumen m³</th>
                         <th style="width:10%;">P. Unit. S/</th>
-                        <th style="width:12%;">Total S/</th>
+                        <th style="width:10%;">Total S/</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -501,6 +607,10 @@
             </div>
 
             <!-- B. Servicio de Bombeo -->
+            <!-- v19.0.2.0.0: si no hay lineas de Bombeo, mostrar fila de  -->
+            <!-- '—' en las 7 columnas + subtotales B en '—' (lo pide la   -->
+            <!-- spec; evita imprimir 0,00 que confunde al cliente).       -->
+            <t t-set="lineas_bombeo" t-value="o.biocreto_cot_lineas_bombeo()"/>
             <h2 class="section-title">B. Servicio de Bombeo</h2>
             <table class="cot-table">
                 <thead>
@@ -515,18 +625,31 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <t t-foreach="o.biocreto_cot_lineas_bombeo()" t-as="line">
+                    <t t-if="lineas_bombeo">
+                        <t t-foreach="lineas_bombeo" t-as="line">
+                            <tr>
+                                <td class="col-item"><span t-out="line_index + 1"/></td>
+                                <td class="text-left"><span t-out="line.biocreto_vehiculo_id.display_name or line.product_id.display_name or ''"/></td>
+                                <td>
+                                    <t t-if="line.biocreto_tuberia_adicional"><span t-out="line.biocreto_tuberia_adicional"/></t>
+                                    <t t-else="">—</t>
+                                </td>
+                                <td><span t-out="'%g' % (line.biocreto_slump_bombeable or 0)"/></td>
+                                <td><span t-out="'%.2f' % (line.product_uom_qty or 0)"/></td>
+                                <td class="text-right"><span t-out="'%.2f' % (line.price_unit or 0)"/></td>
+                                <td class="text-right"><span t-out="o.biocreto_cot_money(line.price_subtotal)"/></td>
+                            </tr>
+                        </t>
+                    </t>
+                    <t t-else="">
                         <tr>
-                            <td class="col-item"><span t-out="line_index + 1"/></td>
-                            <td class="text-left"><span t-out="line.biocreto_vehiculo_id.display_name or line.product_id.display_name or ''"/></td>
-                            <td>
-                                <t t-if="line.biocreto_tuberia_adicional"><span t-out="line.biocreto_tuberia_adicional"/></t>
-                                <t t-else="">—</t>
-                            </td>
-                            <td><span t-out="'%g' % (line.biocreto_slump_bombeable or 0)"/></td>
-                            <td><span t-out="'%.2f' % (line.product_uom_qty or 0)"/></td>
-                            <td class="text-right"><span t-out="'%.2f' % (line.price_unit or 0)"/></td>
-                            <td class="text-right"><span t-out="o.biocreto_cot_money(line.price_subtotal)"/></td>
+                            <td class="col-item">—</td>
+                            <td class="text-left">—</td>
+                            <td>—</td>
+                            <td>—</td>
+                            <td>—</td>
+                            <td class="text-right">—</td>
+                            <td class="text-right">—</td>
                         </tr>
                     </t>
                 </tbody>
@@ -535,23 +658,34 @@
                 <table class="subtotals-table">
                     <tr>
                         <td class="s-label">Subtotal S/</td>
-                        <td class="s-value"><span t-out="o.biocreto_cot_money(totales.get('bomb_subtotal', 0))"/></td>
+                        <td class="s-value">
+                            <t t-if="lineas_bombeo"><span t-out="o.biocreto_cot_money(totales.get('bomb_subtotal', 0))"/></t>
+                            <t t-else="">—</t>
+                        </td>
                     </tr>
                     <tr>
                         <td class="s-label">IGV (18%) S/</td>
-                        <td class="s-value"><span t-out="o.biocreto_cot_money(totales.get('bomb_igv', 0))"/></td>
+                        <td class="s-value">
+                            <t t-if="lineas_bombeo"><span t-out="o.biocreto_cot_money(totales.get('bomb_igv', 0))"/></t>
+                            <t t-else="">—</t>
+                        </td>
                     </tr>
                     <tr class="subtotal-total">
                         <td class="s-label">(B) Total S/</td>
-                        <td class="s-value"><span t-out="o.biocreto_cot_money(totales.get('bomb_total', 0))"/></td>
+                        <td class="s-value">
+                            <t t-if="lineas_bombeo"><span t-out="o.biocreto_cot_money(totales.get('bomb_total', 0))"/></t>
+                            <t t-else="">—</t>
+                        </td>
                     </tr>
                 </table>
             </div>
 
             <!-- Gran total -->
+            <!-- v19.0.2.0.0: usar el nativo o.amount_total (incluye A+B    -->
+            <!-- y respeta multi-moneda). Si no hay bombeo, equivale a (A). -->
             <div class="grand-total">
                 <span class="grand-total-label">Total Cotización (A + B)</span>
-                <span class="grand-total-value">S/ <span t-out="o.biocreto_cot_money(totales.get('gran_total', 0))"/></span>
+                <span class="grand-total-value">S/ <span t-out="o.biocreto_cot_money(o.amount_total)"/></span>
             </div>
         </div>
     </template>
@@ -573,12 +707,37 @@
     <template id="cot_firmas_block">
         <t t-set="contacto" t-value="o.biocreto_cot_contacto_persona()"/>
         <div class="firmas-block">
+            <!--
+                v19.0.2.0.11: QR via -pluto-qrcode (CSS nativa PlutoPrint).
+                Antes: <img src="/report/barcode/QR/..."> que PlutoPrint
+                trataba como `file:///...` y fallaba (no aparecia el QR).
+                Ahora: ::before { content: -pluto-qrcode('<url>', #color); }
+                CSS-only, sin red, sin endpoint Odoo.
+
+                Por que clase qr-portal-<id> + <style> por doc: el
+                `content` vive en una regla CSS; en un LOTE (varias
+                ordenes en un solo PDF), todas las `.qr-real::before`
+                compartirian la URL de la ultima orden si usaramos
+                un selector comun. Una clase unica por res_id + su
+                propio <style> garantiza que cada QR tenga SU token.
+
+                URL = portal_url (incluye access_token via
+                _portal_ensure_token() — verificado en odoo/addons/
+                portal/models/portal_mixin.py:127-129). Un solo query
+                param -> sin `&` en la URL -> el t-out no genera
+                `&amp;` problematico para el motor CSS.
+            -->
+            <t t-set="qr_url" t-value="o.get_base_url() + o.get_portal_url()"/>
             <div class="firma-area qr-area">
-                <div class="qr-placeholder qr-real">
-                    <t t-call="biocreto_sale_report_cotizacion.biocreto_cot_qr">
-                        <t t-set="order" t-value="o"/>
-                        <t t-set="qr_size" t-value="110"/>
-                    </t>
+                <div t-attf-class="qr-placeholder qr-real qr-portal-#{o.id}">
+                    <style>
+                        .biocreto-cot .qr-portal-<t t-out="o.id"/>::before {
+                            display: block;
+                            width: 100px;
+                            height: 100px;
+                            content: -pluto-qrcode('<t t-out="qr_url"/>', #1ea8e0);
+                        }
+                    </style>
                 </div>
                 <p class="firma-label">Código de Validación</p>
                 <p class="firma-name">Escanea para verificar</p>
@@ -620,18 +779,27 @@
     -->
     <template id="cot_body_menor">
         <t t-call="biocreto_sale_report_cotizacion.cot_body_common"/>
-        <div style="page-break-after: always;"/>
-        <t t-call="biocreto_sale_report_cotizacion.cot_firmas_block"/>
-        <div class="notas">
-            <div class="notas-title">Condiciones Generales</div>
-            <ul>
-                <li>Esta cotización tiene una vigencia de <b><span t-out="o.biocreto_cot_vigencia_dias()"/> días calendario</b> a partir de la fecha de emisión.</li>
-                <li>Los precios incluyen IGV (18%) y son válidos exclusivamente para el volumen y resistencia indicados.</li>
-                <li>Forma de pago: 50% adelanto al confirmar pedido; 50% restante al arribo del mixer a obra (modificable previa autorización de gerencia).</li>
-                <li>La programación del despacho requiere confirmación con al menos <b>48 horas</b> de anticipación.</li>
-                <li>Las condiciones de aceptación de probetas se rigen por la NTP 339.033, NTP 339.034 y NTP 339.036.</li>
-            </ul>
-        </div>
+        <!--
+            v19.0.2.0.9: pagina 2 envuelta en <section class="pagina-2">.
+            El SCSS `.pagina-2 { break-before: page; break-inside: avoid; }`
+            fuerza salto al inicio del bloque y evita que firmas + notas
+            queden divididas entre dos hojas. Sustituye al viejo
+            `<div style="page-break-after:always"/>` suelto que no
+            ofrecia control de break-inside.
+        -->
+        <section class="pagina-2">
+            <t t-call="biocreto_sale_report_cotizacion.cot_firmas_block"/>
+            <div class="notas">
+                <div class="notas-title">Condiciones Generales</div>
+                <ul>
+                    <li>Esta cotización tiene una vigencia de <b><span t-out="o.biocreto_cot_vigencia_dias()"/> días calendario</b> a partir de la fecha de emisión.</li>
+                    <li>Los precios incluyen IGV (18%) y son válidos exclusivamente para el volumen y resistencia indicados.</li>
+                    <li>Forma de pago: 50% adelanto al confirmar pedido; 50% restante al arribo del mixer a obra (modificable previa autorización de gerencia).</li>
+                    <li>La programación del despacho requiere confirmación con al menos <b>48 horas</b> de anticipación.</li>
+                    <li>Las condiciones de aceptación de probetas se rigen por la NTP 339.033, NTP 339.034 y NTP 339.036.</li>
+                </ul>
+            </div>
+        </section>
     </template>
 
 
@@ -648,8 +816,17 @@
     -->
     <template id="cot_body_mayor">
         <t t-call="biocreto_sale_report_cotizacion.cot_body_common"/>
-        <div style="page-break-after: always;"/>
-        <t t-call="biocreto_sale_report_cotizacion.cot_firmas_block"/>
+        <!--
+            v19.0.2.0.9: pagina 2 envuelta en <section class="pagina-2">.
+            El SCSS `.pagina-2 { break-before: page; break-inside: avoid; }`
+            fuerza salto al inicio del bloque y evita que firmas + cuadros
+            + bandas queden divididos entre dos hojas. Si con muchas
+            cuentas bancarias el bloque deja de caber en una A4, hay que
+            relajar `break-inside: avoid` a las cuentas (que pueden
+            partirse). Por ahora confiamos en que cabe (max 4 cuentas).
+        -->
+        <section class="pagina-2">
+            <t t-call="biocreto_sale_report_cotizacion.cot_firmas_block"/>
 
         <!-- Grid 2x2 (textos estaticos como en el HTML de referencia) -->
         <div class="info-grid">
@@ -738,31 +915,67 @@
                 <li>Laboratorio equipado · staff técnico especializado</li>
             </ul>
         </div>
+        </section>
     </template>
 
 
     <!--
         ============================================================
-        Router  -  report_cotizacion
+        OPCION A  -  Sobrescribir el documento del reporte nativo
         ============================================================
-        Plantilla referenciada por el ir.actions.report. Por cada
-        sale.order del recordset envuelve en cot_layout y enruta el
-        cuerpo segun biocreto_tipo_proyecto. Default = menor (FR-09)
-        si el campo no esta seteado.
+        v19.0.2.0.0: el reporte nativo sale.action_report_saleorder
+        tiene report_name = 'sale.report_saleorder' (verificado en
+        odoo/addons/sale/report/ir_actions_report_templates.xml:362).
+        Su pipeline es:
+            sale.report_saleorder
+              =&gt; sale.report_saleorder_raw
+                   =&gt; web.html_container         (doctype + body)
+                   =&gt; t-foreach docs as doc
+                        =&gt; sale.report_saleorder_document  [HEREDADO]
+                             =&gt; web.external_layout         [BYPASSED]
+
+        Heredando sale.report_saleorder_document con position="replace"
+        sustituimos TODO su arbol (incluida la llamada a
+        web.external_layout que metia la cabecera de compania) por
+        nuestro contenido a sangre. Boton Imprimir, Correo y Portal
+        usan el mismo report_name nativo -> los tres canales pasan por
+        aqui sin recablear nada (verificado en
+        addons/sale/views/sale_order_views.xml:317,
+        addons/sale/data/mail_template_data.xml:51,340,394 y
+        addons/sale/controllers/portal.py:144,330).
+
+        Variable inyectada por el padre: `doc` (del t-foreach de
+        sale.report_saleorder_raw:357). La aliasamos a `o` para no
+        tocar los templates internos que usan esa variable.
     -->
-    <template id="report_cotizacion">
-        <t t-call="web.html_container">
-            <t t-foreach="docs" t-as="o">
-                <t t-call="biocreto_sale_report_cotizacion.cot_layout">
-                    <t t-if="o.biocreto_tipo_proyecto == 'mayor'">
-                        <t t-call="biocreto_sale_report_cotizacion.cot_body_mayor"/>
-                    </t>
-                    <t t-else="">
-                        <t t-call="biocreto_sale_report_cotizacion.cot_body_menor"/>
-                    </t>
+    <template id="report_cotizacion_document"
+              inherit_id="sale.report_saleorder_document">
+        <!--
+            v19.0.2.0.1: xpath especifico, no expr=".".
+            En Odoo 19 QWeb el `expr="."` con `position="replace"` sobre
+            la raiz de un template heredado NO reemplaza nada (el parser
+            de herencias lo evalua contra el contenedor virtual, no
+            contra el template real) y deja la plantilla nativa intacta
+            -> HTML de ~1267 chars sin nuestro diseno (confirmado en
+            shell). El unico hijo directo del nativo
+            sale.report_saleorder_document es `<t t-call="web.external
+            _layout">` (verificado en addons/sale/report/ir_actions_
+            report_templates.xml:4). Reemplazarlo es equivalente
+            funcionalmente y respeta el contrato de inherit estandar
+            (mismo patron que addons/l10n_din5008_sale/report/din5008_
+            sale_templates.xml:3-4 usa para tocar el mismo document).
+        -->
+        <xpath expr="//t[@t-call='web.external_layout']" position="replace">
+            <t t-set="o" t-value="doc"/>
+            <t t-call="biocreto_sale_report_cotizacion.cot_layout">
+                <t t-if="o.biocreto_tipo_proyecto == 'mayor'">
+                    <t t-call="biocreto_sale_report_cotizacion.cot_body_mayor"/>
+                </t>
+                <t t-else="">
+                    <t t-call="biocreto_sale_report_cotizacion.cot_body_menor"/>
                 </t>
             </t>
-        </t>
+        </xpath>
     </template>
 
 </odoo>

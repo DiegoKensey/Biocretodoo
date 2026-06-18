@@ -1,0 +1,15 @@
+{
+    'name': 'BIOCRETO PDF Engine',
+    'version': '19.0.1.0.7',
+    'category': 'BIOCRETO',
+    'summary': 'Motor de PDF PlutoPrint para reportes BIOCRETO seleccionados, con fallback a wkhtmltopdf',
+    'description': "Reemplaza el motor de PDF por PlutoPrint solo para reportes BIOCRETO marcados internamente (sin UI). Override del render de ir.actions.report con fallback automatico a wkhtmltopdf. Base reutilizable: cada reporte se suscribe extendiendo el hook _biocreto_usa_plutoprint.",
+    'author': 'BIOCRETO',
+    'license': 'LGPL-3',
+    'depends': ['base', 'web'],
+    'external_dependencies': {'python': ['plutoprint']},
+    'data': [],
+    'installable': True,
+    'application': False,
+    'auto_install': False,
+}

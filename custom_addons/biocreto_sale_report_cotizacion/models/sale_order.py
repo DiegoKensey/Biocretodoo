@@ -1,5 +1,7 @@
 from urllib.parse import quote_plus
 
+import pytz
+
 from odoo import models
 
 
@@ -83,38 +85,57 @@ class SaleOrder(models.Model):
 
     # -----------------------------------------------------------------
     # Etiqueta dinamica del tipo de documento del cliente.
-    # Devuelve el .name del l10n_latam_identification_type_id (RUC, DNI,
-    # Pasaporte, etc.). Si no hay tipo configurado cae al literal
-    # 'RUC / DNI' para no romper el reporte.
+    # v19.0.2.0.0: lee el tipo de doc desde el commercial_partner_id
+    # (la EMPRESA, no la persona contacto). Si la cotizacion es a una
+    # persona suelta, commercial_partner_id == partner_id, asi que
+    # sigue funcionando. Si es a una empresa via su contacto, leemos
+    # el tipo de doc de la empresa (que es donde tiene sentido cargar
+    # RUC, no en cada contacto).
     # -----------------------------------------------------------------
     def biocreto_cot_doc_tipo(self):
         self.ensure_one()
-        return self.partner_id.l10n_latam_identification_type_id.name or 'RUC / DNI'
+        cp = self.partner_id.commercial_partner_id
+        return cp.l10n_latam_identification_type_id.name or 'RUC / DNI'
 
     # -----------------------------------------------------------------
-    # String formateado para 'Fecha vaciado'.
-    #   Mismo dia: 'dd/MM/yyyy HH:mm -> HH:mm'
-    #   Dias distintos: 'dd/MM/yyyy HH:mm -> dd/MM/yyyy HH:mm'
-    # Devuelve '' si falta inicio o fin (el QWeb lo imprime vacio).
+    # Conversion UTC -> America/Lima.
+    # v19.0.2.0.0: los Datetime de Odoo se guardan en UTC. Para que
+    # las horas en el reporte salgan en hora Peru (UTC-5), aplicamos
+    # tz manualmente. Compatible con datetimes naive (tipico cuando
+    # vienen del ORM via fields.Datetime) y aware (defensivo).
     # -----------------------------------------------------------------
-    def biocreto_cot_fecha_vaceo_label(self):
+    def _biocreto_to_lima(self, dt):
+        if not dt:
+            return dt
+        tz = pytz.timezone('America/Lima')
+        if dt.tzinfo is None:
+            return pytz.utc.localize(dt).astimezone(tz)
+        return dt.astimezone(tz)
+
+    # -----------------------------------------------------------------
+    # Fechas de vaciado separadas (v19.0.2.0.0).
+    # La spec pide intercalar un <i class="fa fa-long-arrow-right"/>
+    # entre inicio y fin desde el QWeb. Por eso retornamos las dos
+    # piezas como strings independientes (NO un solo string con la
+    # flecha). El fin omite la fecha si es el mismo dia que el inicio.
+    # Ambos formatos ya en hora Peru.
+    # -----------------------------------------------------------------
+    def biocreto_cot_fecha_vaceo_ini(self):
+        self.ensure_one()
+        ini = self._biocreto_to_lima(self.biocreto_fecha_vaceo_inicio)
+        return ini.strftime('%d/%m/%Y %H:%M') if ini else ''
+
+    def biocreto_cot_fecha_vaceo_fin(self):
         self.ensure_one()
         ini = self.biocreto_fecha_vaceo_inicio
         fin = self.biocreto_fecha_vaceo_fin
-        if not ini or not fin:
+        if not fin:
             return ''
-        flecha = '→'  # caracter "→" U+2192 RIGHTWARDS ARROW
-        if ini.date() == fin.date():
-            return '%s  %s  %s' % (
-                ini.strftime('%d/%m/%Y %H:%M'),
-                flecha,
-                fin.strftime('%H:%M'),
-            )
-        return '%s  %s  %s' % (
-            ini.strftime('%d/%m/%Y %H:%M'),
-            flecha,
-            fin.strftime('%d/%m/%Y %H:%M'),
-        )
+        fin_local = self._biocreto_to_lima(fin)
+        ini_local = self._biocreto_to_lima(ini) if ini else None
+        if ini_local and ini_local.date() == fin_local.date():
+            return fin_local.strftime('%H:%M')
+        return fin_local.strftime('%d/%m/%Y %H:%M')
 
     # -----------------------------------------------------------------
     # Formato de monto: separador de miles + 2 decimales.
@@ -123,3 +144,25 @@ class SaleOrder(models.Model):
     # -----------------------------------------------------------------
     def biocreto_cot_money(self, amount):
         return '{:,.2f}'.format(amount or 0.0)
+
+    # -----------------------------------------------------------------
+    # Rotulo dinamico para el tag vertical (v19.0.2.0.0).
+    # Estados verificados:
+    #   - 'draft','sent' (nativos sale)
+    #   - 'contract','programado' (biocreto_sale_contract_state via
+    #      selection_add en sale.order, custom_addons/biocreto_sale_
+    #      contract_state/models/sale_order.py:19-29)
+    #   - 'sale','done' (nativos sale)
+    #   - 'cancel' (nativo) -> tratado como Cotizacion
+    #
+    # Regla de negocio:
+    #   Orden       si state in ('sale','done')
+    #   Cotizacion  para todo lo demas
+    # El CSS .cot-vertical-tag-inline aplica text-transform: uppercase
+    # asi que retornamos capitalizado.
+    # -----------------------------------------------------------------
+    def biocreto_cot_rotulo(self):
+        self.ensure_one()
+        if self.state in ('sale', 'done'):
+            return 'Orden'
+        return 'Cotización'
