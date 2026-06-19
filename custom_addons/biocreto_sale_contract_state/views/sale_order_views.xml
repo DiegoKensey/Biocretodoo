@@ -19,6 +19,12 @@
                 <attribute name="statusbar_visible">draft,sent,contract,programado,sale</attribute>
             </xpath>
 
+            <!-- v19.0.1.2.1: biocreto_fecha_firma_contrato es uso interno
+                 (lo consume el futuro reporte y el chatter del flujo). NO
+                 se muestra en la UI. El campo y su seteo en el write del
+                 action_confirm orquestador permanecen. -->
+
+
             <!-- Botón nativo "Confirmar" (id="action_confirm"): originalmente
                  sólo en 'sent'. v1.0.x lo extendió a ('sent','contract').
                  v1.1.0 lo deja SOLO en 'sent' (el paso contract → programado

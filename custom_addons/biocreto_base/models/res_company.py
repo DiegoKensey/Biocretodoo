@@ -14,7 +14,7 @@ class ResCompany(models.Model):
     )
     manager_id = fields.Many2one(
         'res.users',
-        string="Gerente de Planta",
+        string="Gerente de Sede",
         domain="[('company_ids', 'in', id)]",
         help="Usuario responsable operativo de la planta.",
     )

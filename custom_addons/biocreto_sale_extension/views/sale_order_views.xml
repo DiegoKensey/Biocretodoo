@@ -91,7 +91,59 @@
                         </group>
                         <group/>
                     </group>
+
                 </page>
+            </xpath>
+
+            <!-- v19.0.1.7.1: Monto de adelanto SOLO, justo debajo de
+                 `payment_term_id` (Terminos de pago). Sin grupo dedicado:
+                 hereda el contenedor que payment_term_id ya tiene en el
+                 form nativo. Verificado contra
+                 odoo/addons/sale/views/sale_order_views.xml:489-492 (es
+                 el unico payment_term_id en el form; el de la linea 41
+                 esta en la vista calendar y no se ve afectado). -->
+            <xpath expr="//field[@name='payment_term_id']" position="after">
+                <field name="biocreto_monto_adelanto"
+                       readonly="state in ('sale', 'done')"/>
+            </xpath>
+
+            <!-- v19.0.1.7.3: pestaña customer_signature en 2 apartados.
+                 Pestaña heredada: page name='customer_signature' con
+                 groups="base.group_no_one" (solo modo debug, ver
+                 odoo/addons/sale/views/sale_order_views.xml:911).
+                 - APARTADO A (FIRMA COTIZACION): el group nativo con
+                   signed_by/signed_on/signature. Solo cambia su atributo
+                   string. xpath de atributos: el page nativo tiene un
+                   UNICO <group> hijo directo (verificado contra
+                   odoo/addons/sale/views/sale_order_views.xml:912-916),
+                   asi que `//page[@name='customer_signature']/group`
+                   matchea sin ambiguedad ese grupo nativo.
+                 - APARTADO B (FIRMA CONTRATO): grupo nuevo con dos sub-
+                   grupos: Cliente (campos nuevos del contrato) y Jefe de
+                   Obra (campos JO existentes). REEMPLAZA al grupo JO
+                   suelto que vivia aqui en v19.0.1.7.1 -> los JO ahora
+                   viven dentro de FIRMA CONTRATO. -->
+            <xpath expr="//page[@name='customer_signature']/group" position="attributes">
+                <attribute name="string">FIRMA COTIZACIÓN</attribute>
+            </xpath>
+            <xpath expr="//page[@name='customer_signature']/group" position="after">
+                <group string="FIRMA CONTRATO"
+                       name="biocreto_firma_contrato_group">
+                    <group string="Cliente"
+                           name="biocreto_firma_contrato_cliente">
+                        <field name="biocreto_firma_contrato_por"
+                               readonly="biocreto_firma_contrato"/>
+                        <field name="biocreto_firma_contrato_fecha"
+                               readonly="biocreto_firma_contrato"/>
+                        <field name="biocreto_firma_contrato" widget="image"/>
+                    </group>
+                    <group string="Jefe de Obra"
+                           name="biocreto_firma_jefe_obra_group">
+                        <field name="biocreto_firma_jefe_obra_por"/>
+                        <field name="biocreto_firma_jefe_obra_fecha"/>
+                        <field name="biocreto_firma_jefe_obra" widget="image"/>
+                    </group>
+                </group>
             </xpath>
 
             <!-- Tag de estado de diseño: DENTRO del oe_title, justo encima

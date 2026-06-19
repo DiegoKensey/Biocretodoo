@@ -118,6 +118,132 @@
         </xpath>
     </template>
 
+    <!--
+        v19.0.1.2.0: bloque "Contrato de Suministro" en /my/orders/<id>
+        cuando la orden esta en contract/programado/sale.
+
+        Diseno:
+        - SIN override del controller portal_order_page (es complejo y se
+          acopla al nativo). En su lugar, calculamos los 2 flags aqui mismo:
+            * biocreto_es_contrato  = sale_order.state in ('contract','programado','sale')
+            * biocreto_sign_kind    = request.params.get('sign')  (cliente / jefe_obra / ambos)
+          `request` es global en QWeb portal (verificado contra el uso del
+          mismo objeto en sale_portal_templates.xml:313 para csrf_token).
+        - Tres botones que recargan la pagina con ?sign=... Asi solo se
+          renderiza UN widget de firma a la vez, evitando colision de IDs
+          del componente OWL SignatureForm.
+        - Boton "Descargar Contrato (PDF)" apunta a la ruta nueva
+          /my/contracts/<id>/pdf con access_token (PlutoPrint automatico).
+        - Estado de firmas: muestra "firmado por X el Y" para cada uno
+          si existe el campo de fecha (criterio: la fecha es el flag mas
+          honesto — solo se setea junto a la firma binaria).
+        - Tras firmar -> el controller redirige con &message=contract_signed
+          que un t-if al inicio convierte en un alert verde.
+    -->
+    <template id="sale_order_portal_content_contract_block"
+              inherit_id="sale.sale_order_portal_content"
+              name="BIOCRETO Contract Block">
+        <xpath expr="//div[@id='introduction']" position="before">
+            <t t-set="biocreto_es_contrato"
+               t-value="sale_order.state in ('contract', 'programado', 'sale')"/>
+            <t t-if="biocreto_es_contrato">
+                <t t-set="biocreto_sign_kind" t-value="request.params.get('sign')"/>
+                <t t-set="biocreto_msg" t-value="request.params.get('message')"/>
+
+                <!-- Alert de exito post-firma -->
+                <div t-if="biocreto_msg == 'contract_signed'"
+                     class="alert alert-success alert-dismissible d-print-none"
+                     role="status">
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"/>
+                    <strong>¡Gracias! Hemos recibido su firma del contrato.</strong>
+                </div>
+
+                <!-- Encabezado + descarga PDF -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                            <h4 class="mb-0">Contrato de Suministro</h4>
+                            <a class="btn btn-primary"
+                               t-attf-href="/my/contracts/#{sale_order.id}/pdf?access_token=#{sale_order.access_token}"
+                               target="_blank">
+                                <i class="fa fa-download me-1"/>Descargar Contrato (PDF)
+                            </a>
+                        </div>
+
+                        <!-- Estado de firmas -->
+                        <ul class="list-unstyled mb-3">
+                            <li class="mb-1">
+                                <strong>Cliente:</strong>
+                                <t t-if="sale_order.biocreto_firma_contrato_fecha">
+                                    <span class="text-success">
+                                        <i class="fa fa-check-circle me-1"/>firmado por
+                                        <span t-out="sale_order.biocreto_firma_contrato_por or '—'"/> el
+                                        <span t-field="sale_order.biocreto_firma_contrato_fecha"
+                                              t-options="{'widget': 'datetime'}"/>
+                                    </span>
+                                </t>
+                                <t t-else="">
+                                    <span class="text-muted">pendiente</span>
+                                </t>
+                            </li>
+                            <li>
+                                <strong>Jefe de Obra:</strong>
+                                <t t-if="sale_order.biocreto_firma_jefe_obra_fecha">
+                                    <span class="text-success">
+                                        <i class="fa fa-check-circle me-1"/>firmado por
+                                        <span t-out="sale_order.biocreto_firma_jefe_obra_por or '—'"/> el
+                                        <span t-field="sale_order.biocreto_firma_jefe_obra_fecha"
+                                              t-options="{'widget': 'datetime'}"/>
+                                    </span>
+                                </t>
+                                <t t-else="">
+                                    <span class="text-muted">pendiente</span>
+                                </t>
+                            </li>
+                        </ul>
+
+                        <!-- 3 botones de firma: solo si no hay widget activo -->
+                        <div t-if="not biocreto_sign_kind"
+                             class="d-flex flex-wrap gap-2">
+                            <a class="btn btn-outline-primary"
+                               t-attf-href="/my/orders/#{sale_order.id}?access_token=#{sale_order.access_token}&amp;sign=cliente">
+                                Firmar como Cliente
+                            </a>
+                            <a class="btn btn-outline-primary"
+                               t-attf-href="/my/orders/#{sale_order.id}?access_token=#{sale_order.access_token}&amp;sign=jefe_obra">
+                                Firmar como Jefe de Obra
+                            </a>
+                            <a class="btn btn-outline-primary"
+                               t-attf-href="/my/orders/#{sale_order.id}?access_token=#{sale_order.access_token}&amp;sign=ambos">
+                                Firmar Ambos
+                            </a>
+                        </div>
+
+                        <!-- Widget de firma ACTIVO: uno solo segun biocreto_sign_kind -->
+                        <div t-if="biocreto_sign_kind in ('cliente', 'jefe_obra', 'ambos')"
+                             class="mt-3 border-top pt-3">
+                            <h5 t-if="biocreto_sign_kind == 'cliente'">Firma del Cliente</h5>
+                            <h5 t-if="biocreto_sign_kind == 'jefe_obra'">Firma del Jefe de Obra</h5>
+                            <h5 t-if="biocreto_sign_kind == 'ambos'">Firma (Cliente y Jefe de Obra)</h5>
+
+                            <t t-call="portal.signature_form">
+                                <t t-set="call_url"
+                                   t-value="sale_order.get_portal_url(suffix='/sign_contract/' + biocreto_sign_kind)"/>
+                                <t t-set="default_name"
+                                   t-value="(sale_order.partner_id.name or sale_order.partner_id.commercial_partner_id.name) if biocreto_sign_kind in ('cliente', 'ambos') else ''"/>
+                            </t>
+
+                            <a class="btn btn-link mt-2"
+                               t-attf-href="/my/orders/#{sale_order.id}?access_token=#{sale_order.access_token}">
+                                Cancelar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </template>
+
     <!-- Página /my/contracts: listado de órdenes en estado 'contract' del cliente. -->
     <template id="portal_my_contracts" name="BIOCRETO My Contracts">
         <t t-call="portal.portal_layout">

@@ -88,6 +88,42 @@ class SaleOrder(models.Model):
     biocreto_fecha_vaceo_fin = fields.Datetime(string="Fecha de vaceo (fin)")
 
     # ─────────────────────────────────────────────────────────────────
+    # Datos del contrato (v19.0.1.7.0). Consumidos por el futuro reporte
+    # `biocreto_sale_reports_contrato`. La validacion de que `monto_adelanto`
+    # exista al pasar de `contract` a `programado` vive en
+    # biocreto_sale_contract_state (override de _biocreto_validate_before_confirm).
+    # ─────────────────────────────────────────────────────────────────
+    biocreto_monto_adelanto = fields.Monetary(
+        string="Monto de adelanto",
+        currency_field='currency_id',
+        help="Monto fijo en S/ que el cliente deja como adelanto. El saldo "
+             "(amount_total - adelanto) se calcula automaticamente.",
+    )
+    biocreto_firma_jefe_obra = fields.Binary(
+        string="Firma JO",
+        attachment=True,
+    )
+    biocreto_firma_jefe_obra_por = fields.Char(string="Firmado por JO")
+    biocreto_firma_jefe_obra_fecha = fields.Datetime(string="Firmado el (JO)")
+
+    # v19.0.1.7.3: firma del CONTRATO (separada de la cotizacion).
+    # El nativo `signature`/`signed_by`/`signed_on` (addons/sale/models/
+    # sale_order.py:126-132) se usa para la cotizacion online (portal
+    # quote accept). Estos 3 campos los usara el contrato — flujo
+    # backend hoy (manual en debug, ver vista), portal en una version
+    # futura. copy=False: al duplicar una orden NO se arrastra la firma
+    # (mismo criterio que el nativo).
+    biocreto_firma_contrato = fields.Binary(
+        string="Firma Contrato", attachment=True, copy=False,
+    )
+    biocreto_firma_contrato_por = fields.Char(
+        string="Firmado por (Contrato)", copy=False,
+    )
+    biocreto_firma_contrato_fecha = fields.Datetime(
+        string="Firmado el (Contrato)", copy=False,
+    )
+
+    # ─────────────────────────────────────────────────────────────────
     # URL de Google Maps Directions hacia la obra (computed, no-store).
     #
     # Vive en sale_extension (no en biocreto_programacion) porque la URL
@@ -384,3 +420,106 @@ class SaleOrder(models.Model):
                 'prefix': '',
             })
         return sequence
+
+    # ─────────────────────────────────────────────────────────────────
+    # Helpers para el reporte de Contrato (v19.0.1.7.0).
+    # Viven en sale_extension (no en el modulo de reporte) porque dependen
+    # de campos que viven aqui (biocreto_monto_adelanto, biocreto_direccion_completa)
+    # y son reutilizables por cualquier reporte futuro. Patron y estilo
+    # alineados con los helpers `biocreto_cot_*` del modulo de cotizacion.
+    # ─────────────────────────────────────────────────────────────────
+    def biocreto_contrato_saldo(self):
+        """amount_total - adelanto. None si no hay adelanto (el QWeb decide)."""
+        self.ensure_one()
+        if not self.biocreto_monto_adelanto:
+            return None
+        return self.amount_total - self.biocreto_monto_adelanto
+
+    def biocreto_contrato_monto_palabras(self, amount):
+        """Monto a texto en formato bancario peruano clasico:
+        '<Palabras> con XX/100 soles'.
+
+        v19.0.1.7.1: se usa el nativo `res.currency.amount_to_text` SOLO
+        para la parte entera (donde rinde bien en español: 'Mil Doscientos
+        Cuarenta Y Cuatro Sol'), y se descarta el sufijo de la moneda para
+        injertar el sufijo bancario peruano: ' con XX/100 soles'.
+
+        Por que pasar SOLO el entero al nativo:
+        - amount_to_text(int) entra a la rama de is_zero(amount-int) en
+          odoo/addons/base/models/res_currency.py:190, que devuelve
+          '<integral_amount> <currency_unit>' SIN '<and> <fract> <subunit>'.
+          Resultado limpio para cortar.
+        - Si pasaramos el float, devolveria '... Sol y Noventa Centimos'
+          (el 'y' literal del template traducible, no el formato bancario).
+
+        Cleanup del sufijo:
+        - currency.currency_unit_label (Char) trae el unit_label de PEN
+          ('Sol' / 'Soles' / 'Nuevos Soles'). Lo rstrippeamos. Si por algun
+          motivo no matchea, fallback a 'recortar la ultima palabra'.
+
+        Normalizacion:
+        - amount_to_text aplica .title() (mayuscula a cada palabra). Para
+          el contrato preferimos sentence-case: lower() + capitalize().
+
+        Ejemplos verificados:
+            1244.90 -> 'Mil doscientos cuarenta y cuatro con 90/100 soles'
+            500.00  -> 'Quinientos con 00/100 soles'
+            330.40  -> 'Trescientos treinta con 40/100 soles'
+        """
+        self.ensure_one()
+        try:
+            amount = float(amount or 0.0)
+        except (TypeError, ValueError):
+            return ''
+        integer_part = int(amount)
+        centimos = int(round((amount - integer_part) * 100))
+        # Edge case: redondeo de fract a 100 (ej. 1.999 -> 2.00).
+        if centimos == 100:
+            integer_part += 1
+            centimos = 0
+        raw = self.currency_id.amount_to_text(integer_part) or ''
+        unit = (self.currency_id.currency_unit_label or '').strip()
+        if unit and raw.endswith(' ' + unit):
+            palabras = raw[:-(len(unit) + 1)]
+        elif ' ' in raw:
+            # Fallback defensivo: el ultimo token tras el espacio es la moneda.
+            palabras = raw.rsplit(' ', 1)[0]
+        else:
+            palabras = raw
+        palabras = palabras.strip().lower().capitalize()
+        return f'{palabras} con {centimos:02d}/100 soles'
+
+    @api.model
+    def _biocreto_contrato_dir_inline(self, partner):
+        """Une los campos nativos de dirección de un partner en UNA línea.
+        Formato (v19.0.1.7.2): calle, distrito, provincia, departamento, país.
+        El distrito se toma de l10n_pe_district (Many2one a
+        l10n_pe.res.city.district, addons/l10n_pe/models/res_partner.py:8).
+        Omite vacíos. Separador: ', '.
+        """
+        if not partner:
+            return ''
+        distrito = partner.l10n_pe_district.name if partner.l10n_pe_district else ''
+        partes = [
+            partner.street or '',
+            distrito,
+            partner.city or '',
+            partner.state_id.name if partner.state_id else '',
+            partner.country_id.name if partner.country_id else '',
+        ]
+        return ', '.join(p for p in partes if p)
+
+    def biocreto_contrato_dir_cliente(self):
+        """Direccion fiscal del cliente en UNA linea.
+        Patron empresa/persona via commercial_partner_id (mismo enfoque que
+        cotizacion: si es contacto de empresa -> la EMPRESA tiene la fiscal;
+        si es persona suelta, cp == partner_id).
+        """
+        self.ensure_one()
+        cp = self.partner_id.commercial_partner_id
+        return self._biocreto_contrato_dir_inline(cp)
+
+    def biocreto_contrato_dir_proveedor(self):
+        """Direccion fiscal del proveedor (la planta = company) en UNA linea."""
+        self.ensure_one()
+        return self._biocreto_contrato_dir_inline(self.company_id.partner_id)

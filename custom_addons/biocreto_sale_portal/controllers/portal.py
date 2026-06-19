@@ -153,3 +153,130 @@ class BiocretoCustomerPortal(CustomerPortal):
             })
 
         return request.render('biocreto_sale_portal.portal_my_contracts', values)
+
+    # ─────────────────────────────────────────────────────────────────
+    # v19.0.1.2.0: Firma del CONTRATO desde el portal.
+    #
+    # Tres modos (kind):
+    #   - 'cliente'    -> escribe biocreto_firma_contrato + _por + _fecha
+    #   - 'jefe_obra'  -> escribe biocreto_firma_jefe_obra + _por + _fecha
+    #   - 'ambos'      -> replica la MISMA firma a ambos juegos (asume
+    #                     misma persona, ahorra al cliente firmar dos
+    #                     veces; para personas distintas usa los botones
+    #                     separados)
+    #
+    # Diferencias vs. /accept (portal_quote_accept):
+    #   - NO requiere _has_to_be_signed (la cotizacion ya fue firmada
+    #     para llegar a 'contract').
+    #   - NO dispara action_confirm / _validate_order. Firmar el contrato
+    #     NO cambia el estado del sale.order — la confirmacion final a OV
+    #     sigue siendo el flujo interno (boton "Confirmar" en programado).
+    #   - NO inyecta biocreto_from_portal (eso era para la transicion
+    #     draft -> contract via cotizacion).
+    #   - NO valida biocreto_monto_adelanto.
+    #
+    # Tratamiento de signature: replicamos exacto lo que hace /accept
+    # (nativo y nuestro override): el OWL SignatureForm ya envia base64
+    # PURO sin prefijo data-URL (verificado contra
+    # odoo/addons/portal/static/src/signature_form/signature_form.js:81
+    # — `.split(",")[1]`). Lo escribimos directo en el Binary, que es lo
+    # mismo que hace /accept con el Image nativo.
+    # ─────────────────────────────────────────────────────────────────
+    @http.route(
+        ['/my/orders/<int:order_id>/sign_contract/<string:kind>'],
+        type='jsonrpc', auth='public', website=True,
+    )
+    def biocreto_sign_contract(self, order_id, kind, access_token=None,
+                               name=None, signature=None, **kw):
+        access_token = access_token or request.httprequest.args.get('access_token')
+        try:
+            order_sudo = self._document_check_access(
+                'sale.order', order_id, access_token=access_token,
+            )
+        except (AccessError, MissingError):
+            return {'error': _('Pedido inválido.')}
+
+        if not signature:
+            return {'error': _('Falta la firma.')}
+
+        now = fields.Datetime.now()
+        vals = {}
+        if kind in ('cliente', 'ambos'):
+            vals.update({
+                'biocreto_firma_contrato': signature,
+                'biocreto_firma_contrato_por': name,
+                'biocreto_firma_contrato_fecha': now,
+            })
+        if kind in ('jefe_obra', 'ambos'):
+            vals.update({
+                'biocreto_firma_jefe_obra': signature,
+                'biocreto_firma_jefe_obra_por': name,
+                'biocreto_firma_jefe_obra_fecha': now,
+            })
+        if not vals:
+            return {'error': _('Tipo de firma inválido.')}
+
+        try:
+            order_sudo.write(vals)
+            request.env.cr.flush()
+        except (TypeError, binascii.Error):
+            return {'error': _('Datos de firma inválidos.')}
+
+        etiqueta = {
+            'cliente': _('el cliente'),
+            'jefe_obra': _('el jefe de obra'),
+            'ambos': _('el cliente y el jefe de obra'),
+        }.get(kind, '')
+        order_sudo.message_post(
+            body=_(
+                "Contrato %(num)s firmado por %(quien)s (%(nombre)s).",
+                num=order_sudo.name, quien=etiqueta, nombre=name or '',
+            ),
+            author_id=(
+                order_sudo.partner_id.id
+                if request.env.user._is_public()
+                else request.env.user.partner_id.id
+            ),
+            message_type='comment',
+            subtype_xmlid='mail.mt_comment',
+        )
+        return {
+            'force_refresh': True,
+            'redirect_url': order_sudo.get_portal_url(
+                query_string='&message=contract_signed',
+            ),
+        }
+
+    # ─────────────────────────────────────────────────────────────────
+    # v19.0.1.2.0: Descarga PDF del CONTRATO desde el portal.
+    #
+    # Ruteado al template `biocreto_sale_reports_contrato.report_contrato_document`
+    # cuyo action_id es `biocreto_sale_reports_contrato.action_report_contrato`.
+    # PlutoPrint se engancha automaticamente por report_name (motor
+    # biocreto_pdf_engine via _biocreto_usa_plutoprint).
+    #
+    # Acceso publico con access_token (igual que /accept). _document_check_access
+    # ya valida que el partner del token tenga acceso a la orden.
+    # ─────────────────────────────────────────────────────────────────
+    @http.route(
+        ['/my/contracts/<int:order_id>/pdf'],
+        type='http', auth='public', website=True,
+    )
+    def biocreto_contract_pdf(self, order_id, access_token=None, **kw):
+        try:
+            order_sudo = self._document_check_access(
+                'sale.order', order_id, access_token=access_token,
+            )
+        except (AccessError, MissingError):
+            return request.redirect('/my')
+
+        pdf, _content_type = request.env['ir.actions.report'].sudo()._render_qweb_pdf(
+            'biocreto_sale_reports_contrato.report_contrato_document',
+            [order_sudo.id],
+        )
+        filename = 'Contrato_%s.pdf' % (order_sudo.name or order_sudo.id).replace('/', '_')
+        return request.make_response(pdf, headers=[
+            ('Content-Type', 'application/pdf'),
+            ('Content-Length', len(pdf)),
+            ('Content-Disposition', 'inline; filename="%s"' % filename),
+        ])

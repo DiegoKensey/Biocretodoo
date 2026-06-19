@@ -1,0 +1,416 @@
+// =================================================================
+//  BIOCRETO Contrato de Suministro - estilos del reporte QWeb
+//  v19.0.1.0.0
+//
+//  Motor objetivo: PlutoPrint (CSS3 + Paged Media). El @page con
+//  running header/footer vive en el <style> literal del template
+//  contrato_layout (ver report/report_contrato.xml). Aqui solo las
+//  reglas de selector normal (que el bundle si aplica).
+//
+//  Scopeado bajo .biocreto-contrato para no pisar otros reportes.
+// =================================================================
+
+// --------- Tipografia: Century Gothic con fallbacks ---------
+@font-face {
+    font-family: 'Century Gothic Fallback';
+    src: local('Century Gothic'), local('CenturyGothic'),
+         local('URW Gothic'), local('AvantGarde'), local('Avant Garde');
+}
+
+// Reset global (no scopeado): mismo patron que cotizacion para
+// que el @page no quede empujado por el margin default del UA.
+html, body {
+    margin: 0;
+    padding: 0;
+}
+body {
+    background: #ffffff;
+}
+
+// Salto de pagina explicito (no scopeado, clase suelta como en
+// la referencia HTML del contrato).
+.page-break {
+    break-before: page;
+    break-inside: avoid;
+}
+
+// --------- Tipografia base del wrapper ---------
+.biocreto-contrato {
+    box-sizing: border-box;
+    font-family: 'Century Gothic', 'Century Gothic Fallback',
+                 'URW Gothic', 'AvantGarde', 'Trebuchet MS', sans-serif;
+    font-size: 10pt;
+    line-height: 1.35;
+    color: #1d1d1b;
+
+    *, *::before, *::after { box-sizing: border-box; }
+}
+
+// --------- Header / Footer como running elements ---------
+.page-header { position: running(hdr); margin: 0; padding: 0; }
+.page-footer { position: running(ftr); margin: 0; padding: 0; }
+
+.biocreto-contrato .hwrap,
+.biocreto-contrato .fwrap {
+    position: relative;
+    width: 100%;
+    height: 26.5mm;
+    overflow: hidden;
+}
+.biocreto-contrato .hwrap svg,
+.biocreto-contrato .fwrap svg {
+    display: block;
+    width: 101%;
+    height: 102%;
+}
+
+.biocreto-contrato .header-code {
+    position: absolute;
+    top: 0;
+    right: 0;
+    transform: translateX(3px);
+    width: 14.6%;
+    height: 66.1px;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.4;
+    font-size: 8pt;
+    font-weight: bold;
+    letter-spacing: 0.2px;
+
+    .row {
+        display: block;
+        padding: 1px 4px;
+    }
+}
+
+.biocreto-contrato .footer-pagenum {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    transform: translateX(4px);
+    width: 5.2%;
+    height: 37.45px;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9pt;
+    font-weight: bold;
+    &::after {
+        content: counter(page) "/" counter(pages);
+    }
+}
+
+// --------- Main: padding lateral del HTML ---------
+// v19.0.1.2.0: laterales DUPLICADOS (20px -> 40px) por solicitud del
+// cliente para mas aire. Verticales no se tocan: los gobierna el @page.
+main.biocreto-contrato {
+    padding: 4px 40px 14px 40px;
+}
+
+// --------- v19.0.1.2.0: relleno de espacios "___" en negrita ---------
+// Cualquier valor dinamico que rellena un "___" de las clausulas usa
+// la clase .dato (negrita). El bloque de PARTES tiene reglas propias
+// mas abajo (parte-lbl / parte-dato) porque ahi tambien va MAYUSCULA.
+.biocreto-contrato .dato { font-weight: bold; }
+
+// PARTES: etiqueta antecesora ("DNI N°", "domicilio fiscal", etc.) y
+// el valor que la sigue se muestran en negrita + MAYUSCULA. El
+// uppercase es CSS-only: el contenido en el QWeb queda con su casing
+// original (asi seguimos respetando el dato fuente y la BD).
+.biocreto-contrato .parte-lbl,
+.biocreto-contrato .parte-dato {
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+// ZONA: valor en MAYUSCULA (igual criterio que PARTES). La etiqueta
+// "ZONA:" ya estaba dura en MAYUSCULA en el QWeb.
+.biocreto-contrato .zona-val { text-transform: uppercase; }
+
+// --------- v19.0.1.3.0: firmas centradas en la COLUMNA, no en el caption ---------
+// Diagnostico: en v19.0.1.2.0 se aplico text-align:center solo a la
+// regla padre .firmas (display:flex) y a un .firma-caption defensivo,
+// pero el centrado NO se propago en el render PlutoPrint a los <p>
+// hijos de .firma-recuadro. Causa: la cascada via flex container no
+// es 100% confiable en CSS Paged Media; algun reset de browser/Bootstrap
+// pisa el text-align al llegar al <p>. Fix robusto: aplicar text-align:
+// center directamente al .firma-recuadro (la COLUMNA entera: raya +
+// imagen + label + meta) con !important scopeado bajo .biocreto-contrato.
+// El !important es la unica forma de garantizar que ninguna regla
+// posterior (incluyendo web.assets reportes) lo desalinee.
+.biocreto-contrato .firma-recuadro,
+.biocreto-contrato .firma-recuadro .firma-label,
+.biocreto-contrato .firma-recuadro .firma-meta,
+.biocreto-contrato .firma-caption { text-align: center !important; }
+
+// --------- v19.0.1.2.0: cortes de pagina cuidados ---------
+// Evita que una sub-clausula, el bloque de firmas o una fila de tabla
+// se parta entre dos paginas. El header/footer corren independientes
+// como running elements; estos break-inside afectan al contenido del
+// flujo principal.
+.biocreto-contrato ol.clausula-list > li { break-inside: avoid; }
+.biocreto-contrato .firmas { break-inside: avoid; }
+.biocreto-contrato table.tabla-lineas tr { break-inside: avoid; }
+
+// --------- Tipografia interna del cuerpo ---------
+.biocreto-contrato h1,
+.biocreto-contrato h2,
+.biocreto-contrato h3,
+.biocreto-contrato h4 { margin: 0; padding: 0; }
+.biocreto-contrato p { margin: 0 0 6pt 0; text-align: justify; }
+.biocreto-contrato b, .biocreto-contrato strong { font-weight: bold; }
+
+.biocreto-contrato .zona {
+    text-align: right;
+    margin: 0 0 8pt 0;
+    font-weight: bold;
+    font-size: 10.5pt;
+}
+.biocreto-contrato .zona .zona-tag { display: inline-block; min-width: 60px; }
+
+.biocreto-contrato .doc-title {
+    text-align: center;
+    font-weight: bold;
+    font-size: 11.5pt;
+    margin: 6pt 0 14pt 0;
+    text-decoration: underline;
+}
+.biocreto-contrato .clausula {
+    font-weight: bold;
+    margin: 12pt 0 6pt 0;
+    font-size: 10.5pt;
+}
+.biocreto-contrato .num {
+    display: inline-block;
+    min-width: 28px;
+    font-weight: bold;
+    vertical-align: top;
+}
+.biocreto-contrato ol.clausula-list { padding-left: 0; margin: 0; list-style: none; }
+.biocreto-contrato ol.clausula-list > li {
+    display: flex;
+    margin: 8pt 0;
+    text-align: justify;
+}
+.biocreto-contrato ol.clausula-list > li > .num { flex: 0 0 38px; }
+.biocreto-contrato ol.clausula-list > li > .text { flex: 1; }
+
+.biocreto-contrato ol.proc-list { padding-left: 22px; margin: 6pt 0; }
+.biocreto-contrato ol.proc-list li { margin: 4pt 0; text-align: justify; }
+
+// --------- Bloque de partes (CLIENTE / PROVEEDOR) ---------
+.biocreto-contrato .partes {
+    margin: 0 0 12pt 0;
+    text-align: justify;
+}
+
+// =========== Tablas de lineas (CONCRETO / SERVICIOS, Cl. 1.2) ===========
+// v19.0.1.3.0: el HTML aplica DOS clases al <table>: "cuentas-table
+// tabla-lineas". La primera aporta el look de bancos (header oscuro
+// con borde inferior azul, bordes claros, primera col left); la
+// segunda solo conserva lo especifico de Concreto/Servicios:
+//  - empty-row (mensaje "Sin lineas de concreto")
+//  - ultima col bold + right + nowrap (la columna Importe S/)
+// Se elimino el bloque previo (header gris claro, bordes negros)
+// para que el look "estilo bancos" sea la fuente de verdad unica.
+.biocreto-contrato .tabla-section-title {
+    font-weight: bold;
+    font-size: 10pt;
+    margin: 8pt 0 0 0;
+    padding: 4pt 10pt;
+    background: #e8e8e8;
+    border-left: 4px solid #1ea8e0;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+}
+// Override de especificidad reforzada para que .cuentas-table (mas
+// abajo en el archivo) no pise estas reglas con `tbody td { text-
+// align: center }`. La doble clase en el selector sube la specificity
+// a 0,4,2 → gana sobre 0,3,2 de cuentas-table.
+.biocreto-contrato table.cuentas-table.tabla-lineas td:last-child {
+    text-align: right;
+    font-weight: bold;
+    white-space: nowrap;
+}
+.biocreto-contrato table.cuentas-table.tabla-lineas .empty-row td {
+    color: #999;
+    font-style: italic;
+    text-align: center;
+    padding: 6pt;
+}
+
+// =========== Subtotales 3x2 (port verbatim del spec, scope adj.) ===========
+.biocreto-contrato .subtot-wrap { display: flex; justify-content: flex-end; margin: 4pt 0 0 0; }
+.biocreto-contrato table.subtot-box { border-collapse: collapse; font-size: 8.5pt; }
+.biocreto-contrato table.subtot-box td { padding: 4pt 10pt; vertical-align: middle; white-space: nowrap; }
+.biocreto-contrato table.subtot-box td.s-label {
+    background: #58595b; color: #fff; font-weight: bold; text-transform: uppercase;
+    font-size: 8pt; letter-spacing: .3px; text-align: left;
+    border-right: 3px solid #f9bc09;
+}
+.biocreto-contrato table.subtot-box td.s-value {
+    background: #f5f5f5; color: #1d1d1b; font-weight: bold; text-align: right; min-width: 110px;
+}
+.biocreto-contrato table.subtot-box tr.subtotal-total td.s-label { font-size: 9pt; }
+.biocreto-contrato table.subtot-box tr.subtotal-total td.s-value { font-size: 10pt; }
+
+// =========== Tabla de bancos (Cl. 4.4) ===========
+.biocreto-contrato table.cuentas-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.5pt;
+    margin-top: 6pt;
+
+    thead th {
+        background: #58595b;
+        color: #ffffff;
+        padding: 4pt 6pt;
+        font-weight: bold;
+        text-align: center;
+        font-size: 8pt;
+        letter-spacing: 0.3px;
+        font-family: inherit;
+        text-transform: uppercase;
+        border-bottom: 3px solid #1ea8e0;
+    }
+    tbody td {
+        border: 1px solid #d4d4d4;
+        padding: 4pt 6pt;
+        font-family: inherit;
+        text-align: center;
+        background: #ffffff;
+        vertical-align: middle;
+    }
+    tbody td:first-child {
+        text-align: left;
+        font-weight: 600;
+        color: #58595b;
+    }
+    tbody td.empty-msg {
+        text-align: center;
+        color: #999;
+        font-style: italic;
+        padding: 10pt;
+    }
+}
+
+// =========== Checklist (Cl. 6) ===========
+.biocreto-contrato table.checklist {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 6pt 0;
+    font-size: 9.5pt;
+}
+.biocreto-contrato table.checklist td {
+    border: 1px solid #1d1d1b;
+    padding: 4pt 6pt;
+    vertical-align: top;
+}
+.biocreto-contrato table.checklist .item-num {
+    width: 28pt;
+    text-align: center;
+    font-weight: bold;
+}
+.biocreto-contrato table.checklist .item-desc { text-align: justify; }
+.biocreto-contrato table.checklist .item-ok,
+.biocreto-contrato table.checklist .item-falta {
+    width: 36pt;
+    text-align: center;
+    font-weight: bold;
+    background: #f2f2f2;
+}
+.biocreto-contrato table.checklist .obs {
+    background: #ffffff;
+    min-height: 18pt;
+}
+
+// =========== Firmas (pagina 4) ===========
+.biocreto-contrato .firmas {
+    margin-top: 28pt;
+    display: flex;
+    justify-content: space-between;
+    text-align: center;
+    gap: 12pt;
+}
+.biocreto-contrato .firma-recuadro {
+    flex: 1;
+    margin: 0 4pt;
+}
+.biocreto-contrato .firma-linea {
+    position: relative;
+    height: 60pt;
+    border-bottom: 1px solid #1d1d1b;
+    margin: 0 auto 4pt auto;
+}
+.biocreto-contrato .firma-img {
+    position: absolute;
+    bottom: 2pt;
+    left: 50%;
+    transform: translateX(-50%);
+    max-height: 56pt;
+    max-width: 95%;
+    object-fit: contain;
+}
+.biocreto-contrato .firma-label {
+    margin: 4pt 0 0 0;
+    font-weight: bold;
+    font-size: 9.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.biocreto-contrato .firma-meta {
+    margin: 1pt 0 0 0;
+    font-size: 8pt;
+    color: #58595b;
+}
+
+// =========== Cajas para CONDICIONES (paginas 5 y 6) ===========
+.biocreto-contrato .cond-title {
+    text-align: center;
+    font-weight: bold;
+    font-size: 11pt;
+    margin: 6pt 0 8pt 0;
+    padding: 6pt 8pt;
+    border: 1.5px solid #1d1d1b;
+    background: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+.biocreto-contrato .cond-box {
+    border: 1px solid #1d1d1b;
+    margin: 0 0 4pt 0;
+}
+.biocreto-contrato .cond-box .cond-head {
+    background: #fdebcc;
+    border-bottom: 1px solid #1d1d1b;
+    padding: 4pt 6pt;
+    font-weight: bold;
+    font-size: 9.5pt;
+}
+.biocreto-contrato .cond-box .cond-body {
+    padding: 5pt 8pt;
+    font-size: 9pt;
+    text-align: justify;
+}
+.biocreto-contrato .cond-box .cond-body p { margin: 0 0 4pt 0; }
+.biocreto-contrato .cond-box .cond-body p:last-child { margin-bottom: 0; }
+.biocreto-contrato .cond-box ul,
+.biocreto-contrato .cond-box ol {
+    margin: 4pt 0 4pt 0;
+    padding-left: 20pt;
+}
+.biocreto-contrato .cond-box li { margin: 2pt 0; text-align: justify; }
+.biocreto-contrato .cond-box .sub-head { font-weight: bold; margin-top: 4pt; }
+.biocreto-contrato .cond-final {
+    text-align: center;
+    font-weight: bold;
+    font-size: 9.5pt;
+    margin: 8pt 0;
+    padding: 6pt;
+}

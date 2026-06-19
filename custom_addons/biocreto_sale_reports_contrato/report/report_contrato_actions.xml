@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Accion de reporte: Contrato de Suministro de Concreto.
+
+        - report_name == report_file == el id del template QWeb raiz
+          (modulo.id), que es lo que matchea el motor PlutoPrint en
+          ir_actions_report.py (_biocreto_usa_plutoprint).
+        - binding_model + binding_type 'report' agregan el boton
+          "Imprimir > Contrato de Suministro" sobre sale.order.
+        - paperformat_id = base.paperformat_euro (A4 con margenes
+          reducidos; los margenes reales los maneja el @page del
+          template via PlutoPrint - el paperformat de Odoo solo afecta
+          al fallback wkhtmltopdf).
+        - El enforcement de estado (solo imprimible en 'contract' o
+          posterior) vive en _render_qweb_pdf, ver ir_actions_report.py.
+    -->
+    <!--
+        v19.0.1.1.0: quitados `binding_model_id` y `binding_type` para que el
+        reporte NO aparezca en el menu Print del engranaje. La impresion se
+        dispara con el boton "Imprimir Contrato" en el statusbar (vista
+        views/sale_order_views.xml), que llama a este action por su XML ID.
+        El ruteo a PlutoPrint sigue funcionando: el motor matchea por
+        `report_name` (en _biocreto_usa_plutoprint), independiente del binding.
+    -->
+    <record id="action_report_contrato" model="ir.actions.report">
+        <field name="name">Contrato de Suministro</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">biocreto_sale_reports_contrato.report_contrato_document</field>
+        <field name="report_file">biocreto_sale_reports_contrato.report_contrato_document</field>
+        <field name="paperformat_id" ref="base.paperformat_euro"/>
+    </record>
+</odoo>

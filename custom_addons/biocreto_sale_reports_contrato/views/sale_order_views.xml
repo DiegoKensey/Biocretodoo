@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        v19.0.1.1.0: Boton "Imprimir Contrato" en el statusbar de sale.order.
+
+        Posicion: inmediatamente DESPUES del boton "Print" nativo (name=
+        "sale.action_report_saleorder"), verificado contra
+        odoo/addons/sale/views/sale_order_views.xml:315-320 (string="Print",
+        type="action", invisible="state == 'sale'").
+
+        Visibilidad: solo cuando la orden ya esta en estado contract o
+        posterior (contract / programado / sale). En 'sale' tambien se ve
+        — la orden de venta puede regenerar su contrato. Para 'draft',
+        'sent' o 'cancel' queda oculto.
+
+        Cabe notar: el override de _render_qweb_pdf en
+        biocreto_sale_reports_contrato/models/ir_actions_report.py
+        bloquea la impresion en draft/sent/cancel con UserError. El
+        invisible aqui es una defensa adicional en UI (boton no visible
+        cuando no aplica), no la unica.
+
+        Ruteo a PlutoPrint: el boton dispara el action
+        `biocreto_sale_reports_contrato.action_report_contrato` cuyo
+        report_name esta opt-in en _biocreto_usa_plutoprint() del
+        modulo (biocreto_sale_reports_contrato/models/ir_actions_report.py:20).
+        El motor biocreto_pdf_engine matchea por report_name y dispara
+        PlutoPrint automaticamente.
+    -->
+    <record id="view_order_form_biocreto_contrato_button" model="ir.ui.view">
+        <field name="name">sale.order.form.biocreto.contrato.button</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='sale.action_report_saleorder']" position="after">
+                <button string="Imprimir Contrato"
+                        name="%(biocreto_sale_reports_contrato.action_report_contrato)d"
+                        type="action"
+                        invisible="state not in ('contract', 'programado', 'sale')"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

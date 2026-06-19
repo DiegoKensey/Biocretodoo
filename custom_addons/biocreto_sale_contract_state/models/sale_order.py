@@ -28,12 +28,39 @@ class SaleOrder(models.Model):
         },
     )
 
+    # ─────────────────────────────────────────────────────────────────
+    # v19.0.1.2.0: Fecha de firma del contrato.
+    #
+    # Se (re)escribe SIEMPRE que la orden entra a `contract` (rama
+    # orders_to_contract de action_confirm, mas abajo). Por que se
+    # reescribe en cada entrada y no solo la primera vez:
+    #   - Si se cancela una orden en contract/programado y luego se
+    #     re-confirma, el contrato es nuevo -> fecha nueva.
+    #   - copy=False evita arrastrar la fecha al duplicar la orden.
+    # Es Date (no Datetime) porque la clausula final del contrato dice
+    # "los ___ dias del mes de ___ del ___" — granularidad de dia.
+    # ─────────────────────────────────────────────────────────────────
+    biocreto_fecha_firma_contrato = fields.Date(
+        string="Fecha de firma del contrato",
+        copy=False,
+        readonly=True,
+        help="Fecha (DD/MM/YYYY) en la que esta orden paso por ultima vez al "
+             "estado Contrato. Se reescribe cada vez que se vuelve a entrar "
+             "a 'contract' (p.ej. tras una cancelacion + reconfirmacion).",
+    )
+
     def _biocreto_format_now(self):
         """Devuelve la fecha/hora actual en zona del usuario, formato DD/MM/YYYY HH:MM."""
         self.ensure_one()
         return fields.Datetime.context_timestamp(
             self, fields.Datetime.now()
         ).strftime('%d/%m/%Y %H:%M')
+
+    # v19.0.1.2.1: la validacion de adelanto se elimino del helper
+    # `_biocreto_validate_before_confirm`. Ahora es un AVISO no bloqueante
+    # en el chatter, posteado por `action_biocreto_pasar_programado`
+    # (override mas abajo) cuando el adelanto es 0/vacio. NO impide el paso
+    # a programado — solo deja constancia para auditoria.
 
     # ─────────────────────────────────────────────────────────────────
     # Helper: ¿faltan diseños de mezcla en líneas Concreto?
@@ -88,6 +115,17 @@ class SaleOrder(models.Model):
                 user=self.env.user.name,
                 date=order._biocreto_format_now(),
             ))
+            # v19.0.1.2.1: aviso no bloqueante si el adelanto quedo en cero.
+            # Decision: chatter (sin wizard) — mantiene la UX simple y deja
+            # constancia auditable. El usuario puede rellenar el adelanto en
+            # cualquier momento posterior antes de imprimir el contrato.
+            if not order.biocreto_monto_adelanto:
+                order.message_post(body=_(
+                    "⚠ Aviso: el monto de adelanto está en S/ 0.00 al pasar "
+                    "a Programado. Puede registrarlo en la pestaña Otra "
+                    "información (debajo de Términos de pago) antes de "
+                    "imprimir el contrato."
+                ))
         return True
 
     # ─────────────────────────────────────────────────────────────────
@@ -138,7 +176,14 @@ class SaleOrder(models.Model):
 
         if orders_to_contract:
             orders_to_contract._biocreto_validate_before_confirm()
-            orders_to_contract.write({'state': 'contract'})
+            # v19.0.1.2.0: setear fecha de firma EN EL MISMO write para no
+            # disparar dos writes consecutivos. Date.context_today usa el tz
+            # del usuario (consistente con `_biocreto_format_now`).
+            today_str = fields.Date.context_today(self)
+            orders_to_contract.write({
+                'state': 'contract',
+                'biocreto_fecha_firma_contrato': today_str,
+            })
             user_name = self.env.user.name
             for order in orders_to_contract:
                 order.message_post(body=_(
