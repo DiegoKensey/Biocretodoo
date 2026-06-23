@@ -216,30 +216,91 @@ class BiocretoCustomerPortal(CustomerPortal):
         if not vals:
             return {'error': _('Tipo de firma inválido.')}
 
+        # v19.0.1.4.0: SNAPSHOT del estado previo ANTES del write.
+        # Lee los Binary attachment desde DB (confiable porque aun no
+        # escribimos vals). bool(binary) en Odoo es True si el blob
+        # esta poblado, False si esta vacio.
+        cli_antes = bool(order_sudo.biocreto_firma_contrato)
+        jo_antes = bool(order_sudo.biocreto_firma_jefe_obra)
+        ya_completo_antes = cli_antes and jo_antes
+
         try:
             order_sudo.write(vals)
+            # flush necesario para que _render_qweb_pdf vea las firmas
+            # nuevas al renderizar el PDF que se adjuntara al chatter.
             request.env.cr.flush()
         except (TypeError, binascii.Error):
             return {'error': _('Datos de firma inválidos.')}
 
-        etiqueta = {
-            'cliente': _('el cliente'),
-            'jefe_obra': _('el jefe de obra'),
-            'ambos': _('el cliente y el jefe de obra'),
-        }.get(kind, '')
-        order_sudo.message_post(
-            body=_(
-                "Contrato %(num)s firmado por %(quien)s (%(nombre)s).",
-                num=order_sudo.name, quien=etiqueta, nombre=name or '',
-            ),
-            author_id=(
-                order_sudo.partner_id.id
-                if request.env.user._is_public()
-                else request.env.user.partner_id.id
-            ),
-            message_type='comment',
-            subtype_xmlid='mail.mt_comment',
+        # v19.0.1.4.0: FIX BUG A — completitud por vals, NO por read-back.
+        # En v19.0.1.3.0 reusabamos `bool(order_sudo.biocreto_firma_*)`
+        # post-write para inferir completitud. Los Binary con
+        # attachment=True viven en ir.attachment; el read-back inmediato
+        # dentro de la misma transaccion devuelve falsy aunque el blob
+        # se acabe de escribir -> el guard caia siempre al else y nunca
+        # disparaba la rama combinada con PDF. Solucion: derivar la
+        # completitud actual del estado previo (confiable) + presencia
+        # del campo en `vals` (el dict que acabamos de escribir).
+        cli_ahora = cli_antes or ('biocreto_firma_contrato' in vals)
+        jo_ahora = jo_antes or ('biocreto_firma_jefe_obra' in vals)
+        ahora_completo = cli_ahora and jo_ahora
+
+        author_id = (
+            order_sudo.partner_id.id
+            if request.env.user._is_public()
+            else request.env.user.partner_id.id
         )
+
+        if ahora_completo and not ya_completo_antes:
+            # Rama combinada: paso de incompleto a completo en este firmado.
+            # Adjunta PDF del contrato al chatter + un solo mensaje con el/los
+            # firmante(s). Patron exacto de /accept (sale/controllers/portal.py:
+            # 330-342): `_render_qweb_pdf(...)[0]` + `message_post(
+            # attachments=[(filename, pdf_bytes)])`. PlutoPrint matchea por
+            # report_name automaticamente via biocreto_pdf_engine.
+            cli = (order_sudo.biocreto_firma_contrato_por or '').strip()
+            jo = (order_sudo.biocreto_firma_jefe_obra_por or '').strip()
+            if cli and jo and cli.lower() == jo.lower():
+                firmantes = cli
+            elif cli and jo:
+                firmantes = _("%(cli)s y %(jo)s", cli=cli, jo=jo)
+            else:
+                firmantes = cli or jo or _("(sin nombre)")
+            pdf_content, _ext = request.env['ir.actions.report'].sudo()._render_qweb_pdf(
+                'biocreto_sale_reports_contrato.report_contrato_document',
+                [order_sudo.id],
+            )
+            filename = 'Contrato_%s.pdf' % (
+                (order_sudo.name or str(order_sudo.id)).replace('/', '_')
+            )
+            order_sudo.message_post(
+                body=_(
+                    "Contrato %(num)s firmado por %(firmantes)s.",
+                    num=order_sudo.name, firmantes=firmantes,
+                ),
+                attachments=[(filename, pdf_content)],
+                author_id=author_id,
+                message_type='comment',
+                subtype_xmlid='mail.mt_comment',
+            )
+        else:
+            # Rama simple: firma parcial (aun falta una) o re-firma estando
+            # ya completo. Mensaje corto sin PDF.
+            etiqueta = {
+                'cliente': _('el cliente'),
+                'jefe_obra': _('el jefe de obra'),
+                'ambos': _('el cliente y el jefe de obra'),
+            }.get(kind, '')
+            order_sudo.message_post(
+                body=_(
+                    "Contrato %(num)s firmado por %(quien)s (%(nombre)s).",
+                    num=order_sudo.name, quien=etiqueta, nombre=name or '',
+                ),
+                author_id=author_id,
+                message_type='comment',
+                subtype_xmlid='mail.mt_comment',
+            )
+
         return {
             'force_refresh': True,
             'redirect_url': order_sudo.get_portal_url(

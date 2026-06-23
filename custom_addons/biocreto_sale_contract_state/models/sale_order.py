@@ -221,6 +221,41 @@ class SaleOrder(models.Model):
         return result
 
     # ─────────────────────────────────────────────────────────────────
+    # v19.0.1.2.2: reset de firmas BIOCRETO del contrato al volver a
+    # cotizacion (cancel/sent -> draft, boton "Set to Quotation").
+    #
+    # El nativo sale.order.action_draft (odoo/addons/sale/models/
+    # sale_order.py:1044-1051) ya limpia las firmas de la COTIZACION
+    # online (signature, signed_by, signed_on). Espejamos ese
+    # comportamiento para las firmas del CONTRATO y del Jefe de Obra
+    # (campos definidos en biocreto_sale_extension v19.0.1.7.3) — al
+    # volver la orden a cotizacion, el contrato deja de tener firma
+    # valida; cualquier nueva pasada por contract debe re-capturarlas.
+    #
+    # No tocamos biocreto_fecha_firma_contrato: ya se reescribe cada
+    # vez que la orden entra a 'contract' (rama orders_to_contract de
+    # action_confirm, mas arriba), asi que no necesita reset aqui.
+    # ─────────────────────────────────────────────────────────────────
+    def action_draft(self):
+        result = super().action_draft()
+        # action_draft nativo filtra state in ('cancel', 'sent') antes
+        # de escribir state='draft'. Para mantener simetria, limpiamos
+        # solo el conjunto de ordenes que el nativo efectivamente paso
+        # a draft (si una orden no estaba en cancel/sent, action_draft
+        # no la toco -> no debemos limpiar sus firmas tampoco).
+        flipped = self.filtered(lambda o: o.state == 'draft')
+        if flipped:
+            flipped.write({
+                'biocreto_firma_contrato': False,
+                'biocreto_firma_contrato_por': False,
+                'biocreto_firma_contrato_fecha': False,
+                'biocreto_firma_jefe_obra': False,
+                'biocreto_firma_jefe_obra_por': False,
+                'biocreto_firma_jefe_obra_fecha': False,
+            })
+        return result
+
+    # ─────────────────────────────────────────────────────────────────
     # CRON: auto-confirmar Programado → OV cuando el vaceo está dentro
     # del buffer parametrizado por compañía.
     #
