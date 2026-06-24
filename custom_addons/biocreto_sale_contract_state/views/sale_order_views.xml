@@ -35,9 +35,11 @@
                 <attribute name="invisible">state != 'sent'</attribute>
             </xpath>
 
-            <!-- Botón NUEVO: Pasar a Programación (sólo visible en Contrato). -->
+            <!-- Botón NUEVO: Programar (sólo visible en Contrato).
+                 v19.0.1.2.3: label acortado de "Pasar a Programación"
+                 a "Programar" (mismo método, misma logica). -->
             <xpath expr="//header/button[@id='action_confirm']" position="after">
-                <button string="Pasar a Programación"
+                <button string="Programar"
                         name="action_biocreto_pasar_programado"
                         type="object"
                         class="btn-primary"

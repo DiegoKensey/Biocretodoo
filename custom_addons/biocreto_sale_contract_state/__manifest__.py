@@ -1,6 +1,6 @@
 {
     'name': 'BIOCRETO - Estados Contrato y Programado en Cotizaciones',
-    'version': '19.0.1.2.2',
+    'version': '19.0.1.2.3',
     'category': 'Sales',
     'summary': 'Estados Contrato y Programado + cron de auto-confirmación + candado de diseño.',
     'description': """

@@ -422,6 +422,27 @@ class SaleOrder(models.Model):
         return sequence
 
     # ─────────────────────────────────────────────────────────────────
+    # v19.0.1.7.5: bootstrap del print_report_name del action nativo
+    # sale.action_report_saleorder. Disparado desde el <function> en
+    # data/biocreto_saleorder_print_name.xml en cada -u/-i del modulo.
+    #
+    # El metodo vive aqui (no en un AbstractModel de ir.actions.report
+    # nuevo) para mantener el modulo sin nuevas inheritance, y porque
+    # `<function model="...">` acepta cualquier modelo con un metodo
+    # @api.model — sale.order ya esta extendido aqui.
+    #
+    # La logica real (escritura del JSONB de traducciones) vive en
+    # hooks.py, compartida con post_init_hook. Una sola fuente de
+    # verdad, dos puntos de entrada (-i y -u).
+    # ─────────────────────────────────────────────────────────────────
+    @api.model
+    def _biocreto_init_saleorder_print_name(self):
+        from odoo.addons.biocreto_sale_extension.hooks import (
+            _biocreto_set_saleorder_print_name,
+        )
+        _biocreto_set_saleorder_print_name(self.env)
+
+    # ─────────────────────────────────────────────────────────────────
     # Helpers para el reporte de Contrato (v19.0.1.7.0).
     # Viven en sale_extension (no en el modulo de reporte) porque dependen
     # de campos que viven aqui (biocreto_monto_adelanto, biocreto_direccion_completa)

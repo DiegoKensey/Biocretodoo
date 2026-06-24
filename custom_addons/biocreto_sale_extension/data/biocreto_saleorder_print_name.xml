@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        v19.0.1.7.5: Override del print_report_name de
+        sale.action_report_saleorder via <function>.
+
+        Llama a `_biocreto_init_saleorder_print_name` (en sale.order),
+        que a su vez delega a `_biocreto_set_saleorder_print_name`
+        (hooks.py) — misma logica que corre en post_init_hook al -i.
+
+        Por que <function> y no <record>:
+        - print_report_name es translate=True. <record> en XML de otro
+          modulo no actualiza el JSONB de traducciones — verificado por
+          shell: los dos buckets (en_US, es_PE) quedaban con el valor
+          nativo del core post -u.
+        - <function> data se ejecuta en cada -u/-i, asi que cubre el
+          caso de upgrade (post_init_hook solo cubre install).
+
+        Idempotente: escribir el mismo JSONB multiples veces es no-op.
+    -->
+    <function model="sale.order" name="_biocreto_init_saleorder_print_name"/>
+
+</odoo>

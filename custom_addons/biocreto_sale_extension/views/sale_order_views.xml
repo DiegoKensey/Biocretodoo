@@ -102,9 +102,19 @@
                  odoo/addons/sale/views/sale_order_views.xml:489-492 (es
                  el unico payment_term_id en el form; el de la linea 41
                  esta en la vista calendar y no se ve afectado). -->
+            <!-- v19.0.1.7.4: gating de visibilidad/edicion del adelanto:
+                 - invisible en 'draft' (Cotizacion sin enviar todavia no
+                   pide adelanto).
+                 - editable en 'sent' y 'contract' (negociacion / firma).
+                 - solo-lectura en 'programado', 'sale' y 'done'
+                   (congelado para auditoria).
+                 El valor se CONSERVA al volver a 'draft' (no se borra;
+                 solo se oculta). Si se vuelve a 'sent', reaparece con
+                 el monto previo. -->
             <xpath expr="//field[@name='payment_term_id']" position="after">
                 <field name="biocreto_monto_adelanto"
-                       readonly="state in ('sale', 'done')"/>
+                       invisible="state == 'draft'"
+                       readonly="state in ('programado', 'sale', 'done')"/>
             </xpath>
 
             <!-- v19.0.1.7.3: pestaña customer_signature en 2 apartados.

@@ -1,6 +1,6 @@
 {
     'name': 'BIOCRETO - Reporte Contrato de Suministro',
-    'version': '19.0.1.4.0',
+    'version': '19.0.1.5.0',
     'category': 'Sales/Reports',
     'summary': 'Reporte QWeb del Contrato de Suministro de Concreto BC-GC-FR-05 (PlutoPrint) suscrito al motor biocreto_pdf_engine.',
     'author': 'BIOCRETO',

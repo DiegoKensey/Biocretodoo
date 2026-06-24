@@ -231,6 +231,11 @@
                                    t-value="sale_order.get_portal_url(suffix='/sign_contract/' + biocreto_sign_kind)"/>
                                 <t t-set="default_name"
                                    t-value="(sale_order.partner_id.name or sale_order.partner_id.commercial_partner_id.name) if biocreto_sign_kind in ('cliente', 'ambos') else ''"/>
+                                <!-- v19.0.1.5.0: lapiz DarkBlue (igual que el widget backend).
+                                     portal.SignatureForm sobreescribe el default 'DarkBlue' del component
+                                     NameAndSignature con `this.props.fontColor || "black"` (signature_form.js:34).
+                                     Como QWeb no le pasaba font_color, caia a negro. Lo seteamos explicito. -->
+                                <t t-set="font_color" t-value="'DarkBlue'"/>
                             </t>
 
                             <a class="btn btn-link mt-2"
@@ -241,6 +246,29 @@
                     </div>
                 </div>
             </t>
+        </xpath>
+    </template>
+
+    <!--
+        v19.0.1.5.0: lapiz DarkBlue tambien para la firma de COTIZACION.
+
+        El t-call="portal.signature_form" de la cotizacion vive en el template
+        NATIVO `sale.sale_order_portal_sign_modal` (odoo/addons/sale/views/
+        sale_portal_templates.xml:409-438, el modal "Validate Order" que se
+        invoca para /accept). Solo tiene UN t-call interno (linea 429), asi
+        que el xpath `//t[@t-call='portal.signature_form']` es univoco. Con
+        position="inside" agregamos el t-set como hijo -> se evalua junto a
+        call_url/default_name y se propaga al component como prop fontColor.
+
+        Sin esto, la cotizacion seguiria firmandose en negro (el SignatureForm
+        nativo del portal pisa el default DarkBlue del NameAndSignature con
+        `|| "black"` cuando no se le pasa fontColor explicitamente).
+    -->
+    <template id="sale_order_portal_sign_modal_darkblue"
+              inherit_id="sale.sale_order_portal_sign_modal"
+              name="BIOCRETO Quote Signature DarkBlue">
+        <xpath expr="//t[@t-call='portal.signature_form']" position="inside">
+            <t t-set="font_color" t-value="'DarkBlue'"/>
         </xpath>
     </template>
 

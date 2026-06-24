@@ -1,6 +1,6 @@
 {
     'name': 'BIOCRETO - Información de Suministro en Cotizaciones',
-    'version': '19.0.1.7.3',
+    'version': '19.0.1.7.5',
     'category': 'Sales',
     'summary': 'Datos de obra, vaceo, volumen operativo, costo compensado, Boom, diseño y filtro de bomba.',
     'description': """
@@ -37,7 +37,9 @@ v1.5:
         'views/biocreto_catalog_views.xml',
         'views/res_company_views.xml',
         'views/sale_order_views.xml',
+        'data/biocreto_saleorder_print_name.xml',
     ],
+    'post_init_hook': 'post_init_hook',
     'assets': {
         'web.assets_backend': [
             'biocreto_sale_extension/static/src/components/geo_button/geo_button.js',

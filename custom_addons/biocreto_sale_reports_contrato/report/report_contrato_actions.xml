@@ -23,12 +23,28 @@
         El ruteo a PlutoPrint sigue funcionando: el motor matchea por
         `report_name` (en _biocreto_usa_plutoprint), independiente del binding.
     -->
+    <!--
+        v19.0.1.5.0: agregado `print_report_name` para que el PDF se
+        descargue como "Contrato - <name>" (ej. "Contrato - 2026-ECO-PS-
+        0012.pdf") en lugar del default "Contrato de Suministro.pdf"
+        (que era el `name` del action usado como fallback cuando
+        `print_report_name` esta vacio).
+
+        El `name` del record se conserva (es el label visible del
+        action en el backend; no es el filename del PDF).
+
+        PlutoPrint respeta este campo porque no override-a
+        `_get_report_filename` (el motor solo toca `_render_qweb_pdf_
+        prepare_streams`, que genera los bytes — el filename lo arma
+        el nativo `ir.actions.report`).
+    -->
     <record id="action_report_contrato" model="ir.actions.report">
         <field name="name">Contrato de Suministro</field>
         <field name="model">sale.order</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">biocreto_sale_reports_contrato.report_contrato_document</field>
         <field name="report_file">biocreto_sale_reports_contrato.report_contrato_document</field>
+        <field name="print_report_name">'Contrato - %s' % (object.name)</field>
         <field name="paperformat_id" ref="base.paperformat_euro"/>
     </record>
 </odoo>
