@@ -12,6 +12,21 @@ class SurveyUserInput(models.Model):
         index='btree_not_null',
         copy=False,
     )
+
+    # v19.0.3.10.0 — Related propio del tipo de encuesta. En la vista form,
+    # `invisible="survey_id.biocreto_tipo_encuesta != ..."` NO se evalua
+    # correctamente en el cliente v19 porque los campos del related solo
+    # se cargan si estan declarados. Este campo related propio se declara
+    # como <field name="biocreto_tipo_encuesta" invisible="1"/> en la vista
+    # y permite usar `biocreto_tipo_encuesta != 'satisfaccion'` directo.
+    # store=False -> no duplica datos, lee del survey en cada acceso.
+    biocreto_tipo_encuesta = fields.Selection(
+        related='survey_id.biocreto_tipo_encuesta',
+        string='Tipo de encuesta BIOCRETO',
+        store=False,
+        readonly=True,
+    )
+
     biocreto_firma_encuesta = fields.Binary(
         string='Firma del cliente',
         attachment=True,

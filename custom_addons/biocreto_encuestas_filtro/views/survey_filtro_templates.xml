@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Inherit del template `survey.survey_results_filters`
+        (survey/views/survey_templates_statistics.xml:179).
+
+        Inyectamos un nuevo <li> AL FINAL del <ul class="o_survey_results_topbar_dropdown_filters">
+        (al lado derecho del dropdown nativo "Todas/Terminadas" y, si corresponde, "Passed/Failed").
+
+        position="inside" con un xpath posicional al final del ul mantiene la
+        coherencia con el flex layout nativo (no rompe `justify-content-between`).
+
+        Cero JS de prellenado: el template usa request.params.get(...) directamente
+        para hidratar los <input type="date"> con el rango activo tras la recarga.
+        `request` es global en QWeb Odoo.
+    -->
+    <template id="biocreto_filtro_dates_inherit"
+              inherit_id="survey.survey_results_filters"
+              name="BIOCRETO: filtro de fecha en barra de resultados">
+
+        <xpath expr="//ul[hasclass('o_survey_results_topbar_dropdown_filters')]" position="inside">
+            <li class="nav-item dropdown me-2 my-1 o_biocreto_date_filter">
+                <a href="#" role="button" data-bs-toggle="dropdown"
+                   class="btn btn-outline-primary dropdown-toggle">
+                    <i class="fa fa-calendar me-1"/>
+                    <span>Filtro por fecha</span>
+                </a>
+                <div class="dropdown-menu p-3" style="min-width: 280px;">
+
+                    <!-- Atajos predefinidos -->
+                    <h6 class="dropdown-header px-0">Atajos</h6>
+                    <a href="#" class="dropdown-item o_bc_filter_date_today">Hoy</a>
+                    <a href="#" class="dropdown-item o_bc_filter_date_week">Esta semana</a>
+                    <a href="#" class="dropdown-item o_bc_filter_date_month">Este mes</a>
+                    <a href="#" class="dropdown-item o_bc_filter_date_year">Este ano</a>
+
+                    <div class="dropdown-divider"/>
+
+                    <!-- Rango manual -->
+                    <h6 class="dropdown-header px-0">Rango personalizado</h6>
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Desde</label>
+                        <input type="date" class="form-control form-control-sm o_bc_date_from"
+                               t-att-value="request.params.get('date_from') or ''"/>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Hasta</label>
+                        <input type="date" class="form-control form-control-sm o_bc_date_to"
+                               t-att-value="request.params.get('date_to') or ''"/>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm w-100 o_bc_filter_date_apply">
+                        Aplicar
+                    </button>
+                </div>
+            </li>
+        </xpath>
+
+    </template>
+
+</odoo>

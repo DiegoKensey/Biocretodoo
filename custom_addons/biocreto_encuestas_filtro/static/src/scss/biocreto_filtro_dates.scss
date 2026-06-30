@@ -1,0 +1,65 @@
+// Colores BIOCRETO solo para el dropdown "Filtro por fecha" inyectado.
+// Scope: .o_biocreto_date_filter (clase propia, no nativa) -> CERO
+// contaminacion sobre los dropdowns nativos "Todas/Terminadas" y
+// "Passed/Failed" que comparten el mismo <ul> contenedor.
+
+$bc-primary: #1ea8e0;     // celeste BIOCRETO
+$bc-secondary: #f9bc09;   // amarillo BIOCRETO (acento)
+
+.o_survey_results_topbar .o_biocreto_date_filter {
+
+    // ---- Boton trigger del dropdown (.btn-outline-primary nativo)
+    > .btn-outline-primary {
+        color: $bc-primary;
+        border-color: $bc-primary;
+        &:hover, &:focus, &:active, &.active, &.show {
+            background-color: $bc-primary;
+            border-color: $bc-primary;
+            color: #fff;
+        }
+    }
+
+    .dropdown-menu {
+
+        // ---- Encabezados de seccion ("Atajos", "Rango personalizado")
+        .dropdown-header {
+            color: $bc-primary;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+        }
+
+        // ---- Atajos (Hoy/Esta semana/Este mes/Este ano)
+        .dropdown-item {
+            &:hover, &:focus {
+                background-color: rgba($bc-primary, 0.1);
+                color: darken($bc-primary, 15%);
+            }
+        }
+
+        // ---- Inputs de fecha (foco coherente con la paleta)
+        input[type="date"] {
+            &:focus {
+                border-color: $bc-primary;
+                box-shadow: 0 0 0 0.2rem rgba($bc-primary, 0.25);
+            }
+        }
+
+        // ---- Boton "Aplicar" (btn-primary del dropdown)
+        .o_bc_filter_date_apply.btn-primary {
+            background-color: $bc-primary;
+            border-color: $bc-primary;
+            color: #fff;
+            &:hover, &:focus, &:active {
+                background-color: darken($bc-primary, 10%);
+                border-color: darken($bc-primary, 10%);
+                color: #fff;
+            }
+        }
+
+        // ---- Divider con tono amarillo BIOCRETO suave (acento sutil)
+        .dropdown-divider {
+            border-top-color: rgba($bc-secondary, 0.5);
+        }
+    }
+}
