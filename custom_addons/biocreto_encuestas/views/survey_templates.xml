@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Inyectamos 2 data-attrs en el <form class="o_survey-fill-form">
+        nativo (survey.survey_fill_form, linea 117-132 de
+        odoo/addons/survey/views/survey_templates.xml):
+          - data-biocreto-tipo = 'satisfaccion' | 'reclamo' | ''
+          - data-biocreto-partner-name = nombre del partner para
+            preflenar el nombre en el modal de firma.
+
+        El JS los lee en `this.formEl.dataset.biocretoTipo` (camelCase) y
+        usa el flag para decidir si abre el SignatureDialog en submitForm
+        cuando options.isFinish === true.
+
+        Variables disponibles en este template (verificado en recon /
+        controllers/main.py:_prepare_survey_data): `survey`, `answer`.
+    -->
+    <template id="biocreto_survey_fill_form"
+              inherit_id="survey.survey_fill_form"
+              name="BIOCRETO: data-attrs en el fill form">
+        <xpath expr="//form[hasclass('o_survey-fill-form')]" position="attributes">
+            <attribute name="t-att-data-biocreto-tipo">survey.biocreto_tipo_encuesta or ''</attribute>
+            <attribute name="t-att-data-biocreto-partner-name">answer.partner_id.name or ''</attribute>
+        </xpath>
+    </template>
+
+</odoo>

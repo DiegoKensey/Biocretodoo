@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Tarjetas en el home del portal (patron sign.portal_my_home_sign,
+        recon Hueco G).
+    -->
+    <template id="portal_my_home_biocreto_encuestas"
+              name="Portal: BIOCRETO Encuestas cards"
+              inherit_id="portal.portal_my_home"
+              customize_show="True"
+              priority="65">
+
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="before">
+            <t t-set="portal_alert_category_enable" t-value="True"/>
+            <t t-set="portal_client_category_enable" t-value="True"/>
+        </xpath>
+
+        <div id="portal_alert_category" position="inside">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="bg_color" t-value="'alert alert-primary align-items-center'"/>
+                <t t-set="title">Encuestas a responder</t>
+                <t t-set="url" t-value="'/my/surveys'"/>
+                <t t-set="placeholder_count" t-value="'biocreto_encuestas_pendientes_count'"/>
+                <t t-set="show_count" t-value="True"/>
+            </t>
+        </div>
+
+        <div id="portal_client_category" position="inside">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="icon" t-value="'/biocreto_encuestas/static/src/img/encuesta_portal.svg'"/>
+                <t t-set="title">Sus encuestas</t>
+                <t t-set="text">Siga, vea y responda sus encuestas</t>
+                <t t-set="url" t-value="'/my/surveys'"/>
+                <t t-set="placeholder_count" t-value="'biocreto_encuestas_count'"/>
+            </t>
+        </div>
+    </template>
+
+    <!--
+        Pagina /my/surveys: lista las encuestas del cliente (ambos tipos)
+        con boton "Entrar" (state != done) o "Ver" (state == done). Las
+        rutas usan el access_token del survey en el path y el access_token
+        del user_input como query param (controllers/main.py recon Paso E
+        y F).
+    -->
+    <template id="portal_my_surveys" name="My Encuestas">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">Sus encuestas</t>
+            </t>
+            <t t-if="not user_inputs">
+                <div class="alert alert-warning" role="alert">
+                    No tiene encuestas asignadas.
+                </div>
+            </t>
+            <t t-if="user_inputs" t-call="portal.portal_table">
+                <thead>
+                    <tr>
+                        <th>Encuesta</th>
+                        <th>Tipo</th>
+                        <th>Orden de venta</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="user_inputs" t-as="ui">
+                        <td>
+                            <span t-out="ui.survey_id.title"/>
+                        </td>
+                        <td>
+                            <t t-if="ui.survey_id.biocreto_tipo_encuesta == 'satisfaccion'">Satisfaccion</t>
+                            <t t-elif="ui.survey_id.biocreto_tipo_encuesta == 'reclamo'">Reclamo</t>
+                            <t t-else="">-</t>
+                        </td>
+                        <td>
+                            <span t-out="ui.sale_order_id.name"/>
+                        </td>
+                        <td>
+                            <span t-if="ui.state == 'new'" class="badge text-bg-info">Nuevo</span>
+                            <span t-if="ui.state == 'in_progress'" class="badge text-bg-warning">En progreso</span>
+                            <span t-if="ui.state == 'done'" class="badge text-bg-success">Completado</span>
+                        </td>
+                        <td class="text-end">
+                            <a t-if="ui.state != 'done'"
+                               t-attf-href="/survey/start/{{ ui.survey_id.access_token }}?answer_token={{ ui.access_token }}"
+                               class="btn btn-primary btn-sm">
+                                <i class="fa fa-pencil me-1"/>Entrar
+                            </a>
+                            <a t-if="ui.state == 'done'"
+                               t-attf-href="/survey/print/{{ ui.survey_id.access_token }}?answer_token={{ ui.access_token }}&amp;review=True"
+                               class="btn btn-secondary btn-sm">
+                                <i class="fa fa-eye me-1"/>Ver
+                            </a>
+                        </td>
+                    </tr>
+                </tbody>
+            </t>
+        </t>
+    </template>
+
+</odoo>

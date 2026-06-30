@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="biocreto_survey_share_view_form" model="ir.ui.view">
+        <field name="name">biocreto.survey.share.form</field>
+        <field name="model">biocreto.survey.share</field>
+        <field name="arch" type="xml">
+            <form string="Compartir encuesta">
+                <sheet>
+                    <group>
+                        <field name="user_input_id" invisible="1"/>
+                        <field name="survey_title"/>
+                        <field name="partner_name"/>
+                        <field name="state" widget="badge"
+                               decoration-success="state == 'done'"
+                               decoration-info="state == 'new'"
+                               decoration-warning="state == 'in_progress'"/>
+                    </group>
+                    <group string="Enlaces">
+                        <!--
+                            widget="CopyClipboardURL": muestra el link clickable +
+                            boton copiar al portapapeles. Registrado en
+                            web/static/src/views/fields/copy_clipboard/copy_clipboard_field.js
+                            (registry.category("fields").add("CopyClipboardURL", ...)).
+                        -->
+                        <field name="share_url" widget="CopyClipboardURL" readonly="1"/>
+                        <field name="review_url" widget="CopyClipboardURL" readonly="1"
+                               invisible="state != 'done'"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button special="cancel" string="Cerrar" class="btn-primary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

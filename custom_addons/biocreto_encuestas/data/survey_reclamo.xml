@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!--
+            Encuesta de Sugerencias, Quejas y Reclamos (BC-GC-FR-03 V01)
+
+            noupdate="1": no se machaca en cada -u.
+        -->
+
+        <record model="survey.survey" id="survey_reclamo">
+            <field name="title">Encuesta de Sugerencias, Quejas y Reclamos</field>
+            <field name="biocreto_tipo_encuesta">reclamo</field>
+            <field name="access_mode">token</field>
+            <field name="users_login_required" eval="True"/>
+            <field name="scoring_type">no_scoring</field>
+            <field name="questions_layout">page_per_section</field>
+            <field name="users_can_go_back" eval="True"/>
+            <field name="lang_ids" eval="False"/>
+            <field name="description" type="html">
+                <p>Registre aqui su queja, reclamo o sugerencia. Le responderemos en el menor tiempo posible.</p>
+            </field>
+        </record>
+
+        <record model="survey.question" id="survey_reclamo_p1">
+            <field name="survey_id" ref="survey_reclamo"/>
+            <field name="sequence">10</field>
+            <field name="title">Queja o reclamo</field>
+            <field name="is_page" eval="True"/>
+            <field name="question_type" eval="False"/>
+        </record>
+
+        <!-- Pregunta 1: motivo (multiple_choice con "Otros" comentable)
+             Patron de "Otros":
+              - comments_allowed=True activa el textarea bajo las opciones
+              - comment_count_as_answer=True hace que el comentario cuente
+                como una opcion mas (se persiste como linea answer_type=
+                'char_box', ver _save_line_choice en survey_user_input.py:316
+                y _get_line_comment_values en linea 375)
+              - comments_message es el label del textarea -->
+        <record model="survey.question" id="survey_reclamo_p1_q1">
+            <field name="survey_id" ref="survey_reclamo"/>
+            <field name="sequence">20</field>
+            <field name="title">Motivo de la queja o reclamo</field>
+            <field name="question_type">multiple_choice</field>
+            <field name="constr_mandatory" eval="True"/>
+            <field name="comments_allowed" eval="True"/>
+            <field name="comment_count_as_answer" eval="True"/>
+            <field name="comments_message">Otros (especifique):</field>
+        </record>
+        <record model="survey.question.answer" id="survey_reclamo_p1_q1_sug1">
+            <field name="question_id" ref="survey_reclamo_p1_q1"/>
+            <field name="sequence">1</field>
+            <field name="value">Entrega incompleta</field>
+        </record>
+        <record model="survey.question.answer" id="survey_reclamo_p1_q1_sug2">
+            <field name="question_id" ref="survey_reclamo_p1_q1"/>
+            <field name="sequence">2</field>
+            <field name="value">Condiciones del producto entregado/recibido</field>
+        </record>
+        <record model="survey.question.answer" id="survey_reclamo_p1_q1_sug3">
+            <field name="question_id" ref="survey_reclamo_p1_q1"/>
+            <field name="sequence">3</field>
+            <field name="value">Demora en la entrega</field>
+        </record>
+        <record model="survey.question.answer" id="survey_reclamo_p1_q1_sug4">
+            <field name="question_id" ref="survey_reclamo_p1_q1"/>
+            <field name="sequence">4</field>
+            <field name="value">Falta de entrega</field>
+        </record>
+        <record model="survey.question.answer" id="survey_reclamo_p1_q1_sug5">
+            <field name="question_id" ref="survey_reclamo_p1_q1"/>
+            <field name="sequence">5</field>
+            <field name="value">Atencion del personal</field>
+        </record>
+        <record model="survey.question.answer" id="survey_reclamo_p1_q1_sug6">
+            <field name="question_id" ref="survey_reclamo_p1_q1"/>
+            <field name="sequence">6</field>
+            <field name="value">Informacion proporcionada no acorde a la realidad</field>
+        </record>
+
+        <!-- Pregunta 2: descripcion (text_box) -->
+        <record model="survey.question" id="survey_reclamo_p1_q2">
+            <field name="survey_id" ref="survey_reclamo"/>
+            <field name="sequence">30</field>
+            <field name="title">Descripcion de la queja o reclamo</field>
+            <field name="question_type">text_box</field>
+            <field name="constr_mandatory" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

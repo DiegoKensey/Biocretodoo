@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!--
+            Encuesta de Satisfaccion del Servicio (BC-GC-FR-16 V01)
+
+            noupdate="1": las encuestas y sus preguntas NO se machacan en
+            cada -u del modulo, asi el cliente puede editar texto en
+            produccion sin perder cambios. Para resembrar deliberadamente
+            despues de borrar, usar -i o limpiar las filas a mano.
+        -->
+
+        <record model="survey.survey" id="survey_satisfaccion">
+            <field name="title">Encuesta de Satisfaccion del Servicio</field>
+            <field name="biocreto_tipo_encuesta">satisfaccion</field>
+            <field name="access_mode">token</field>
+            <field name="users_login_required" eval="True"/>
+            <field name="scoring_type">no_scoring</field>
+            <field name="questions_layout">page_per_section</field>
+            <field name="users_can_go_back" eval="True"/>
+            <field name="lang_ids" eval="False"/>
+            <field name="description" type="html">
+                <p>Su opinion es muy importante para nosotros. Por favor, dedique unos minutos a calificar su experiencia con el servicio recibido.</p>
+            </field>
+        </record>
+
+        <!-- Seccion unica (questions_layout='page_per_section' requiere
+             al menos una page; ver _check_validity, controllers/main.py:82) -->
+        <record model="survey.question" id="survey_satisfaccion_p1">
+            <field name="survey_id" ref="survey_satisfaccion"/>
+            <field name="sequence">10</field>
+            <field name="title">Calificacion del servicio</field>
+            <field name="is_page" eval="True"/>
+            <field name="question_type" eval="False"/>
+            <field name="description" type="html">
+                <p>Marque la opcion que mejor refleje su percepcion en cada item.</p>
+            </field>
+        </record>
+
+        <!-- Pregunta 1: atencion y asesoria -->
+        <record model="survey.question" id="survey_satisfaccion_p1_q1">
+            <field name="survey_id" ref="survey_satisfaccion"/>
+            <field name="sequence">20</field>
+            <field name="title">Que tan satisfecho esta con la atencion y asesoria brindada por nuestros asesores comerciales o jefe de proyecto?</field>
+            <field name="question_type">simple_choice</field>
+            <field name="constr_mandatory" eval="True"/>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q1_sug1">
+            <field name="question_id" ref="survey_satisfaccion_p1_q1"/>
+            <field name="sequence">1</field>
+            <field name="value">5 - Muy satisfecho</field>
+            <field name="answer_score">5</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q1_sug2">
+            <field name="question_id" ref="survey_satisfaccion_p1_q1"/>
+            <field name="sequence">2</field>
+            <field name="value">4 - Satisfecho</field>
+            <field name="answer_score">4</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q1_sug3">
+            <field name="question_id" ref="survey_satisfaccion_p1_q1"/>
+            <field name="sequence">3</field>
+            <field name="value">3 - Neutral</field>
+            <field name="answer_score">3</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q1_sug4">
+            <field name="question_id" ref="survey_satisfaccion_p1_q1"/>
+            <field name="sequence">4</field>
+            <field name="value">2 - Insatisfecho</field>
+            <field name="answer_score">2</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q1_sug5">
+            <field name="question_id" ref="survey_satisfaccion_p1_q1"/>
+            <field name="sequence">5</field>
+            <field name="value">1 - Muy insatisfecho</field>
+            <field name="answer_score">1</field>
+        </record>
+
+        <!-- Pregunta 2: competencias tecnicas del personal operativo -->
+        <record model="survey.question" id="survey_satisfaccion_p1_q2">
+            <field name="survey_id" ref="survey_satisfaccion"/>
+            <field name="sequence">30</field>
+            <field name="title">Como califica las competencias tecnicas del personal operativo en el proyecto (Coordinador de obra, curador, etc.)?</field>
+            <field name="question_type">simple_choice</field>
+            <field name="constr_mandatory" eval="True"/>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q2_sug1">
+            <field name="question_id" ref="survey_satisfaccion_p1_q2"/>
+            <field name="sequence">1</field>
+            <field name="value">5 - Muy satisfecho</field>
+            <field name="answer_score">5</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q2_sug2">
+            <field name="question_id" ref="survey_satisfaccion_p1_q2"/>
+            <field name="sequence">2</field>
+            <field name="value">4 - Satisfecho</field>
+            <field name="answer_score">4</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q2_sug3">
+            <field name="question_id" ref="survey_satisfaccion_p1_q2"/>
+            <field name="sequence">3</field>
+            <field name="value">3 - Neutral</field>
+            <field name="answer_score">3</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q2_sug4">
+            <field name="question_id" ref="survey_satisfaccion_p1_q2"/>
+            <field name="sequence">4</field>
+            <field name="value">2 - Insatisfecho</field>
+            <field name="answer_score">2</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q2_sug5">
+            <field name="question_id" ref="survey_satisfaccion_p1_q2"/>
+            <field name="sequence">5</field>
+            <field name="value">1 - Muy insatisfecho</field>
+            <field name="answer_score">1</field>
+        </record>
+
+        <!-- Pregunta 3: precio vs calidad -->
+        <record model="survey.question" id="survey_satisfaccion_p1_q3">
+            <field name="survey_id" ref="survey_satisfaccion"/>
+            <field name="sequence">40</field>
+            <field name="title">Como evalua el precio del concreto premezclado en relacion a la calidad?</field>
+            <field name="question_type">simple_choice</field>
+            <field name="constr_mandatory" eval="True"/>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q3_sug1">
+            <field name="question_id" ref="survey_satisfaccion_p1_q3"/>
+            <field name="sequence">1</field>
+            <field name="value">5 - Muy satisfecho</field>
+            <field name="answer_score">5</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q3_sug2">
+            <field name="question_id" ref="survey_satisfaccion_p1_q3"/>
+            <field name="sequence">2</field>
+            <field name="value">4 - Satisfecho</field>
+            <field name="answer_score">4</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q3_sug3">
+            <field name="question_id" ref="survey_satisfaccion_p1_q3"/>
+            <field name="sequence">3</field>
+            <field name="value">3 - Neutral</field>
+            <field name="answer_score">3</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q3_sug4">
+            <field name="question_id" ref="survey_satisfaccion_p1_q3"/>
+            <field name="sequence">4</field>
+            <field name="value">2 - Insatisfecho</field>
+            <field name="answer_score">2</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q3_sug5">
+            <field name="question_id" ref="survey_satisfaccion_p1_q3"/>
+            <field name="sequence">5</field>
+            <field name="value">1 - Muy insatisfecho</field>
+            <field name="answer_score">1</field>
+        </record>
+
+        <!-- Pregunta 4: puntualidad de entrega -->
+        <record model="survey.question" id="survey_satisfaccion_p1_q4">
+            <field name="survey_id" ref="survey_satisfaccion"/>
+            <field name="sequence">50</field>
+            <field name="title">Que tan satisfecho esta con la puntualidad en la entrega del concreto premezclado en obra?</field>
+            <field name="question_type">simple_choice</field>
+            <field name="constr_mandatory" eval="True"/>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q4_sug1">
+            <field name="question_id" ref="survey_satisfaccion_p1_q4"/>
+            <field name="sequence">1</field>
+            <field name="value">5 - Muy satisfecho</field>
+            <field name="answer_score">5</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q4_sug2">
+            <field name="question_id" ref="survey_satisfaccion_p1_q4"/>
+            <field name="sequence">2</field>
+            <field name="value">4 - Satisfecho</field>
+            <field name="answer_score">4</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q4_sug3">
+            <field name="question_id" ref="survey_satisfaccion_p1_q4"/>
+            <field name="sequence">3</field>
+            <field name="value">3 - Neutral</field>
+            <field name="answer_score">3</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q4_sug4">
+            <field name="question_id" ref="survey_satisfaccion_p1_q4"/>
+            <field name="sequence">4</field>
+            <field name="value">2 - Insatisfecho</field>
+            <field name="answer_score">2</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q4_sug5">
+            <field name="question_id" ref="survey_satisfaccion_p1_q4"/>
+            <field name="sequence">5</field>
+            <field name="value">1 - Muy insatisfecho</field>
+            <field name="answer_score">1</field>
+        </record>
+
+        <!-- Pregunta 5: servicio general -->
+        <record model="survey.question" id="survey_satisfaccion_p1_q5">
+            <field name="survey_id" ref="survey_satisfaccion"/>
+            <field name="sequence">60</field>
+            <field name="title">En general, que tan satisfecho se encuentra con el servicio recibido?</field>
+            <field name="question_type">simple_choice</field>
+            <field name="constr_mandatory" eval="True"/>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q5_sug1">
+            <field name="question_id" ref="survey_satisfaccion_p1_q5"/>
+            <field name="sequence">1</field>
+            <field name="value">5 - Muy satisfecho</field>
+            <field name="answer_score">5</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q5_sug2">
+            <field name="question_id" ref="survey_satisfaccion_p1_q5"/>
+            <field name="sequence">2</field>
+            <field name="value">4 - Satisfecho</field>
+            <field name="answer_score">4</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q5_sug3">
+            <field name="question_id" ref="survey_satisfaccion_p1_q5"/>
+            <field name="sequence">3</field>
+            <field name="value">3 - Neutral</field>
+            <field name="answer_score">3</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q5_sug4">
+            <field name="question_id" ref="survey_satisfaccion_p1_q5"/>
+            <field name="sequence">4</field>
+            <field name="value">2 - Insatisfecho</field>
+            <field name="answer_score">2</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q5_sug5">
+            <field name="question_id" ref="survey_satisfaccion_p1_q5"/>
+            <field name="sequence">5</field>
+            <field name="value">1 - Muy insatisfecho</field>
+            <field name="answer_score">1</field>
+        </record>
+
+        <!-- Pregunta 6: recomendacion (text_box) -->
+        <record model="survey.question" id="survey_satisfaccion_p1_q6">
+            <field name="survey_id" ref="survey_satisfaccion"/>
+            <field name="sequence">70</field>
+            <field name="title">Si tuviera la oportunidad, recomendaria nuestra empresa a otros? Por que?</field>
+            <field name="question_type">text_box</field>
+            <field name="constr_mandatory" eval="True"/>
+        </record>
+
+        <!-- Pregunta 7: observaciones/sugerencias (text_box) -->
+        <record model="survey.question" id="survey_satisfaccion_p1_q7">
+            <field name="survey_id" ref="survey_satisfaccion"/>
+            <field name="sequence">80</field>
+            <field name="title">Observaciones y/o sugerencias del cliente</field>
+            <field name="question_type">text_box</field>
+            <field name="constr_mandatory" eval="True"/>
+        </record>
+
+        <!-- Pregunta 8: conclusion (simple_choice misma escala) -->
+        <record model="survey.question" id="survey_satisfaccion_p1_q8">
+            <field name="survey_id" ref="survey_satisfaccion"/>
+            <field name="sequence">90</field>
+            <field name="title">En conclusion, el nivel de satisfaccion en general con el servicio brindado fue:</field>
+            <field name="question_type">simple_choice</field>
+            <field name="constr_mandatory" eval="True"/>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q8_sug1">
+            <field name="question_id" ref="survey_satisfaccion_p1_q8"/>
+            <field name="sequence">1</field>
+            <field name="value">5 - Muy satisfecho</field>
+            <field name="answer_score">5</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q8_sug2">
+            <field name="question_id" ref="survey_satisfaccion_p1_q8"/>
+            <field name="sequence">2</field>
+            <field name="value">4 - Satisfecho</field>
+            <field name="answer_score">4</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q8_sug3">
+            <field name="question_id" ref="survey_satisfaccion_p1_q8"/>
+            <field name="sequence">3</field>
+            <field name="value">3 - Neutral</field>
+            <field name="answer_score">3</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q8_sug4">
+            <field name="question_id" ref="survey_satisfaccion_p1_q8"/>
+            <field name="sequence">4</field>
+            <field name="value">2 - Insatisfecho</field>
+            <field name="answer_score">2</field>
+        </record>
+        <record model="survey.question.answer" id="survey_satisfaccion_p1_q8_sug5">
+            <field name="question_id" ref="survey_satisfaccion_p1_q8"/>
+            <field name="sequence">5</field>
+            <field name="value">1 - Muy insatisfecho</field>
+            <field name="answer_score">1</field>
+        </record>
+
+    </data>
+</odoo>

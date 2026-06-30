@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="biocreto_survey_user_input_view_form" model="ir.ui.view">
+        <field name="name">survey.user_input.view.form.biocreto</field>
+        <field name="model">survey.user_input</field>
+        <field name="inherit_id" ref="survey.survey_user_input_view_form"/>
+        <field name="arch" type="xml">
+
+            <!-- sale_order_id en el grupo derecho, junto a partner_id/email -->
+            <xpath expr="//field[@name='partner_id']" position="before">
+                <field name="sale_order_id" readonly="1"/>
+            </xpath>
+
+            <!--
+                v19.0.3.5.0 — botones del <header>:
+                  - "Reenviar invitacion" nativo: oculto para encuestas
+                    BIOCRETO (en las que no_scoring, access_mode='token',
+                    el wizard nativo no muestra el link util). Mantiene la
+                    condicion nativa para encuestas no BIOCRETO.
+                  - "Compartir encuesta": nuevo, abre biocreto.survey.share
+                    con las URLs especificas del participante. Visible solo
+                    para encuestas BIOCRETO.
+
+                survey_id.biocreto_tipo_encuesta es accesible en la
+                expresion `invisible` porque survey_id ya esta en la vista
+                nativa (linea 65 de survey_user_views.xml).
+            -->
+            <xpath expr="//button[@name='action_resend']" position="attributes">
+                <attribute name="invisible">state == 'done' or not partner_id and not email or survey_id.biocreto_tipo_encuesta</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_resend']" position="after">
+                <button name="action_biocreto_compartir"
+                        string="Compartir encuesta"
+                        type="object"
+                        class="oe_highlight"
+                        invisible="not survey_id.biocreto_tipo_encuesta"/>
+            </xpath>
+
+            <!--
+                v19.0.3.8.0 — Tabla embebida `user_input_line_ids` dentro de
+                la pestana "Respuestas" (page_answers). Lista INLINE dentro
+                del <field>, asi que los xpath van sobre los <field> internos
+                del <list>.
+
+                Objetivo: en encuestas BIOCRETO (todas no_scoring) mostrar
+                solo Creado el / Pregunta / Tipo de respuesta / Respuesta;
+                ocultar Puntaje, Omitidas, Correctas.
+
+                Mecanismo:
+                  - `column_invisible="parent.scoring_type == 'no_scoring'"`
+                    en las 3 columnas de scoring/skip: desaparecen en
+                    no_scoring (BIOCRETO incluido) y se mantienen en
+                    quizzes -> no rompemos UX nativa.
+                  - `optional="show"` en create_date y answer_type: estaban
+                    `optional="hidden"`; los promovemos a visibles por
+                    defecto (el usuario puede togglearlas con el chevron).
+
+                Notas:
+                  - `skipped` en la vista nativa tiene `hide="1"` que NO es
+                    estandar v19 y por eso la columna "Omitidas" se ve
+                    igual; hay que ocultarla explicitamente.
+                  - `parent.scoring_type` es accesible: el campo ya esta en
+                    la vista form (linea 78 de survey_user_views.xml,
+                    `invisible="1"`).
+            -->
+            <xpath expr="//field[@name='user_input_line_ids']/list/field[@name='create_date']" position="attributes">
+                <attribute name="optional">show</attribute>
+            </xpath>
+            <xpath expr="//field[@name='user_input_line_ids']/list/field[@name='answer_type']" position="attributes">
+                <attribute name="optional">show</attribute>
+            </xpath>
+            <xpath expr="//field[@name='user_input_line_ids']/list/field[@name='skipped']" position="attributes">
+                <attribute name="column_invisible">parent.scoring_type == 'no_scoring'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='user_input_line_ids']/list/field[@name='answer_is_correct']" position="attributes">
+                <attribute name="column_invisible">parent.scoring_type == 'no_scoring'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='user_input_line_ids']/list/field[@name='answer_score']" position="attributes">
+                <attribute name="column_invisible">parent.scoring_type == 'no_scoring'</attribute>
+            </xpath>
+
+            <!--
+                Pagina BIOCRETO en el notebook con DOS subsecciones de firma
+                claramente separadas (v19.0.3.0.0). Decision: ambas siempre
+                visibles (incluso para el tipo que no aplica), por claridad
+                y debugging. El admin del backend ve facilmente que set se
+                lleno y que no.
+            -->
+            <xpath expr="//page[@name='page_answers']" position="after">
+                <page string="Firma BIOCRETO" name="biocreto_firma">
+                    <group string="FIRMA SATISFACCION" name="biocreto_firma_sat">
+                        <field name="biocreto_firma_encuesta"
+                               widget="image" readonly="1"
+                               options="{'size': [400, 200]}"/>
+                        <field name="biocreto_firma_encuesta_por" readonly="1"/>
+                        <field name="biocreto_firma_encuesta_fecha" readonly="1"/>
+                    </group>
+                    <group string="FIRMA RECLAMO" name="biocreto_firma_rec">
+                        <field name="biocreto_firma_reclamo"
+                               widget="image" readonly="1"
+                               options="{'size': [400, 200]}"/>
+                        <field name="biocreto_firma_reclamo_por" readonly="1"/>
+                        <field name="biocreto_firma_reclamo_fecha" readonly="1"/>
+                    </group>
+                </page>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

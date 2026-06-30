@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Lista de participantes propia (primary=True) que hereda la nativa
+        y le agrega un boton "Nuevo reclamo" en el header. Se usa SOLO
+        cuando se entra desde la OV via el stat button "Encuestas";
+        NO afecta a /odoo Encuestas -> Participantes ni a otras vistas
+        del modulo Survey.
+
+        Esta vista DEBE declararse ANTES de biocreto_action_encuestas_from_so
+        porque esta ultima referencia view_id="ref('biocreto_survey_user_input_view_list')".
+    -->
+    <record id="biocreto_survey_user_input_view_list" model="ir.ui.view">
+        <field name="name">survey.user_input.view.list.biocreto</field>
+        <field name="model">survey.user_input</field>
+        <field name="inherit_id" ref="survey.survey_user_input_view_tree"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+
+            <xpath expr="//list" position="inside">
+                <header>
+                    <!--
+                        display="always": en v19, sin este atributo los
+                        botones de <header> solo se renderizan en modo
+                        "acciones masivas" (con registros seleccionados).
+                        Como "Nuevo reclamo" sirve para CREAR un nuevo
+                        user_input (no actua sobre seleccion), sin
+                        display="always" el boton nunca aparece.
+                        Ver web/static/src/views/list/list_controller.xml
+                        slot control-panel-always-buttons.
+                    -->
+                    <button name="action_biocreto_nuevo_reclamo"
+                            type="object"
+                            string="Nuevo reclamo"
+                            class="btn-primary"
+                            display="always"/>
+                </header>
+            </xpath>
+
+            <!--
+                v19.0.3.5.0 — ocultar columnas de scoring. Las encuestas
+                BIOCRETO son scoring_type='no_scoring', asi que "Prueba
+                aprobada" (scoring_success) y "Puntaje %" (scoring_percentage)
+                no aportan informacion. Nombres confirmados en la list
+                nativa: survey/views/survey_user_views.xml:126-127.
+            -->
+            <field name="scoring_success" position="attributes">
+                <attribute name="column_invisible">1</attribute>
+            </field>
+            <field name="scoring_percentage" position="attributes">
+                <attribute name="column_invisible">1</attribute>
+            </field>
+
+        </field>
+    </record>
+
+    <!--
+        v19.0.3.4.0 — Accion XML estatica que abre la lista de encuestas
+        filtrada por la OV actual. Patron nativo sale_expense:
+        odoo/addons/sale_expense/views/hr_expense_views.xml:65-71.
+
+        Por que XML estatica (y no Python con inyeccion runtime):
+        las mutaciones que un metodo Python hace a action['domain'],
+        action['view_id'], etc. NO se persisten en el state del web
+        client v19. El _controllersFromState (action_service.js:171-227)
+        solo guarda actionId + active_id + model + resId. Tras F5, la
+        accion se recarga por su id via /web/action/load (action_service.js
+        :382-388) y se pierden las mutaciones. El active_id SI se
+        persiste, por lo que un domain="[('field','=',active_id)]"
+        SOBREVIVE al refresh: el server lo reevalua con el active_id
+        restaurado.
+
+        Decision sobre survey_type: NO se combina con survey_type. El
+        filtro nativo (survey_type IN ('assessment','custom','live_session',
+        'survey')) excluye los tipos 'session' que no aplican aqui, pero
+        como las encuestas BIOCRETO siempre tienen sale_order_id (y las
+        nativas no), el filtro por sale_order_id ya es exclusivo a las
+        BIOCRETO. Mas simple, mismo resultado practico.
+    -->
+    <record id="biocreto_action_encuestas_from_so" model="ir.actions.act_window">
+        <field name="name">Encuestas</field>
+        <field name="res_model">survey.user_input</field>
+        <field name="view_mode">list,form,kanban</field>
+        <field name="view_id" ref="biocreto_survey_user_input_view_list"/>
+        <field name="domain">[('sale_order_id', '=', active_id)]</field>
+        <field name="context">{'default_sale_order_id': active_id, 'biocreto_sale_order_id': active_id, 'search_default_group_by_survey': True}</field>
+    </record>
+
+    <!--
+        Stat button "Encuestas" en el form de la OV.
+        type="action" + name="%(xmlid)d": el web client carga la accion
+        XML por su id; el active_id (= sale.order.id) se propaga al
+        context automaticamente y se persiste en el state del actionStack
+        (action_service.js:210-213), sobreviviendo a F5.
+    -->
+    <record id="biocreto_view_order_form_encuestas" model="ir.ui.view">
+        <field name="name">sale.order.form.biocreto.encuestas</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+
+            <!--
+                v19.0.3.5.0 — el stat button "Encuestas" debe aparecer
+                ANTES del de "Entrega" (action_view_delivery, declarado
+                en sale_stock/views/sale_order_views.xml:11). Para eso
+                usamos `position="before"` sobre ese boton en lugar de
+                `position="inside"` del button_box. Requiere sale_stock
+                instalado (declarado en depends del manifest).
+            -->
+            <xpath expr="//button[@name='action_view_delivery']" position="before">
+                <button name="%(biocreto_action_encuestas_from_so)d"
+                        type="action"
+                        class="oe_stat_button"
+                        icon="fa-th-list"
+                        invisible="state not in ('sale', 'done')">
+                    <field name="biocreto_encuesta_count"
+                           widget="statinfo"
+                           string="Encuestas"/>
+                </button>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

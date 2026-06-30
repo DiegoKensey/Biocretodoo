@@ -1,0 +1,30 @@
+// v19.0.3.7.0 — Recoloreo del alert de notificaciones del home del portal
+// a celeste claro BIOCRETO (paleta corporativa). Las tarjetas tipo "N
+// encuestas a responder" / "N documentos a firmar" usan
+// `portal.portal_docs_entry` con `bg_color='alert alert-primary...'`.
+//
+// Scope: `.o_portal_my_home .o_portal_index_card .alert-primary`. Esto
+// limita a:
+//   1) .o_portal_my_home  -> solo el home del portal (/my, /my/home).
+//   2) .o_portal_index_card -> solo las tarjetas del home (no otros
+//      alert-primary que pudieran aparecer en breadcrumbs, etc.).
+//   3) .alert-primary -> solo los alerts (no las tarjetas normales sin
+//      bg_color).
+// Cero contaminacion en backend ni en otras paginas del portal.
+//
+// Tecnica de "aclarado": rgba($color, alpha) sobre fondo blanco, igual a
+// como Odoo aclara colores en otros sitios.
+
+$bc-primary: #1ea8e0;
+
+.o_portal_my_home .o_portal_index_card .alert-primary {
+    background-color: rgba($bc-primary, 0.1);
+    border-color: rgba($bc-primary, 0.25);
+    color: darken($bc-primary, 20%);
+
+    // Links/spans dentro del alert (placeholder count, etc.) siguen el
+    // mismo color oscurecido para legibilidad.
+    .alert-link, a, span {
+        color: darken($bc-primary, 20%);
+    }
+}

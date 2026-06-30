@@ -1,6 +1,6 @@
 {
     'name': 'BIOCRETO - Portal del Cliente',
-    'version': '19.0.2.0.0',
+    'version': '19.0.2.1.0',
     'category': 'Sales',
     'summary': 'Personalización del portal cliente para el flujo Cotización → Contrato → Orden de Venta.',
     'description': """

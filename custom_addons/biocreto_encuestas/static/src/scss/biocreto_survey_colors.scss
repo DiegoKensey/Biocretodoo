@@ -1,0 +1,106 @@
+// v19.0.3.7.0 — Recoloreo del frontend de respuesta de Survey a la paleta
+// BIOCRETO. Scope total: `.o_survey_form` -> CERO contaminacion fuera de la
+// pagina de respuesta (backend, otros portales, website, etc. NO afectados).
+//
+// Estrategia (recon Lote B): NO redefinir variables Bootstrap ($primary/
+// $secondary) — eso afectaria todos los componentes del bundle. Override
+// directo de selectores ESPECIFICOS dentro de `.o_survey_form`. La cascada
+// natural gana porque este SCSS carga DESPUES de survey_templates_form.scss
+// en el bundle survey.survey_assets.
+//
+// El boton "Next" intermedio usa .btn-primary; en la ultima pregunta el JS
+// cambia a .btn-secondary (survey_form.js:297-300) — funciona out-of-the-box
+// porque recoloreamos ambas clases.
+
+$bc-primary: #1ea8e0;    // celeste BIOCRETO
+$bc-secondary: #f9bc09;  // amarillo BIOCRETO
+
+.o_survey_form {
+
+    // ---- Botones "Iniciar encuesta" / "Volver a responder" / "Next" intermedio
+    // Clase real: .btn-primary (Bootstrap puro, no clase propia de Survey).
+    .btn-primary {
+        background-color: $bc-primary;
+        border-color: $bc-primary;
+        &:hover, &:focus, &:active, &.active, &:focus-visible {
+            background-color: darken($bc-primary, 10%);
+            border-color: darken($bc-primary, 10%);
+        }
+    }
+
+    // ---- Botones "Enviar" / "Revise sus respuestas" / "Next" final
+    // Clase real: .btn-secondary (Bootstrap puro).
+    .btn-secondary {
+        background-color: $bc-secondary;
+        border-color: $bc-secondary;
+        color: #fff;
+        &:hover, &:focus, &:active, &.active, &:focus-visible {
+            background-color: darken($bc-secondary, 10%);
+            border-color: darken($bc-secondary, 10%);
+            color: #fff;
+        }
+    }
+
+    // ---- Resaltado de opciones (simple_choice / multiple_choice)
+    // Clase real: .o_survey_choice_btn (nativo, ver survey_templates_form.scss:233-248).
+    // Odoo usa rgba($primary, alpha) para el "morado claro" — replicamos igual.
+    .o_survey_choice_btn {
+        background-color: rgba($bc-primary, 0.1);
+        box-shadow: $bc-primary 0px 0px 0px 1px;
+        color: $bc-primary;
+
+        &.o_survey_selected {
+            box-shadow: $bc-primary 0px 0px 0px 2px;
+        }
+        &:hover {
+            background-color: rgba($bc-primary, 0.3);
+        }
+    }
+
+    // ---- Letras A, B, C... de seleccion (nativo: 1px solid $primary)
+    .o_survey_choice_key {
+        border-color: $bc-primary;
+        span.o_survey_key {
+            border-color: $bc-primary;
+        }
+    }
+
+    // ---- Inputs de texto/fecha/datetime/numerical (subrayado nativo $primary)
+    // Coherencia con la paleta — sin esto el subrayado quedaria morado contra
+    // botones celestes (recon Lote B hallazgo inesperado #2). Confirmado contra
+    // survey_templates_form.scss:102-107.
+    .o_survey_question_text_box,
+    .o_survey_question_date,
+    .o_survey_question_datetime,
+    .o_survey_question_numerical_box {
+        border-bottom-color: $bc-primary;
+    }
+}
+
+// v19.0.3.8.0 — Pantalla `/survey/print/...` (cuando el cliente hace click
+// en "Revise sus respuestas" desde el done). Wrapper REAL: `.o_survey_print`
+// (recon Lote B.2: NO esta dentro de `.o_survey_form`, por eso el scope
+// anterior NO la alcanzaba). Esta pantalla tiene 2 botones (template
+// `survey_templates_print.xml:14-19`):
+//   - "Volver a responder" -> `.btn-primary` (via t-call survey_button_retake)
+//   - Boton impresora -> `<a class="o_survey_user_results_print btn-secondary">`
+.o_survey_print {
+    .btn-primary {
+        background-color: $bc-primary;
+        border-color: $bc-primary;
+        &:hover, &:focus, &:active, &.active, &:focus-visible {
+            background-color: darken($bc-primary, 10%);
+            border-color: darken($bc-primary, 10%);
+        }
+    }
+    .btn-secondary {
+        background-color: $bc-secondary;
+        border-color: $bc-secondary;
+        color: #fff;
+        &:hover, &:focus, &:active, &.active, &:focus-visible {
+            background-color: darken($bc-secondary, 10%);
+            border-color: darken($bc-secondary, 10%);
+            color: #fff;
+        }
+    }
+}

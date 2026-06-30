@@ -53,9 +53,10 @@
               name="BIOCRETO Contracts Menu Entry">
         <xpath expr="//div[@id='portal_client_category']" position="inside">
             <t t-call="portal.portal_docs_entry">
-                <t t-set="title">Contratos</t>
+                <t t-set="icon" t-value="'/biocreto_sale_portal/static/src/img/contrato_portal.svg'"/>
+                <t t-set="title">Sus contratos</t>
                 <t t-set="url" t-value="'/my/contracts'"/>
-                <t t-set="text">Sus cotizaciones firmadas pendientes de contrato</t>
+                <t t-set="text">Siga, firme o descargue sus contratos</t>
                 <t t-set="placeholder_count" t-value="'contract_count'"/>
             </t>
         </xpath>

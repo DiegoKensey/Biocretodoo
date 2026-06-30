@@ -1,0 +1,53 @@
+// v19.0.3.8.0 — Recoloreo del modal de confirmacion de envio de Survey.
+//
+// CONTEXTO: ConfirmationDialog (web/core) se monta en `document.body` fuera
+// de `.o_survey_form`, asi que el SCSS del Lote B (.o_survey_form .btn-*)
+// NO lo alcanzaba (recon Lote B hallazgo #3). Ademas, ConfirmationDialog NO
+// acepta `dialogClass`/`contentClass`, y el cancel button esta hardcoded
+// a `.btn-secondary` en `confirmation_dialog.xml:9`.
+//
+// ESTRATEGIA DE SCOPE (recon Lote B.2):
+//   1) En el patch JS `biocreto_survey_signature.js` parcheamos `onSubmit`
+//      del SurveyForm SOLO para encuestas BIOCRETO (data-biocreto-tipo
+//      presente) y le pasamos `confirmClass="btn-primary o_biocreto_survey_confirm"`
+//      al ConfirmationDialog -> el boton confirmar lleva una clase BIOCRETO
+//      distintiva.
+//   2) Aqui scopeamos con `:has(.o_biocreto_survey_confirm)` para que SOLO
+//      ese modal se recoloree -> CERO contaminacion en otros dialogs del
+//      portal (`/web` no esta en este bundle, asi que el backend tampoco).
+//
+// `:has()` esta soportado en Chrome 105+, Safari 15.4+, Firefox 121+
+// (todos los navegadores modernos a 2026).
+
+$bc-primary: #1ea8e0;    // celeste BIOCRETO
+$bc-secondary: #f9bc09;  // amarillo BIOCRETO
+
+.o_dialog:has(.o_biocreto_survey_confirm) {
+    // Boton "Enviar" -> celeste. El confirm de ConfirmationDialog ya viene
+    // con `btn-primary o_biocreto_survey_confirm` (asignado en el patch JS).
+    .modal-footer .btn-primary,
+    .modal-footer .o_biocreto_survey_confirm {
+        background-color: $bc-primary;
+        border-color: $bc-primary;
+        color: #fff;
+        &:hover, &:focus, &:active, &.active, &:focus-visible {
+            background-color: darken($bc-primary, 10%);
+            border-color: darken($bc-primary, 10%);
+            color: #fff;
+        }
+    }
+
+    // Boton "Cancelar" -> amarillo. `.btn-secondary` esta hardcoded en
+    // `confirmation_dialog.xml:9`; no podemos cambiarlo via props -> lo
+    // pintamos por scope local del :has().
+    .modal-footer .btn-secondary {
+        background-color: $bc-secondary;
+        border-color: $bc-secondary;
+        color: #fff;
+        &:hover, &:focus, &:active, &.active, &:focus-visible {
+            background-color: darken($bc-secondary, 10%);
+            border-color: darken($bc-secondary, 10%);
+            color: #fff;
+        }
+    }
+}

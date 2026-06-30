@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="biocreto_survey_survey_view_form" model="ir.ui.view">
+        <field name="name">survey.survey.view.form.biocreto</field>
+        <field name="model">survey.survey</field>
+        <field name="inherit_id" ref="survey.survey_survey_view_form"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='lang_ids']" position="after">
+                <field name="biocreto_tipo_encuesta"/>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>
