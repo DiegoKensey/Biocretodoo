@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        ============================================================
+        Template despachador — `report_encuesta_document`
+        ============================================================
+        v19.0.2.0.0 — El unico `ir.actions.report` de encuestas
+        (`action_report_encuesta`) apunta a este template como
+        `report_name`. Ramifica por `user_input.biocreto_tipo_encuesta`
+        y hace `t-call` al body correspondiente + al layout comun con el
+        `sig_codigo` correcto.
+
+        Los bodies (`report_encuesta_satisfaccion_body` y
+        `report_encuesta_reclamo_body`) se conservan tal cual — cambia
+        solo la envoltura: en vez de 2 documents, hay 1 dispatcher que
+        elige el body por tipo. Cero cambios en el layout comun ni en
+        los bodies.
+
+        Nota: `t-if`/`t-elif` sobre `<t t-call>` es idiomatico QWeb v19;
+        solo se compila y ejecuta la rama activa (verificado).
+    -->
+    <template id="report_encuesta_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="user_input">
+
+                <t t-if="user_input.biocreto_tipo_encuesta == 'satisfaccion'">
+                    <t t-set="sig_codigo" t-value="'satisfaccion'"/>
+                    <t t-call="biocreto_encuestas_reporte.encuesta_layout">
+                        <t t-call="biocreto_encuestas_reporte.report_encuesta_satisfaccion_body"/>
+                    </t>
+                </t>
+
+                <t t-elif="user_input.biocreto_tipo_encuesta == 'reclamo'">
+                    <t t-set="sig_codigo" t-value="'reclamo'"/>
+                    <t t-call="biocreto_encuestas_reporte.encuesta_layout">
+                        <t t-call="biocreto_encuestas_reporte.report_encuesta_reclamo_body"/>
+                    </t>
+                </t>
+
+            </t>
+        </t>
+    </template>
+
+</odoo>

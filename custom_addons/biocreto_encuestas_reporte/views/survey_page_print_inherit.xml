@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        v19.0.2.0.0 — Inherit del template `survey.survey_page_print`
+        (survey/views/survey_templates_print.xml:5-134). El nodo raiz
+        `.o_survey_print` es el `this.el` del Interaction `SurveyPrint`
+        (survey_print.js:6: `static selector = ".o_survey_print"`).
+
+        Agregamos 2 data-attrs SOLO cuando la encuesta es BIOCRETO:
+          - data-biocreto-tipo: 'satisfaccion' | 'reclamo'
+          - data-biocreto-user-input-id: id numerico del user_input
+
+        El patch JS (biocreto_survey_print.js) lee estos data-attrs. Si
+        no estan (encuesta no-BIOCRETO), el JS delega a super() y hace
+        window.print() nativo. Cero contaminacion en encuestas nativas.
+
+        `answer` esta disponible en el contexto del template (lo pasa
+        el controller survey_print, main.py:667).
+    -->
+    <template id="biocreto_survey_page_print_inherit"
+              inherit_id="survey.survey_page_print"
+              name="BIOCRETO: data-attrs en /survey/print wrapper">
+
+        <xpath expr="//div[hasclass('o_survey_print')][1]" position="attributes">
+            <attribute name="t-att-data-biocreto-tipo">answer and answer.survey_id.biocreto_tipo_encuesta or None</attribute>
+            <attribute name="t-att-data-biocreto-user-input-id">answer.id if (answer and answer.survey_id.biocreto_tipo_encuesta) else None</attribute>
+        </xpath>
+
+    </template>
+
+</odoo>

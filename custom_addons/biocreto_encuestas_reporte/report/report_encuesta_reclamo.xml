@@ -3,42 +3,32 @@
 
     <!--
         ============================================================
-        Body del reporte de Encuesta de Satisfaccion (BC-GC-FR-16)
+        Body del reporte de Encuesta de Reclamo (BC-GC-FR-03)
         ============================================================
-        Itera survey.question_and_page_ids (incluye paginas/secciones).
-        El layout (encuesta_layout) provee header/footer/SIG; este body
-        provee titulo + datos superiores + preguntas + delega al
-        pie_legal_firma para Ley 29733 + firma.
+        REUSA el mismo encuesta_layout que satisfaccion (header/footer/
+        SIG cuadrito/@page). Este body provee titulo + datos superiores
+        (OV + fecha firma reclamo) + preguntas + delega al
+        pie_legal_firma para Ley 29733 + firma de reclamo.
 
-        v19.0.1.1.0:
-          - Datos superiores reducidos a OV + Fecha (create_date).
-          - Titulo via .doc-title (CLON estilo contrato).
-          - Pie completo via pie_legal_firma (firma con nombre completo
-            + fecha sola sin etiqueta).
+        Diferencias con satisfaccion:
+          - sig_codigo='reclamo' -> BC-GC-FR-03 V01 25/11/2025 en el
+            cuadrito del header.
+          - Body itera las 2 preguntas del reclamo (multiple_choice
+            con "Otros" + text_box).
+          - `_biocreto_campos_firma()` devuelve el set de reclamo
+            (`biocreto_firma_reclamo`, `_por`, `_fecha`) para el pie.
+
+        Iterador identico al de satisfaccion. Como el `choice_block` YA
+        maneja el "Otros" comentable de multiple_choice (recon Fase 4 F)
+        y el `text_block` YA maneja text_box, no hay logica especifica.
     -->
-    <template id="report_encuesta_satisfaccion_body">
+    <template id="report_encuesta_reclamo_body">
         <t t-set="survey" t-value="user_input.survey_id"/>
-        <!--
-            Fecha superior = fecha de FIRMA por tipo. `f[2]` es el nombre
-            del campo de fecha de firma (biocreto_firma_encuesta_fecha
-            para satisfaccion, biocreto_firma_reclamo_fecha para reclamo).
-            El layout tambien setea `f` en pie_legal_firma, pero ahi es
-            local — lo re-seteamos aqui para tenerlo disponible.
-            Fallback a create_date si la encuesta aun no esta firmada
-            (para que el PDF nunca salga sin fecha visible).
-        -->
         <t t-set="f" t-value="user_input._biocreto_campos_firma()"/>
         <t t-set="fecha_arriba" t-value="user_input[f[2]] if f[2] and user_input[f[2]] else user_input.create_date"/>
 
-        <!-- Titulo de la encuesta: celeste, sin subrayado, mayor que "CALIFICACION" -->
         <h1 class="doc-title-encuesta" t-out="survey.title"/>
 
-        <!--
-            Datos superiores: 2 columnas mitad/mitad (Orden de venta a la
-            izquierda, Fecha a la derecha). Valores sin negrita y con
-            border-bottom que abarca del valor al final de la columna
-            (efecto "campo para rellenar").
-        -->
         <div class="datos-superiores">
             <div class="dato-col">
                 <span class="lbl">Orden de venta:</span>
@@ -50,7 +40,6 @@
             </div>
         </div>
 
-        <!-- Preguntas + respuestas marcadas (cuerpo igual que v1.0.0) -->
         <div class="biocreto-encuesta-preguntas">
             <t t-foreach="survey.question_and_page_ids" t-as="question">
 
@@ -80,19 +69,15 @@
             </t>
         </div>
 
-        <!-- Pie comun: Ley 29733 + firma -->
         <t t-call="biocreto_encuestas_reporte.pie_legal_firma"/>
     </template>
 
 
     <!--
-        v19.0.2.0.0 — El template raiz `report_encuesta_satisfaccion_document`
+        v19.0.2.0.0 — El template raiz `report_encuesta_reclamo_document`
         fue ELIMINADO. Ahora el reporte es unico y ramifica en
         `report_encuesta_document` (dispatcher). Este archivo conserva
-        SOLO el body (`report_encuesta_satisfaccion_body`) que el
-        dispatcher llama via t-call cuando biocreto_tipo_encuesta ==
-        'satisfaccion'. El body NO tiene html_container ni t-foreach
-        (los pone el dispatcher).
+        SOLO el body (`report_encuesta_reclamo_body`).
     -->
 
 </odoo>

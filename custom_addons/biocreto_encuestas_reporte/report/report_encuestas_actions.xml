@@ -1,31 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!--
-        Accion de reporte: Encuesta de Satisfaccion (BC-GC-FR-16).
+        v19.0.2.0.0 — REPORTE UNICO RAMIFICADO
+        =========================================================
+        1 solo ir.actions.report `action_report_encuesta` reemplaza
+        los 2 anteriores (`action_report_encuesta_satisfaccion` y
+        `action_report_encuesta_reclamo`).
 
-        - report_name == report_file == id del template raiz (modulo.id),
-          que es lo que matchea el motor PlutoPrint en
-          biocreto_pdf_engine via _biocreto_usa_plutoprint().
-        - binding_model_id + binding_type='report' anaden el boton
-          "Imprimir > Encuesta de Satisfaccion" en form/list/kanban
-          de survey.user_input.
-        - paperformat_id = base.paperformat_euro (los margenes los
-          maneja el @page literal del template; el paperformat solo
-          importa para fallback wkhtmltopdf).
-        - print_report_name: el filename usa el nombre del cliente
-          de la OV vinculada (no del partner del user_input, que en
-          BIOCRETO suele coincidir pero el sale_order_id.partner_id
-          es la fuente canonica).
+        Puntos clave:
+          - report_name apunta al despachador
+            (`report_encuesta_document`), que ramifica por tipo.
+          - print_report_name: expresion Python condicional -> el
+            filename ramifica automaticamente por tipo. Confirmado
+            en web/controllers/report.py:135-137: safe_eval del
+            print_report_name con {object, time}.
+          - binding_model_id + binding_type='report' -> aparece en
+            el menu "Imprimir" de form/list/kanban de
+            survey.user_input.
+          - domain restringe el binding a encuestas BIOCRETO. En
+            encuestas no-BIOCRETO el menu no muestra "Encuesta".
+            Mecanismo nativo v19: ir_actions.py:192, filtrado en
+            get_bindings segun el registro seleccionado.
+
+        Los 2 records viejos se borran con <delete> (limpieza).
     -->
-    <record id="action_report_encuesta_satisfaccion" model="ir.actions.report">
-        <field name="name">Encuesta de Satisfaccion</field>
+
+    <record id="action_report_encuesta" model="ir.actions.report">
+        <field name="name">Encuesta</field>
         <field name="model">survey.user_input</field>
         <field name="report_type">qweb-pdf</field>
-        <field name="report_name">biocreto_encuestas_reporte.report_encuesta_satisfaccion_document</field>
-        <field name="report_file">biocreto_encuestas_reporte.report_encuesta_satisfaccion_document</field>
-        <field name="print_report_name">'Encuesta Satisfaccion - %s' % ((object.sale_order_id and object.sale_order_id.partner_id and object.sale_order_id.partner_id.name) or object.partner_id.name or str(object.id))</field>
+        <field name="report_name">biocreto_encuestas_reporte.report_encuesta_document</field>
+        <field name="report_file">biocreto_encuestas_reporte.report_encuesta_document</field>
+        <field name="print_report_name">('Encuesta de Satisfacción - %s' % (object.sale_order_id.name or object.id)) if object.biocreto_tipo_encuesta == 'satisfaccion' else ('Encuesta de Reclamo - %s' % (object.sale_order_id.name or object.id))</field>
         <field name="binding_model_id" ref="survey.model_survey_user_input"/>
         <field name="binding_type">report</field>
         <field name="paperformat_id" ref="base.paperformat_euro"/>
+        <field name="domain">[('biocreto_tipo_encuesta', 'in', ['satisfaccion', 'reclamo'])]</field>
     </record>
+
+    <!--
+        Limpieza: los 2 ir.actions.report viejos ya no aplican
+        porque el reporte es unico. `<delete>` los remueve de BD
+        al hacer -u. El motor PlutoPrint ya no los lleva en su set
+        (ver models/ir_actions_report.py).
+    -->
+    <delete model="ir.actions.report" id="action_report_encuesta_satisfaccion"/>
+    <delete model="ir.actions.report" id="action_report_encuesta_reclamo"/>
+
+    <!--
+        =========================================================
+        Ocultar "Certificaciones" (survey.certification_report)
+        en encuestas BIOCRETO
+        =========================================================
+        Mecanismo NATIVO v19: el campo `domain` de ir.actions.report
+        filtra el binding por registro. Al setear
+        domain=[('biocreto_tipo_encuesta','=', False)], Certifications
+        aparece SOLO cuando el user_input NO es BIOCRETO -> menu
+        "Imprimir" de BIOCRETO sin Certifications; menu de encuestas
+        nativas sin cambios.
+
+        Cero impacto en encuestas nativas: cuando
+        biocreto_tipo_encuesta es False (no BIOCRETO), matchea el
+        domain y el reporte sigue apareciendo como siempre.
+    -->
+    <record id="survey.certification_report" model="ir.actions.report">
+        <field name="domain">[('biocreto_tipo_encuesta', '=', False)]</field>
+    </record>
+
 </odoo>

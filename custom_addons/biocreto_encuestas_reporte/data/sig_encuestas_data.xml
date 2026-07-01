@@ -19,7 +19,21 @@
             <field name="codigo_documento">satisfaccion</field>
             <field name="version">01</field>
             <field name="fecha_version" eval="'2025-12-04'"/>
-            <field name="descripcion">Formato de la encuesta de satisfaccion del servicio prestado por BIOCRETO al cliente. Mide la conformidad respecto a atencion, competencias tecnicas, precio, puntualidad y satisfaccion general.</field>
+            <field name="descripcion">Formato de la encuesta de satisfacción del servicio prestado por BIOCRETO al cliente. Mide la conformidad respecto a atención, competencias técnicas, precio, puntualidad y satisfacción general.</field>
+        </record>
+
+        <!--
+            v19.0.1.5.0 — Registro SIG para el reporte de Reclamo
+            (BC-GC-FR-03). El layout consulta este registro via
+            biocreto.documento.control.get_control_for_qweb('reclamo').
+        -->
+        <record id="sig_encuesta_reclamo" model="biocreto.documento.control">
+            <field name="name">Encuesta de Sugerencias, Quejas y Reclamos</field>
+            <field name="codigo">BC-GC-FR-03</field>
+            <field name="codigo_documento">reclamo</field>
+            <field name="version">01</field>
+            <field name="fecha_version" eval="'2025-11-25'"/>
+            <field name="descripcion">Formato para el registro de sugerencias, quejas y reclamos de los clientes de BIOCRETO. Incluye motivo, descripción y firma del cliente.</field>
         </record>
     </data>
 </odoo>
