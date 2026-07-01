@@ -1,6 +1,6 @@
 {
     'name': 'BIOCRETO Encuestas',
-    'version': '19.0.3.10.0',
+    'version': '19.0.3.11.0',
     'category': 'Marketing/Surveys',
     'summary': 'Encuestas BIOCRETO (Satisfaccion y Reclamos) atadas a ordenes de venta.',
     'description': 'Fases 0-3 + Lotes A/B/B.2 + 3.9.0: extension de survey.user_input con sale_order_id + 2 sets de firma; siembra de las 2 encuestas base BC-GC-FR-16 y BC-GC-FR-03; stat button "Encuestas" en la OV, creacion automatica de satisfaccion al confirmar, "Nuevo reclamo" desde la lista, tarjetas en el portal y pagina /my/surveys; modal de firma DarkBlue al completar (Approach B client-side trigger), ruta /biocreto_finalize, doble candado server-side; recoloreo BIOCRETO del frontend de respuesta + modal de confirmacion + pantalla print + cabecera tabla respuestas (no_scoring); v3.9.0 mostrar solo la subseccion de firma del tipo de encuesta correspondiente.',

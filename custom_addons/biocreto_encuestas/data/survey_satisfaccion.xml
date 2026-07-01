@@ -12,7 +12,7 @@
         -->
 
         <record model="survey.survey" id="survey_satisfaccion">
-            <field name="title">Encuesta de Satisfaccion del Servicio</field>
+            <field name="title">Encuesta de Satisfacción del Servicio</field>
             <field name="biocreto_tipo_encuesta">satisfaccion</field>
             <field name="access_mode">token</field>
             <field name="users_login_required" eval="True"/>
@@ -21,7 +21,7 @@
             <field name="users_can_go_back" eval="True"/>
             <field name="lang_ids" eval="False"/>
             <field name="description" type="html">
-                <p>Su opinion es muy importante para nosotros. Por favor, dedique unos minutos a calificar su experiencia con el servicio recibido.</p>
+                <p>Su opinión es muy importante para nosotros. Por favor, dedique unos minutos a calificar su experiencia con el servicio recibido.</p>
             </field>
         </record>
 
@@ -30,11 +30,11 @@
         <record model="survey.question" id="survey_satisfaccion_p1">
             <field name="survey_id" ref="survey_satisfaccion"/>
             <field name="sequence">10</field>
-            <field name="title">Calificacion del servicio</field>
+            <field name="title">Calificación del servicio</field>
             <field name="is_page" eval="True"/>
             <field name="question_type" eval="False"/>
             <field name="description" type="html">
-                <p>Marque la opcion que mejor refleje su percepcion en cada item.</p>
+                <p>Marque la opción que mejor refleje su percepción en cada ítem.</p>
             </field>
         </record>
 
@@ -42,7 +42,7 @@
         <record model="survey.question" id="survey_satisfaccion_p1_q1">
             <field name="survey_id" ref="survey_satisfaccion"/>
             <field name="sequence">20</field>
-            <field name="title">Que tan satisfecho esta con la atencion y asesoria brindada por nuestros asesores comerciales o jefe de proyecto?</field>
+            <field name="title">¿Qué tan satisfecho está con la atención y asesoría brindada por nuestros asesores comerciales o jefe de proyecto?</field>
             <field name="question_type">simple_choice</field>
             <field name="constr_mandatory" eval="True"/>
         </record>
@@ -81,7 +81,7 @@
         <record model="survey.question" id="survey_satisfaccion_p1_q2">
             <field name="survey_id" ref="survey_satisfaccion"/>
             <field name="sequence">30</field>
-            <field name="title">Como califica las competencias tecnicas del personal operativo en el proyecto (Coordinador de obra, curador, etc.)?</field>
+            <field name="title">¿Cómo califica las competencias técnicas del personal operativo en el proyecto (Coordinador de obra, curador, etc.)?</field>
             <field name="question_type">simple_choice</field>
             <field name="constr_mandatory" eval="True"/>
         </record>
@@ -120,7 +120,7 @@
         <record model="survey.question" id="survey_satisfaccion_p1_q3">
             <field name="survey_id" ref="survey_satisfaccion"/>
             <field name="sequence">40</field>
-            <field name="title">Como evalua el precio del concreto premezclado en relacion a la calidad?</field>
+            <field name="title">¿Cómo evalúa el precio del concreto premezclado en relación a la calidad?</field>
             <field name="question_type">simple_choice</field>
             <field name="constr_mandatory" eval="True"/>
         </record>
@@ -159,7 +159,7 @@
         <record model="survey.question" id="survey_satisfaccion_p1_q4">
             <field name="survey_id" ref="survey_satisfaccion"/>
             <field name="sequence">50</field>
-            <field name="title">Que tan satisfecho esta con la puntualidad en la entrega del concreto premezclado en obra?</field>
+            <field name="title">¿Qué tan satisfecho está con la puntualidad en la entrega del concreto premezclado en obra?</field>
             <field name="question_type">simple_choice</field>
             <field name="constr_mandatory" eval="True"/>
         </record>
@@ -198,7 +198,7 @@
         <record model="survey.question" id="survey_satisfaccion_p1_q5">
             <field name="survey_id" ref="survey_satisfaccion"/>
             <field name="sequence">60</field>
-            <field name="title">En general, que tan satisfecho se encuentra con el servicio recibido?</field>
+            <field name="title">En general, ¿qué tan satisfecho se encuentra con el servicio recibido?</field>
             <field name="question_type">simple_choice</field>
             <field name="constr_mandatory" eval="True"/>
         </record>
@@ -237,7 +237,7 @@
         <record model="survey.question" id="survey_satisfaccion_p1_q6">
             <field name="survey_id" ref="survey_satisfaccion"/>
             <field name="sequence">70</field>
-            <field name="title">Si tuviera la oportunidad, recomendaria nuestra empresa a otros? Por que?</field>
+            <field name="title">Si tuviera la oportunidad, ¿recomendaría nuestra empresa a otros? ¿Por qué?</field>
             <field name="question_type">text_box</field>
             <field name="constr_mandatory" eval="True"/>
         </record>
@@ -255,7 +255,7 @@
         <record model="survey.question" id="survey_satisfaccion_p1_q8">
             <field name="survey_id" ref="survey_satisfaccion"/>
             <field name="sequence">90</field>
-            <field name="title">En conclusion, el nivel de satisfaccion en general con el servicio brindado fue:</field>
+            <field name="title">En conclusión, el nivel de satisfacción en general con el servicio brindado fue:</field>
             <field name="question_type">simple_choice</field>
             <field name="constr_mandatory" eval="True"/>
         </record>

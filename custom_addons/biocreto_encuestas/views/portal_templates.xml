@@ -71,7 +71,7 @@
                             <span t-out="ui.survey_id.title"/>
                         </td>
                         <td>
-                            <t t-if="ui.survey_id.biocreto_tipo_encuesta == 'satisfaccion'">Satisfaccion</t>
+                            <t t-if="ui.survey_id.biocreto_tipo_encuesta == 'satisfaccion'">Satisfacción</t>
                             <t t-elif="ui.survey_id.biocreto_tipo_encuesta == 'reclamo'">Reclamo</t>
                             <t t-else="">-</t>
                         </td>

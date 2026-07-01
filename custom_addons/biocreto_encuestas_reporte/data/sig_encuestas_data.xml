@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!--
+            Registro SIG para el reporte de Encuesta de Satisfaccion
+            (BC-GC-FR-16). El layout del reporte consulta este registro
+            via biocreto.documento.control.get_control_for_qweb('satisfaccion').
+
+            El registro de RECLAMO (BC-GC-FR-03) se siembra en el
+            prompt 2 (modulo biocreto_encuestas_reporte para reclamo).
+
+            noupdate=1 para no machacar cambios manuales de version/
+            fecha por parte del cliente.
+            fecha por parte del cliente.
+        -->
+        <record id="sig_encuesta_satisfaccion" model="biocreto.documento.control">
+            <field name="name">Encuesta de Satisfacción del Servicio</field>
+            <field name="codigo">BC-GC-FR-16</field>
+            <field name="codigo_documento">satisfaccion</field>
+            <field name="version">01</field>
+            <field name="fecha_version" eval="'2025-12-04'"/>
+            <field name="descripcion">Formato de la encuesta de satisfaccion del servicio prestado por BIOCRETO al cliente. Mide la conformidad respecto a atencion, competencias tecnicas, precio, puntualidad y satisfaccion general.</field>
+        </record>
+    </data>
+</odoo>

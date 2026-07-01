@@ -6,7 +6,7 @@ class SurveySurvey(models.Model):
 
     biocreto_tipo_encuesta = fields.Selection(
         selection=[
-            ('satisfaccion', 'Satisfaccion'),
+            ('satisfaccion', 'Satisfacción'),
             ('reclamo', 'Reclamo'),
         ],
         string='Tipo de encuesta BIOCRETO',

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        ============================================================
+        Body del reporte de Encuesta de Satisfaccion (BC-GC-FR-16)
+        ============================================================
+        Itera survey.question_and_page_ids (incluye paginas/secciones).
+        El layout (encuesta_layout) provee header/footer/SIG; este body
+        provee titulo + datos superiores + preguntas + delega al
+        pie_legal_firma para Ley 29733 + firma.
+
+        v19.0.1.1.0:
+          - Datos superiores reducidos a OV + Fecha (create_date).
+          - Titulo via .doc-title (CLON estilo contrato).
+          - Pie completo via pie_legal_firma (firma con nombre completo
+            + fecha sola sin etiqueta).
+    -->
+    <template id="report_encuesta_satisfaccion_body">
+        <t t-set="survey" t-value="user_input.survey_id"/>
+        <!--
+            Fecha superior = fecha de FIRMA por tipo. `f[2]` es el nombre
+            del campo de fecha de firma (biocreto_firma_encuesta_fecha
+            para satisfaccion, biocreto_firma_reclamo_fecha para reclamo).
+            El layout tambien setea `f` en pie_legal_firma, pero ahi es
+            local — lo re-seteamos aqui para tenerlo disponible.
+            Fallback a create_date si la encuesta aun no esta firmada
+            (para que el PDF nunca salga sin fecha visible).
+        -->
+        <t t-set="f" t-value="user_input._biocreto_campos_firma()"/>
+        <t t-set="fecha_arriba" t-value="user_input[f[2]] if f[2] and user_input[f[2]] else user_input.create_date"/>
+
+        <!-- Titulo de la encuesta: celeste, sin subrayado, mayor que "CALIFICACION" -->
+        <h1 class="doc-title-encuesta" t-out="survey.title"/>
+
+        <!--
+            Datos superiores: 2 columnas mitad/mitad (Orden de venta a la
+            izquierda, Fecha a la derecha). Valores sin negrita y con
+            border-bottom que abarca del valor al final de la columna
+            (efecto "campo para rellenar").
+        -->
+        <div class="datos-superiores">
+            <div class="dato-col">
+                <span class="lbl">Orden de venta:</span>
+                <span class="val" t-out="(user_input.sale_order_id and user_input.sale_order_id.name) or '-'"/>
+            </div>
+            <div class="dato-col">
+                <span class="lbl">Fecha:</span>
+                <span class="val" t-out="fecha_arriba.strftime('%d/%m/%Y') if fecha_arriba else '-'"/>
+            </div>
+        </div>
+
+        <!-- Preguntas + respuestas marcadas (cuerpo igual que v1.0.0) -->
+        <div class="biocreto-encuesta-preguntas">
+            <t t-foreach="survey.question_and_page_ids" t-as="question">
+
+                <t t-if="question.is_page">
+                    <h2 class="biocreto-encuesta-seccion" t-out="question.title"/>
+                </t>
+
+                <t t-if="not question.is_page">
+                    <t t-set="lines" t-value="user_input.user_input_line_ids.filtered(lambda l: l.question_id == question)"/>
+                    <div class="biocreto-encuesta-pregunta">
+                        <div class="biocreto-encuesta-pregunta-titulo">
+                            <span t-out="question.title"/><t t-if="question.constr_mandatory"><span class="text-danger"> *</span></t>
+                        </div>
+
+                        <t t-if="question.question_type in ('simple_choice', 'multiple_choice')">
+                            <t t-call="biocreto_encuestas_reporte.choice_block"/>
+                        </t>
+                        <t t-if="question.question_type == 'text_box'">
+                            <t t-call="biocreto_encuestas_reporte.text_block"/>
+                        </t>
+                        <t t-if="question.question_type == 'char_box'">
+                            <t t-call="biocreto_encuestas_reporte.text_block"/>
+                        </t>
+                    </div>
+                </t>
+
+            </t>
+        </div>
+
+        <!-- Pie comun: Ley 29733 + firma -->
+        <t t-call="biocreto_encuestas_reporte.pie_legal_firma"/>
+    </template>
+
+
+    <!--
+        ============================================================
+        Raiz - report_encuesta_satisfaccion_document
+        ============================================================
+        Target del ir.actions.report (report_name).
+        Itera docs (user_inputs) bajo el alias `user_input`, pasa
+        sig_codigo='satisfaccion' y delega al encuesta_layout, que
+        incrusta el body dentro de su <main>.
+    -->
+    <template id="report_encuesta_satisfaccion_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="user_input">
+                <t t-set="sig_codigo" t-value="'satisfaccion'"/>
+                <t t-call="biocreto_encuestas_reporte.encuesta_layout">
+                    <t t-call="biocreto_encuestas_reporte.report_encuesta_satisfaccion_body"/>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

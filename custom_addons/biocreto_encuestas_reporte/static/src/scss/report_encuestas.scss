@@ -1,0 +1,328 @@
+// =================================================================
+//  BIOCRETO Encuestas - estilos del reporte QWeb (PlutoPrint)
+//  v19.0.1.1.0 — CLON de las reglas relevantes del contrato
+//
+//  Scope: .biocreto-encuesta (clase propia). Replica el patron de
+//  biocreto_sale_reports_contrato/report_contrato.scss adaptando
+//  selectores `biocreto-contrato` -> `biocreto-encuesta`.
+//
+//  CLONADO del contrato:
+//   - resets html/body
+//   - running hdr/ftr (.page-header / .page-footer)
+//   - .hwrap / .fwrap (26.5mm, overflow hidden, 101%/102% SVG)
+//   - .header-code (cuadrito SIG)
+//   - .footer-pagenum (counter page/pages)
+//   - .firmas, .firma-recuadro, .firma-linea, .firma-img, .firma-label,
+//     .firma-meta (centrado !important, raya border-bottom)
+//   - .doc-title (centrado, bold, underline)
+//
+//  PROPIO de encuestas (no del contrato):
+//   - pills grises del print nativo (.o_bc_choice_btn / .o_bc_selected)
+//   - .o_bc_text_answer (textarea-like)
+//   - .biocreto-ley
+//   - .datos-superiores (OV + Fecha en una linea)
+// =================================================================
+
+// --------- Paleta BIOCRETO + grises del print nativo ---------
+$bc-primary:   #1ea8e0;   // celeste
+$bc-secondary: #f9bc09;   // amarillo
+$bc-dark:      #58595b;   // gris oscuro
+$bc-gray-500:  #adb5bd;   // pill no elegida (mismo gray-500 que .o_survey_print)
+$bc-gray-600:  #6c757d;   // pill elegida (mismo gray-600)
+
+// --------- Reset global (CLON del contrato) ---------
+html, body {
+    margin: 0;
+    padding: 0;
+}
+body {
+    background: #ffffff;
+}
+
+// --------- Header / Footer como running elements (CLON) ---------
+.page-header { position: running(hdr); margin: 0; padding: 0; }
+.page-footer { position: running(ftr); margin: 0; padding: 0; }
+
+// --------- Wrapper de tipografia + .hwrap/.fwrap (CLON adaptado) ---------
+.biocreto-encuesta {
+    box-sizing: border-box;
+    font-family: 'Century Gothic', 'Century Gothic Fallback',
+                 'URW Gothic', 'AvantGarde', 'Trebuchet MS', sans-serif;
+    font-size: 10pt;
+    line-height: 1.35;
+    color: #1d1d1b;
+
+    *, *::before, *::after { box-sizing: border-box; }
+}
+
+.biocreto-encuesta .hwrap,
+.biocreto-encuesta .fwrap {
+    position: relative;
+    width: 100%;
+    height: 26.5mm;
+    overflow: hidden;
+}
+.biocreto-encuesta .hwrap svg,
+.biocreto-encuesta .fwrap svg {
+    display: block;
+    width: 101%;
+    height: 102%;
+}
+
+// --------- Cuadrito SIG arriba a la derecha (CLON .header-code) ---------
+.biocreto-encuesta .header-code {
+    position: absolute;
+    top: 0;
+    right: 0;
+    transform: translateX(3px);
+    width: 14.6%;
+    height: 66.1px;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.4;
+    font-size: 8pt;
+    font-weight: bold;
+    letter-spacing: 0.2px;
+
+    .row {
+        display: block;
+        padding: 1px 4px;
+    }
+}
+
+// --------- Numero de pagina (CLON .footer-pagenum) ---------
+// counter(page) / counter(pages) - CSS Paged Media, PlutoPrint nativo.
+.biocreto-encuesta .footer-pagenum {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    transform: translateX(4px);
+    width: 5.2%;
+    height: 37.45px;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9pt;
+    font-weight: bold;
+    &::after {
+        content: counter(page) "/" counter(pages);
+    }
+}
+
+// --------- Main: padding lateral del HTML (CLON del contrato) ---------
+main.biocreto-encuesta {
+    padding: 4px 40px 14px 40px;
+}
+
+// =================================================================
+//  Tipografia interna del cuerpo + titulos
+// =================================================================
+.biocreto-encuesta h1,
+.biocreto-encuesta h2,
+.biocreto-encuesta h3,
+.biocreto-encuesta h4 { margin: 0; padding: 0; }
+.biocreto-encuesta p { margin: 0 0 6pt 0; }
+.biocreto-encuesta b, .biocreto-encuesta strong { font-weight: bold; }
+
+// --------- doc-title-encuesta (v1.2.0): titulo de la encuesta ---------
+// Celeste BIOCRETO, sin subrayado, un poco mayor que
+// "CALIFICACION DEL SERVICIO" (.biocreto-encuesta-seccion = 11pt),
+// alineado a la izquierda como el resto del contenido.
+.biocreto-encuesta .doc-title-encuesta {
+    color: $bc-primary;
+    font-weight: bold;
+    text-decoration: none;
+    font-size: 14pt;
+    margin: 4pt 0 12pt 0;
+    text-align: center;             // v1.3.0: centrado al medio
+    text-transform: uppercase;      // v1.3.0: MAYUSCULAS independiente del survey.title
+    line-height: 1.2;
+    letter-spacing: 0.4px;
+}
+
+// --------- Datos superiores (v1.2.0): 2 columnas mitad/mitad ---------
+// Cada columna con etiqueta tabulada + valor SIN negrita + linea inferior
+// que abarca del inicio del valor al final de la columna (efecto "campo
+// para rellenar"). Flexbox, no grid (PlutoPrint).
+.biocreto-encuesta .datos-superiores {
+    display: flex;
+    width: 100%;
+    margin: 0 0 14pt 0;
+    font-size: 10pt;
+
+    .dato-col {
+        flex: 1 1 50%;
+        display: flex;
+        align-items: baseline;
+        padding-right: 12pt;
+
+        .lbl {
+            font-weight: bold;
+            color: $bc-dark;
+            white-space: nowrap;
+            margin-right: 6pt;
+        }
+        .val {
+            font-weight: normal;
+            color: #1d1d1b;
+            flex: 1 1 auto;
+            // v1.3.0: raya mas fina. 0.5pt (~0.67px @96dpi) es la unidad
+            // tipografica bien soportada por PlutoPrint (subpixel `0.5px`
+            // se redondea a 1px en muchos renders). Color mid-gray para
+            // que se vea ligera aunque el pt no baje del pixel.
+            border-bottom: 0.5pt solid #999;
+            padding: 0 2pt 1pt 2pt;
+            min-width: 0;
+        }
+    }
+}
+
+// =================================================================
+//  Preguntas + respuestas (pills grises - replica .o_survey_print)
+// =================================================================
+.biocreto-encuesta .biocreto-encuesta-seccion {
+    font-size: 11pt;
+    font-weight: bold;
+    color: $bc-primary;
+    text-transform: uppercase;
+    border-bottom: 1pt solid $bc-primary;
+    margin: 10pt 0 4pt 0;
+    padding: 0 0 2pt 0;
+}
+
+.biocreto-encuesta .biocreto-encuesta-pregunta {
+    margin-bottom: 6pt;
+    break-inside: avoid;
+
+    .biocreto-encuesta-pregunta-titulo {
+        font-size: 9.5pt;
+        font-weight: bold;
+        margin-bottom: 3pt;
+        color: #1d1d1b;
+
+        .text-danger { color: #d9534f; }
+    }
+}
+
+// ---- Pills ----
+.biocreto-encuesta .o_survey_choice_group {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+.biocreto-encuesta .o_bc_choice_btn {
+    background-color: $bc-gray-500;
+    color: #ffffff;
+    font-weight: bold;
+    border-radius: 4px;
+    padding: 2pt 8pt;
+    margin-bottom: 2pt;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 9pt;
+    line-height: 1.4;
+
+    &.o_bc_selected {
+        background-color: $bc-gray-600;
+    }
+    .o_bc_choice_text {
+        flex: 1 1 auto;
+        text-align: left;
+    }
+    .bc-check {
+        flex: 0 0 auto;
+        font-size: 11pt;
+        margin-left: 6pt;
+    }
+}
+.biocreto-encuesta .o_bc_otros_text {
+    margin-top: 3pt;
+    margin-bottom: 4pt;
+    padding: 4pt 6pt;
+    border: 0.5pt solid #cccccc;
+    border-radius: 4px;
+    background: #f8f9fa;
+    font-size: 9pt;
+    min-height: 1.8em;
+    white-space: pre-wrap;
+}
+
+// ---- text_box ----
+.biocreto-encuesta .o_bc_text_answer {
+    border-bottom: 1pt solid $bc-primary;
+    min-height: 3.5em;
+    padding: 4pt 6pt;
+    font-size: 9pt;
+    color: #1d1d1b;
+    white-space: pre-wrap;
+}
+
+// =================================================================
+//  Pie: Ley 29733 + firma (CLON .firmas + .firma-* del contrato)
+// =================================================================
+.biocreto-encuesta .biocreto-ley {
+    font-size: 8pt;
+    color: #444;
+    text-align: justify;
+    line-height: 1.45;
+    margin: 14pt 0 8pt 0;
+    padding: 4pt 0;
+    border-top: 0.5pt solid #cccccc;
+    border-bottom: 0.5pt solid #cccccc;
+}
+
+// .firmas (CLON contrato linea 334-340, ajustado a 1 sola columna)
+.biocreto-encuesta .firmas {
+    margin-top: 28pt;
+    display: flex;
+    justify-content: center;
+    text-align: center;
+    gap: 12pt;
+    break-inside: avoid;
+}
+
+// CLON con !important para forzar centrado bajo PlutoPrint
+// (contrato lineas 147-150: cascada flex no es 100% confiable en Paged Media).
+.biocreto-encuesta .firma-recuadro,
+.biocreto-encuesta .firma-recuadro .firma-label,
+.biocreto-encuesta .firma-recuadro .firma-meta { text-align: center !important; }
+
+.biocreto-encuesta .firma-recuadro {
+    flex: 0 0 auto;
+    width: 40%;
+    margin: 0 4pt;
+}
+.biocreto-encuesta .firma-linea {
+    position: relative;
+    height: 60pt;
+    border-bottom: 1px solid #1d1d1b;
+    margin: 0 auto 4pt auto;
+}
+.biocreto-encuesta .firma-img {
+    position: absolute;
+    bottom: 2pt;
+    left: 50%;
+    transform: translateX(-50%);
+    max-height: 56pt;
+    max-width: 95%;
+    object-fit: contain;
+}
+.biocreto-encuesta .firma-label {
+    margin: 4pt 0 0 0;
+    font-weight: bold;
+    font-size: 9.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.biocreto-encuesta .firma-meta {
+    margin: 1pt 0 0 0;
+    font-size: 8pt;
+    color: #58595b;
+}

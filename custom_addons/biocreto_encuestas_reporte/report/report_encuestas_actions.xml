@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Accion de reporte: Encuesta de Satisfaccion (BC-GC-FR-16).
+
+        - report_name == report_file == id del template raiz (modulo.id),
+          que es lo que matchea el motor PlutoPrint en
+          biocreto_pdf_engine via _biocreto_usa_plutoprint().
+        - binding_model_id + binding_type='report' anaden el boton
+          "Imprimir > Encuesta de Satisfaccion" en form/list/kanban
+          de survey.user_input.
+        - paperformat_id = base.paperformat_euro (los margenes los
+          maneja el @page literal del template; el paperformat solo
+          importa para fallback wkhtmltopdf).
+        - print_report_name: el filename usa el nombre del cliente
+          de la OV vinculada (no del partner del user_input, que en
+          BIOCRETO suele coincidir pero el sale_order_id.partner_id
+          es la fuente canonica).
+    -->
+    <record id="action_report_encuesta_satisfaccion" model="ir.actions.report">
+        <field name="name">Encuesta de Satisfaccion</field>
+        <field name="model">survey.user_input</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">biocreto_encuestas_reporte.report_encuesta_satisfaccion_document</field>
+        <field name="report_file">biocreto_encuestas_reporte.report_encuesta_satisfaccion_document</field>
+        <field name="print_report_name">'Encuesta Satisfaccion - %s' % ((object.sale_order_id and object.sale_order_id.partner_id and object.sale_order_id.partner_id.name) or object.partner_id.name or str(object.id))</field>
+        <field name="binding_model_id" ref="survey.model_survey_user_input"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="base.paperformat_euro"/>
+    </record>
+</odoo>

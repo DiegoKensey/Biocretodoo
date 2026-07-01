@@ -117,7 +117,7 @@
             -->
             <xpath expr="//page[@name='page_answers']" position="after">
                 <page string="Firma encuesta" name="biocreto_firma">
-                    <group string="FIRMA SATISFACCION" name="biocreto_firma_sat"
+                    <group string="FIRMA SATISFACCIÓN" name="biocreto_firma_sat"
                            invisible="biocreto_tipo_encuesta != 'satisfaccion'">
                         <field name="biocreto_firma_encuesta"
                                widget="image" readonly="1"
