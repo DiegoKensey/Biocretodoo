@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Vista form: hereda purchase.purchase_order_form (verificado en
+        odoo/addons/purchase/views/purchase_views.xml:126). Cambios:
+        - Statusbar: draft, sent, registro, purchase
+        - Botones: renombrar Send RFQ/Send PO/Confirm Order → Enviar/Enviar OC/Confirmar
+        - Ocultar draft_confirm (id nativo del boton confirm en draft)
+        - Insertar NUEVO Confirmar en state=registro
+        - Ampliar button_cancel a state=registro
+        - Ocultar price_unit / tax_ids / price_subtotal en draft y sent
+        - Ocultar tax_totals en draft y sent
+        - Ocultar incoterm_id / incoterm_location siempre (vienen de purchase_stock)
+    -->
+    <record id="biocreto_purchase_order_form_inherit" model="ir.ui.view">
+        <field name="name">biocreto_compras.purchase.order.form.inherit</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+
+            <!-- v19.0.1.2.0: statusbar_visible vuelve a `draft,sent,registro,purchase`.
+                 "Por aprobar" NO aparece en el recorrido normal; el widget statusbar
+                 nativo lo agrega dinamicamente solo cuando el state actual del PO
+                 cae en 'to approve' (comportamiento condicional de Odoo). -->
+            <xpath expr="//header/field[@name='state']" position="attributes">
+                <attribute name="statusbar_visible">draft,sent,registro,purchase</attribute>
+            </xpath>
+
+            <!-- Boton "Send RFQ" (state=draft): renombrar a "Enviar" -->
+            <xpath expr="//header/button[@name='action_rfq_send'][1]" position="attributes">
+                <attribute name="string">Enviar</attribute>
+            </xpath>
+
+            <!-- v19.0.1.2.0: NUEVO boton "Confirmar" (morado) en state=draft,
+                 a la derecha de "Enviar". Salto rapido draft → registro (se saltea
+                 'sent'). Comparte el mismo metodo button_confirm_registro que el
+                 boton de state=registro; el metodo Python ramifica por estado.
+                 v19.0.1.3.0: string cambia de "Confirmar OC" a "Confirmar" — solo el
+                 boton de 'registro' conserva "Confirmar OC".
+                 v19.0.3.0.0 (Lote 3.1): se oculta cuando hay contrato (requisition_id).
+                 En ese caso el flujo por contrato usa el boton nativo 'draft_confirm'
+                 renombrado a "Confirmar OC" (mas abajo), que dispara button_confirm
+                 nativo → _approval_allowed → to approve/purchase (salto directo, sin
+                 pasar por registro). -->
+            <xpath expr="//header/button[@name='action_rfq_send'][1]" position="after">
+                <button name="button_confirm_registro"
+                        type="object"
+                        string="Confirmar"
+                        class="btn-primary"
+                        invisible="state != 'draft' or requisition_id"
+                        data-hotkey="w"/>
+            </xpath>
+
+            <!-- Boton "Confirm Order" id=bid_confirm (state=sent): renombrar a "Confirmar".
+                 El override de button_confirm en Python lo desvia a 'registro'. -->
+            <xpath expr="//header/button[@id='bid_confirm']" position="attributes">
+                <attribute name="string">Confirmar</attribute>
+            </xpath>
+
+            <!-- Boton "Send RFQ" (state=sent, reenvio): renombrar a "Enviar" -->
+            <xpath expr="//header/button[@name='action_rfq_send'][2]" position="attributes">
+                <attribute name="string">Enviar</attribute>
+            </xpath>
+
+            <!-- Boton "Confirm Order" id=draft_confirm (state=draft).
+                 v19.0.1.2.0: inicialmente OCULTO (flujo BIOCRETO empezaba
+                 obligatoriamente por Enviar → sent).
+                 v19.0.3.0.0 (Lote 3.1): se REACTIVA solo cuando hay contrato
+                 (requisition_id lleno) y se renombra a "Confirmar OC". Dispara
+                 button_confirm nativo (name="button_confirm", verificado en
+                 purchase/views/purchase_views.xml:138) → purchase_requisition
+                 override checa alternativas (con contrato ocultamos la pestana
+                 y no habra ninguna) → super() → _approval_allowed decide
+                 to approve o purchase. NO pasa por 'registro' ni por 'sent'.
+                 Sin contrato queda oculto → el boton "Confirmar" morado del
+                 Lote 1 (arriba, mismo estado draft) es el que se ve. Nunca
+                 coexisten (invisible complementario: not requisition_id vs
+                 requisition_id). -->
+            <xpath expr="//header/button[@id='draft_confirm']" position="attributes">
+                <attribute name="invisible">state != 'draft' or not requisition_id</attribute>
+                <attribute name="string">Confirmar OC</attribute>
+                <!-- v19.0.3.1.0: btn-primary (morado) como el "Confirmar" del flujo
+                     normal. El nativo no traia clase (era secundario/gris); al
+                     ser AHORA el disparador principal del flujo con contrato,
+                     debe destacar visualmente. Usamos btn-primary (Bootstrap 5)
+                     directo, misma clase que el "Confirmar" morado del Lote 1. -->
+                <attribute name="class">btn-primary</attribute>
+            </xpath>
+
+            <!-- Boton "Confirmar OC" desde 'registro' → dispara button_confirm_registro
+                 (Python), que a su vez llama al super() nativo con bypass context.
+                 Se inserta justo despues del boton draft_confirm nativo.
+                 v19.0.1.2.0: string cambia de "Confirmar" a "Confirmar OC" para
+                 unificar la etiqueta con el boton de draft. id="registro_confirm"
+                 para diferenciar del boton de draft (mismo name, invisible distinto). -->
+            <xpath expr="//header/button[@id='draft_confirm']" position="after">
+                <button name="button_confirm_registro"
+                        type="object"
+                        string="Confirmar OC"
+                        class="oe_highlight"
+                        invisible="state != 'registro'"
+                        context="{'validate_analytic': True}"
+                        data-hotkey="q"
+                        id="registro_confirm"/>
+            </xpath>
+
+            <!-- v19.0.2.0.0 (Lote 2): boton "Subir cotizacion" en el <header>,
+                 visible solo en 'registro'. Usa el widget nativo `attach_document`
+                 (web/static/src/views/widgets/attach_document/attach_document.js):
+                 el usuario clickea el boton, se abre el selector del SO, el
+                 archivo se sube a /web/binary/upload_attachment (crea el ir.attachment
+                 ligado al PO), luego el widget llama a subir_cotizacion(attachment_ids=...)
+                 en el modelo. highlight="1" → clase btn-primary (color primario del theme).
+                 Anchor: id='registro_confirm' (estable, no depende de indice numerico). -->
+            <xpath expr="//header/button[@id='registro_confirm']" position="after">
+                <widget name="attach_document"
+                        string="Subir cotización"
+                        action="subir_cotizacion"
+                        highlight="1"
+                        invisible="state != 'registro'"/>
+            </xpath>
+
+            <!-- Boton "Send PO" (state=purchase): renombrar a "Enviar OC" -->
+            <xpath expr="//header/button[@name='action_rfq_send'][3]" position="attributes">
+                <attribute name="string">Enviar OC</attribute>
+            </xpath>
+
+            <!-- Boton "Cancel": incluir 'registro' en la tupla de estados desde
+                 los que se puede cancelar. La condicion nativa es
+                 "state not in ('draft','to approve','sent','purchase') or locked". -->
+            <xpath expr="//header/button[@name='button_cancel']" position="attributes">
+                <attribute name="invisible">state not in ('draft','to approve','sent','registro','purchase') or locked</attribute>
+            </xpath>
+
+            <!-- Ocultar price_unit en la lista de order_line en draft/sent.
+                 v19.0.3.0.0 (Lote 3.1): SI hay contrato (requisition_id), el
+                 precio pactado del blanket viene desde el _onchange_requisition_id
+                 nativo → hay que mostrarlo desde draft. `parent.requisition_id`
+                 accede al field del padre desde la list embebida. -->
+            <xpath expr="//field[@name='order_line']/list/field[@name='price_unit']" position="attributes">
+                <attribute name="column_invisible">parent.state in ('draft','sent') and not parent.requisition_id</attribute>
+            </xpath>
+
+            <!-- Ocultar tax_ids (impuestos) en la lista de order_line en draft/sent.
+                 v19.0.3.0.0: mostrar desde draft si hay contrato. -->
+            <xpath expr="//field[@name='order_line']/list/field[@name='tax_ids']" position="attributes">
+                <attribute name="column_invisible">parent.state in ('draft','sent') and not parent.requisition_id</attribute>
+            </xpath>
+
+            <!-- Ocultar Importe (price_subtotal, string="Amount") en draft/sent.
+                 v19.0.3.0.0: mostrar desde draft si hay contrato. -->
+            <xpath expr="//field[@name='order_line']/list/field[@name='price_subtotal']" position="attributes">
+                <attribute name="column_invisible">parent.state in ('draft','sent') and not parent.requisition_id</attribute>
+            </xpath>
+
+            <!-- Ocultar Subtotal/Total (widget tax_totals) en draft/sent.
+                 El campo tax_totals vive en un group class="oe_subtotal_footer";
+                 hacemos invisible al propio campo — el widget desaparece pero
+                 el group queda vacio (aceptable, mantiene el layout).
+                 v19.0.3.0.0 (Lote 3.1): mostrar desde draft si hay contrato,
+                 asi el usuario ve totales calculados con el precio pactado. -->
+            <xpath expr="//field[@name='tax_totals']" position="attributes">
+                <attribute name="invisible">state in ('draft','sent') and not requisition_id</attribute>
+            </xpath>
+
+            <!-- Ocultar Incoterm SIEMPRE (vienen de purchase_stock/views/purchase_views.xml:69-70) -->
+            <xpath expr="//field[@name='incoterm_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='incoterm_location']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 v19.0.3.0.0 (Lote 3.1): Flujo por CONTRATO (blanket order).
+                 El campo nativo Contrato (purchase.order.requisition_id, viene de
+                 purchase_requisition/models/purchase.py:26) define dos flujos en
+                 el MISMO formulario:
+                   - CON contrato: precios visibles desde draft; partner_ref
+                     oculto siempre; Alternativas oculta; al confirmar salta
+                     directo a Orden de Compra via boton nativo (ver Lote 3.1
+                     en el xpath de draft_confirm mas arriba).
+                   - SIN contrato: flujo normal Lote 1/2 (precios ocultos
+                     hasta 'registro', partner_ref visible en registro/OC,
+                     requisition_id oculto en estados posteriores).
+                 El _onchange_requisition_id nativo (purchase_requisition/models/
+                 purchase.py:36-93) ya carga productos + precio pactado del blanket
+                 (product_qty = 0 para blanket, ver linea 87 — el usuario edita
+                 cantidad). _approval_allowed (purchase/models/purchase_order.py:1246)
+                 NO depende de state → salto directo draft→to approve/purchase
+                 funciona sin registro. _create_picking (purchase_stock/models/
+                 purchase_order.py:379) solo filtra state=='purchase' → picking OK.
+                 ═══════════════════════════════════════════════════════════════ -->
+
+            <!-- Ocultar pestana Alternativas cuando hay contrato.
+                 La pestana viene de purchase_requisition/views/purchase_views.xml:18
+                 (name='alternative_pos'). El purchase_requisition.button_confirm
+                 checa alternative_po_ids ANTES del super() — con la pestana oculta
+                 el usuario no crea nuevas alternativas, y el domain de
+                 alternative_po_ids ampliado en Lote 1 sigue funcionando para el
+                 flujo sin contrato. -->
+            <xpath expr="//page[@name='alternative_pos']" position="attributes">
+                <attribute name="invisible">requisition_id</attribute>
+            </xpath>
+
+            <!-- partner_ref (Referencia del proveedor): oculto si hay contrato o
+                 si estamos en draft/sent (Lote 1). Solo visible en registro/purchase
+                 SIN contrato. Con contrato, el vinculo con el proveedor lo lleva
+                 el propio Contrato (requisition_id), no hace falta partner_ref. -->
+            <xpath expr="//field[@name='partner_ref']" position="attributes">
+                <attribute name="invisible">requisition_id or state in ('draft','sent')</attribute>
+            </xpath>
+
+            <!-- requisition_id (Contrato/Acuerdo): elegible SOLO en draft. En
+                 estados posteriores queda readonly (para no permitir cambiar el
+                 contrato una vez confirmado el flujo) y solo visible si tiene valor
+                 (si vacio, se oculta — no ensucia el form del flujo normal).
+                 El field viene de purchase_requisition/views/purchase_views.xml:14
+                 con options="{'no_create': True}" y domain nativo por vendor y
+                 company — se conservan por herencia de atributos, aqui solo
+                 anadimos invisible + readonly. -->
+            <xpath expr="//field[@name='requisition_id']" position="attributes">
+                <attribute name="invisible">state != 'draft' and not requisition_id</attribute>
+                <attribute name="readonly">state != 'draft'</attribute>
+            </xpath>
+
+            <!-- v19.0.2.0.0 (Lote 2): panel de preview del PDF a la DERECHA.
+                 El <div class="o_attachment_preview"/> es un marcador que el
+                 form_compiler de mail (mail/static/src/chatter/web/form_compiler.js:33-54)
+                 detecta y reemplaza por un <t t-component="AttachmentView"/>.
+                 Layout COMBO: sheet a la izquierda, preview a la derecha, chatter
+                 abajo — activo solo en viewport ≥ XXL (1400px, MEDIAS_BREAKPOINTS[5]
+                 en web/static/src/core/ui/ui_service.js:118-125).
+                 Oculto en draft/sent (no tiene sentido antes de que el usuario suba
+                 la cotizacion en registro). El AttachmentView interno ademas se
+                 auto-oculta si no hay adjuntos (attachment_view.xml:5). -->
+            <xpath expr="//chatter" position="before">
+                <div class="o_attachment_preview" invisible="state in ('draft','sent')"/>
+            </xpath>
+
+            <!-- v19.0.2.0.0 (Lote 2): reload_on_attachment fuerza que el form
+                 se re-renderice cuando cambia el conjunto de attachments del
+                 chatter. Combinado con `await record.load()` que hace el widget
+                 attach_document (attach_document.js:67), garantiza que el
+                 preview lateral se actualice sin recargar toda la pagina. -->
+            <xpath expr="//chatter" position="attributes">
+                <attribute name="reload_on_attachment">True</attribute>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!--
+        Vista list de RFQs (dashboard): purchase.purchase_order_kpis_tree
+        (odoo/addons/purchase/views/purchase_views.xml:581-620). Añadir
+        decoration-warning para 'registro' preservando el resto de decoraciones
+        nativas (success=purchase, warning=to approve, info=draft/sent).
+    -->
+    <record id="biocreto_purchase_order_kpis_tree_inherit" model="ir.ui.view">
+        <field name="name">biocreto_compras.purchase.order.kpis.list.inherit</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_kpis_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list/field[@name='state']" position="attributes">
+                <attribute name="decoration-warning">state == 'to approve' or state == 'registro'</attribute>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
