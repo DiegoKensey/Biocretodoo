@@ -1,6 +1,6 @@
 {
     'name': 'BIOCRETO Compras',
-    'version': '19.0.3.1.0',
+    'version': '19.0.4.0.0',
     'category': 'Supply Chain/Purchase',
     'summary': 'Estado "Registro" en purchase.order, numeracion CP-AAAA-PLANTA-####, ajustes de UI (precios/impuestos/incoterm ocultos), Alternativas hasta Registro.',
     'description': (

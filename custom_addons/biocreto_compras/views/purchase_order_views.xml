@@ -126,6 +126,22 @@
                 <attribute name="string">Enviar OC</attribute>
             </xpath>
 
+            <!-- v19.0.3.2.0: renombrar el boton nativo "action_acknowledge" (state=purchase).
+                 Contexto: en purchase/i18n/es_PE.po, "Acknowledge" se traduce a
+                 "Confirmar" — literal, pero ambiguo: en la UI aparece un
+                 "Confirmar" en el header de Orden de Compra que se confunde con
+                 los botones "Confirmar"/"Confirmar OC" del flujo BIOCRETO
+                 (draft/registro), aunque semanticamente sea otra cosa
+                 (acuse de recibo del proveedor → escribe acknowledged=True,
+                 ver purchase/models/purchase_order.py:598-599, no re-confirma
+                 la OC). Renombramos aqui a "Reconocer" (traduccion literal de
+                 "Acknowledge") para eliminar la colision visual.
+                 invisible nativo (acknowledged or state != 'purchase') se
+                 conserva sin cambios — el gate por state ya es correcto. -->
+            <xpath expr="//header/button[@name='action_acknowledge']" position="attributes">
+                <attribute name="string">Reconocer</attribute>
+            </xpath>
+
             <!-- Boton "Cancel": incluir 'registro' en la tupla de estados desde
                  los que se puede cancelar. La condicion nativa es
                  "state not in ('draft','to approve','sent','purchase') or locked". -->

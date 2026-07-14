@@ -1,0 +1,487 @@
+// =================================================================
+//  BIOCRETO Compras - estilos del reporte QWeb (v19.0.1.0.0)
+//
+//  Motor objetivo: PlutoPrint (CSS3 + Paged Media). Header y footer
+//  se repiten en cada pagina via `position: running()` + @page
+//  @top-center / @bottom-center. El @page vive LITERAL en el <style>
+//  del template QWeb (PlutoPrint 0.20.0 NO lo aplica desde el bundle
+//  minificado; ver report_compras.xml).
+//
+//  Scope: .biocreto-sc. NO se pisan otras plantillas.
+//  NO se usa CSS Grid (no soportado). NO se usa calc().
+// =================================================================
+
+// --------- Tipografia: Century Gothic con fallbacks ---------
+@font-face {
+    font-family: 'Century Gothic Fallback';
+    src: local('Century Gothic'), local('CenturyGothic'),
+         local('URW Gothic'), local('AvantGarde'), local('Avant Garde');
+}
+
+// Reset global de margins/paddings del body (idem venta v19.0.2.0.5).
+html, body {
+    margin: 0;
+    padding: 0;
+}
+body {
+    background: #ffffff;
+}
+
+// --------- Tipografia base del wrapper ---------
+.biocreto-sc {
+    box-sizing: border-box;
+    font-family: 'Century Gothic', 'Century Gothic Fallback',
+                 'URW Gothic', 'AvantGarde', 'Trebuchet MS', sans-serif;
+    font-size: 10pt;
+    line-height: 1.35;
+    color: #1d1d1b;
+
+    *, *::before, *::after { box-sizing: border-box; }
+}
+
+// --------- Header / Footer como running elements ---------
+// Reset margin/padding como venta v19.0.2.0.5 (para que peguen a los
+// bordes del @page sin holgura).
+.page-header { position: running(hdr); margin: 0; padding: 0; }
+.page-footer { position: running(ftr); margin: 0; padding: 0; }
+
+// Altura EXACTA de los wrappers (26.5mm == @page margin) para no dejar
+// hueco superior/inferior. Los SVG se estiran a 101/102% para evitar
+// hairlines blancos por redondeo sub-pixel.
+.biocreto-sc .hwrap,
+.biocreto-sc .fwrap {
+    position: relative;
+    width: 100%;
+    height: 26.5mm;
+    overflow: hidden;
+}
+.biocreto-sc .hwrap svg,
+.biocreto-sc .fwrap svg {
+    display: block;
+    width: 101%;
+    height: 102%;
+}
+
+// Recuadro superior derecho del header (SIG codigo/version/fecha).
+.biocreto-sc .header-code {
+    position: absolute;
+    top: 0;
+    right: 0;
+    transform: translateX(3px);
+    width: 14.6%;
+    height: 66.1px;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.4;
+    font-size: 8pt;
+    font-weight: bold;
+    letter-spacing: 0.2px;
+
+    .row {
+        display: block;
+        padding: 1px 4px;
+    }
+}
+
+// NUMERACION DE PAGINA (nuevo en el proyecto).
+// El div .footer-pagenum vive DENTRO del .fwrap (position:relative)
+// con position:absolute + counter(page)/counter(pages) en ::after.
+// Variante B validada en recon 2 (test aislado con plutoprint 0.20.0):
+// los counters SI se evaluan dentro de un elemento con position:running().
+.biocreto-sc .footer-pagenum {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    transform: translateX(4px);
+    width: 5.2%;
+    height: 37.45px;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9pt;
+    font-weight: bold;
+    &::after {
+        content: counter(page) "/" counter(pages);
+    }
+}
+
+// --------- ANTI-CORTE DE PAGINA (v19.0.1.2.0 CORRECCION 4) ---------
+// break-inside: avoid validado en PlutoPrint 0.20.0 (prueba aislada:
+// items de altura variable, ITEM_N sale entero a la pagina siguiente
+// en lugar de partirse). Se aplica POR BLOQUE INDIVIDUAL - no en un
+// wrapper unico, para que cada bloque salte solo si le falta espacio
+// (hueco minimo). page-break-inside (alias legacy) produce el mismo
+// output; se usa solo el moderno.
+.biocreto-sc .info-block,
+.biocreto-sc .aviso,
+.biocreto-sc .requisitos,
+.biocreto-sc .firmas-block,
+.biocreto-sc .notas {
+    break-inside: avoid;
+}
+// Cada fila de la grilla de condiciones tampoco se parte
+.biocreto-sc .req-grid,
+.biocreto-sc .req-item {
+    break-inside: avoid;
+}
+// Titulo nunca queda huerfano al pie de una pagina
+.biocreto-sc .requisitos-title,
+.biocreto-sc .req-sub,
+.biocreto-sc .notas-title {
+    break-after: avoid;
+}
+// Bullet ISO y legal enteros
+.biocreto-sc .notas li,
+.biocreto-sc .legal {
+    break-inside: avoid;
+}
+// TABLA MULTIPAGINA: la cabecera se REPITE en cada pagina que ocupe.
+// display: table-header-group validado en PlutoPrint 0.20.0 (prueba
+// aislada: tabla de 40 filas, thead 'ITEM NOMBRE PRECIO' presente en
+// pag1 y pag2 con el pypdf extract_text).
+.biocreto-sc table.sc-table thead {
+    display: table-header-group;
+}
+// Ninguna fila se parte por la mitad
+.biocreto-sc table.sc-table tbody tr {
+    break-inside: avoid;
+}
+
+// --------- Main: padding lateral del HTML ---------
+// Selector es main.biocreto-sc (el elemento main con esa clase), NO
+// descendiente. Valor 20px lateral / 4-14px vertical (idem venta).
+main.biocreto-sc {
+    padding: 4px 20px 14px 20px;
+}
+
+// =========== CABECERA (titulo vertical + N° + meta) ===========
+.biocreto-sc .sc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #1ea8e0;
+    padding-bottom: 6pt;
+    margin-bottom: 12pt;
+}
+// Refuerzo cascada anti-Bootstrap: flex con !important scopeado.
+.biocreto-sc .sc-title {
+    display: flex !important;
+    align-items: center !important;
+    padding-left: 22px;
+    white-space: nowrap;
+}
+.biocreto-sc .sc-vertical-tag {
+    display: inline-block;
+    flex: 0 0 auto;
+    width: 28px !important;
+    height: 115px;
+    background: #1ea8e0;
+    position: relative;
+    overflow: hidden;
+
+    span {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-90deg);
+        transform-origin: center;
+        color: #ffffff;
+        font-size: 9pt;
+        font-weight: bold;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+}
+.biocreto-sc .sc-number {
+    padding-left: 14px;
+    font-size: 19pt;
+    font-weight: bold;
+    color: #1d1d1b;
+    letter-spacing: 0.5px;
+    line-height: 1;
+}
+.biocreto-sc .sc-meta {
+    text-align: right;
+    font-size: 9pt;
+
+    table {
+        border-collapse: collapse;
+        margin-left: auto;
+    }
+    td {
+        padding: 1pt 4pt;
+        font-family: inherit;
+    }
+    td:first-child {
+        color: #58595b;
+        font-weight: bold;
+        text-align: right;
+        text-transform: uppercase;
+        font-size: 8pt;
+        letter-spacing: 0.3px;
+    }
+    td:last-child {
+        text-align: left;
+        color: #1d1d1b;
+        min-width: 80pt;
+    }
+}
+
+// =========== BLOQUE INFO (Solicitante amarillo / Proveedor celeste) ===========
+// Comparten estructura; solo cambian los colores de la franja lateral
+// y del `color` de la etiqueta.
+.biocreto-sc .info-block {
+    background: #f5f5f5;
+    border-left: 3px solid #1ea8e0;
+    padding: 8pt 14pt;
+    margin: 0 0 10pt 0;
+
+    .info-row {
+        display: flex;
+        margin: 2pt 0;
+    }
+    .info-cell {
+        flex: 1;
+        display: flex;
+        align-items: flex-start;
+        font-size: 9.5pt;
+        padding-right: 14pt;
+        line-height: 1.4;
+        gap: 12px;
+    }
+    .info-cell.info-cell-full {
+        padding-right: 0;
+        flex: 1 1 100%;
+    }
+    .info-label {
+        color: #58595b;
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 8pt;
+        letter-spacing: 0.3px;
+        min-width: 100px;
+        flex-shrink: 0;
+    }
+    .info-value {
+        flex: 1;
+        color: #1d1d1b;
+    }
+    // v19.0.1.1.0 (CORRECCION 1): el icono de telefono va en .info-value
+    // (con el numero), NO en .info-label. El aire visible antes del numero
+    // se garantiza con el &#160; del XML + margin-right del CSS.
+    .info-value .fa {
+        color: #1ea8e0;
+        margin-right: 5px;
+    }
+}
+// Bloque Solicitante: franja lateral amarilla BIOCRETO.
+.biocreto-sc .info-block.solicitante {
+    border-left: 3px solid #f9bc09;
+
+    .info-value .fa { color: #f9bc09; }
+}
+
+// =========== INTRO (parrafo estatico) ===========
+.biocreto-sc .intro {
+    margin: 12pt 0 10pt 0;
+    font-size: 9.5pt;
+    line-height: 1.45;
+    color: #1d1d1b;
+    text-align: justify;
+}
+
+// =========== TABLA DE LINEAS (SIN cinta en U) ===========
+.biocreto-sc table.sc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+    margin: 0 0 8pt 0;
+
+    thead th {
+        background: #58595b;
+        color: #ffffff;
+        padding: 7pt 5pt !important;
+        font-weight: bold;
+        text-align: center;
+        font-size: 8.5pt;
+        letter-spacing: 0.4px;
+        font-family: inherit;
+        border-bottom: 5px solid #1ea8e0;
+        text-transform: uppercase;
+        line-height: 1.1;   // obligatorio: 1.35 heredado rompe centrado vertical.
+        vertical-align: middle;
+    }
+    thead th.col-cotiza-th {
+        background: #1ea8e0;
+        border-bottom: 5px solid #58595b;
+    }
+    thead .col-cotiza-sub {
+        font-size: 6.8pt;
+        font-weight: normal;
+        text-transform: none;
+        letter-spacing: 0.1px;
+        margin-top: 2pt;
+    }
+    tbody td {
+        border: 1px solid #d4d4d4;
+        padding: 5pt 6pt;
+        text-align: center;
+        font-family: inherit;
+        background: #ffffff;
+        vertical-align: middle;
+        line-height: 1.3;
+    }
+    tbody td.text-left { text-align: left; }
+    tbody td.col-item {
+        font-weight: bold;
+        background: #f5f5f5;
+        color: #58595b;
+    }
+    tbody td.col-cotiza {
+        background: #eaf6fc;   // celeste tenue, se ve vacio a proposito.
+    }
+    tbody tr:nth-child(even) td:not(.col-item):not(.col-cotiza) {
+        background: #fafafa;
+    }
+}
+
+// =========== AVISO (amarillo con fa fa-info-circle) ===========
+.biocreto-sc .aviso {
+    margin: 6pt 0 12pt 0;
+    padding: 8pt 12pt;
+    background: #fff8e1;
+    border-left: 3px solid #f9bc09;
+    font-size: 9pt;
+    color: #1d1d1b;
+    display: flex;
+    align-items: center;
+    gap: 8pt;
+
+    .fa {
+        color: #f9bc09;
+        font-size: 11pt;
+    }
+}
+
+// =========== REQUISITOS (v19.0.1.1.0 CORRECCION 2) ===========
+// Estructura VERBATIM del mockup:
+//   .requisitos-title (mayusculas, sin border-bottom)
+//   .req-grid con display:flex y gap:12px (validado gap OK en PlutoPrint 0.20.0)
+//   4 .req-item en una fila (flex:1 sin flex-basis:50%)
+//   .req-sub separador entre los dos req-grid
+//   Segunda fila con 3 .req-item (sin req-item-full)
+//   .r-label como <span> con display:block (via CSS)
+//   .r-line como <div> con border-bottom:1px dotted #999
+.biocreto-sc .requisitos {
+    margin-top: 14pt;
+
+    .requisitos-title {
+        font-size: 9pt;
+        font-weight: bold;
+        color: #58595b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 5pt;
+    }
+    .req-sub {
+        font-size: 8pt;
+        font-weight: bold;
+        color: #58595b;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        margin: 9pt 0 5pt 0;
+    }
+    .req-grid {
+        display: flex !important;
+        gap: 12px;
+    }
+    .req-item {
+        flex: 1;
+        background: #f5f5f5;
+        padding: 7pt 10pt;
+        font-size: 8pt;
+    }
+    .req-item .r-label {
+        color: #58595b;
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 7.5pt;
+        letter-spacing: 0.3px;
+        display: block;
+        margin-bottom: 2pt;
+    }
+    .req-item .r-line {
+        border-bottom: 1px dotted #999;
+        height: 12pt;
+    }
+}
+
+// =========== BLOQUE DE FIRMAS (v19.0.1.1.0) ===========
+// firma-line con border-TOP (linea horizontal ARRIBA), margen calculado con
+// el aire para la firma manual encima. Cambia de <p> a <div> (mas consistente).
+.biocreto-sc .firmas-block {
+    display: flex !important;
+    justify-content: center;
+    margin-top: 24pt;
+}
+.biocreto-sc .firma-area {
+    width: 48%;
+    text-align: center;
+}
+.biocreto-sc .firma-line {
+    border-top: 1.5px solid #58595b;
+    margin: 26pt 10pt 5pt 10pt;
+}
+.biocreto-sc .firma-who {
+    font-weight: bold;
+    color: #58595b;
+    font-size: 9pt;
+}
+.biocreto-sc .firma-role {
+    font-size: 7.5pt;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+// =========== NOTA (Evaluacion de Proveedores) + LEGAL (v19.0.1.1.0 CORRECCION 3) ===========
+// El legal va DENTRO del .notas (no separado). El notas tiene border-top gris
+// arriba y padding. El bullet ISO va en <ul><li>. El legal en italica gris
+// claro justificado.
+.biocreto-sc .notas {
+    margin-top: 14pt;
+    border-top: 1px solid #e0e0e0;
+    padding-top: 8pt;
+}
+.biocreto-sc .notas-title {
+    font-size: 9pt;
+    font-weight: bold;
+    color: #58595b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4pt;
+}
+.biocreto-sc .notas ul {
+    margin: 0;
+    padding-left: 16pt;
+}
+.biocreto-sc .notas li {
+    font-size: 7.5pt;
+    color: #666;
+    line-height: 1.4;
+    margin-bottom: 2pt;
+}
+.biocreto-sc .legal {
+    font-size: 6.5pt;
+    color: #aaa;
+    margin-top: 8pt;
+    font-style: italic;
+    text-align: justify;
+    line-height: 1.4;
+}

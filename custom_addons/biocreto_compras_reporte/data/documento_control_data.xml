@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!--
+            Registro SIG del reporte de Solicitud de Cotizacion.
+            Consultado desde el QWeb via
+              env['biocreto.documento.control'].get_control_for_qweb('compras_sc')
+            que devuelve {codigo, version, fecha_version}.
+
+            noupdate="1": si el registro ya existe con esta xml_id (ej.
+            porque el cliente lo creo manualmente antes de instalar el
+            reporte), los -u posteriores NO lo pisan.
+        -->
+        <record id="documento_sc_compras" model="biocreto.documento.control">
+            <field name="name">Solicitud de Cotizacion - Compras</field>
+            <field name="codigo">BC-GL-FR-05</field>
+            <field name="codigo_documento">compras_sc</field>
+            <field name="version">01</field>
+            <field name="fecha_version" eval="'2026-07-08'"/>
+        </record>
+
+    </data>
+</odoo>

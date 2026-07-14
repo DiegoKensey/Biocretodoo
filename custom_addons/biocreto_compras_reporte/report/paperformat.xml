@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!--
+            Paperformat A4 sangre lateral para el reporte de compras.
+            NO se asigna a ninguna accion (el @page inline del <style>
+            del QWeb manda + biocreto_pdf_engine fuerza PAGE_MARGINS_NONE).
+            Se declara por completitud, misma forma que el modulo de venta.
+        -->
+        <record id="paperformat_biocreto_sc_a4" model="report.paperformat">
+            <field name="name">A4 BIOCRETO Compras</field>
+            <field name="default" eval="False"/>
+            <field name="format">custom</field>
+            <field name="page_height">297</field>
+            <field name="page_width">210</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">27</field>
+            <field name="margin_bottom">27</field>
+            <field name="margin_left">0</field>
+            <field name="margin_right">0</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">0</field>
+            <field name="dpi">96</field>
+        </record>
+
+    </data>
+</odoo>

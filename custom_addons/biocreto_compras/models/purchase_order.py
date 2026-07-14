@@ -1,3 +1,6 @@
+import re
+import unicodedata
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
@@ -274,13 +277,96 @@ class PurchaseOrder(models.Model):
     #
     # Patron identico a hr_expense.attach_document (hr_expense/models/hr_expense.py:1198-1200).
     # ─────────────────────────────────────────────────────────────────
-    def subir_cotizacion(self, **kwargs):
-        """Widget attach_document: fija el ultimo adjunto subido como principal."""
+    # ─────────────────────────────────────────────────────────────────
+    # v19.0.4.0.0 (Lote 4): helper para armar el nombre del archivo
+    # renombrado de la cotizacion. Formato: {name}_{ident}_{partner_ref}.{ext}
+    #   ident = commercial_partner_id.vat, garantizado solo-digitos por
+    #           biocreto_base._check_biocreto_id_length (RUC 11 / DNI 8).
+    #           Fallback: sanear partner.name a ASCII/underscore, cortar a 40.
+    #   partner_ref = self.partner_ref saneado (dejar A-Z, a-z, 0-9, -).
+    #                 Si vacio, se omite el segmento (sin doble _).
+    # ─────────────────────────────────────────────────────────────────
+    def _biocreto_nombre_cotizacion(self, extension):
+        """Construye {name}_{ident}_{partner_ref}.{extension}."""
         self.ensure_one()
-        self._message_set_main_attachment_id(
-            self.env["ir.attachment"].browse(kwargs['attachment_ids'][-1:]),
-            force=True,
-        )
+        # commercial_partner_id: si el proveedor es un contacto de una empresa,
+        # el vat esta en la empresa padre (_synced_commercial_fields incluye
+        # 'vat' en base/models/res_partner.py:695). Si es persona suelta,
+        # commercial_partner_id == partner_id.
+        partner = self.partner_id.commercial_partner_id
+
+        # Identificador: preferir vat (solo-digitos por validacion de biocreto_base).
+        # Si esta vacio o tiene caracteres no-digitos (CE, pasaporte, etc.),
+        # limpiar dejando solo digitos; si aun asi queda vacio, caer al nombre.
+        ident = (partner.vat or '').strip()
+        if ident and not ident.isdigit():
+            ident = re.sub(r'\D', '', ident)
+        if not ident:
+            nombre = partner.name or 'sin_ident'
+            nombre = unicodedata.normalize('NFKD', nombre).encode('ascii', 'ignore').decode()
+            ident = re.sub(r'[^A-Za-z0-9]+', '_', nombre).strip('_')[:40] or 'sin_ident'
+
+        # partner_ref saneado (mantener guion, resto solo alfanumerico)
+        ref = (self.partner_ref or '').strip()
+        ref = re.sub(r'[^A-Za-z0-9\-]+', '', ref)
+
+        partes = [self.name or 'PO', ident]
+        if ref:
+            partes.append(ref)
+        base = '_'.join(partes)
+        return f"{base}.{extension}" if extension else base
+
+    def subir_cotizacion(self, **kwargs):
+        """Widget attach_document: sube cotizacion del proveedor.
+
+        v19.0.2.0.0 (Lote 2): fijaba el ultimo adjunto como main.
+        v19.0.4.0.0 (Lote 4):
+          1. Valida partner_ref no-vacio (flujo SIN contrato).
+          2. Renombra el nuevo adjunto a {name}_{ident}_{partner_ref}.{ext}.
+          3. REEMPLAZO: borra el main attachment previo (si difiere del nuevo)
+             — asi queda 1 solo adjunto de cotizacion. Opcion A: usamos
+             message_main_attachment_id como marcador de "el adjunto de
+             cotizacion". No se borran otros attachments del PO (que el usuario
+             haya subido por drag&drop al chatter u otras vias). Justificacion:
+             solo subir_cotizacion asigna el main; el filtro por 'name pattern'
+             (opcion B) es fragil si el usuario edita partner_ref entre
+             subidas.
+          4. Fija el nuevo como main → dispara re-render del preview via
+             _thread_to_store + reload_on_attachment (Lote 2).
+        """
+        self.ensure_one()
+
+        # 1) Validacion de referencia: solo aplica al flujo SIN contrato.
+        #    Con contrato, la cotizacion no forma parte del flujo.
+        if not self.requisition_id and not self.partner_ref:
+            raise UserError(_(
+                "Debe ingresar la Referencia del proveedor (N° de documento) "
+                "antes de subir la cotización."
+            ))
+
+        att_ids = kwargs.get('attachment_ids') or []
+        nuevo = self.env['ir.attachment'].browse(att_ids[-1:])
+        if not nuevo:
+            return
+
+        # 2) Reemplazo (Opcion A): borrar el main previo si difiere del nuevo.
+        #    unlink() borra el ir.attachment entero (bytes incluidos del filestore).
+        #    El campo message_main_attachment_id queda a False por ondelete
+        #    (verificado: no lo pone required=True).
+        previo = self.message_main_attachment_id
+        if previo and previo.id != nuevo.id:
+            previo.sudo().unlink()
+
+        # 3) Renombrar el nuevo. Extraer extension del name original.
+        original_name = nuevo.name or ''
+        if '.' in original_name:
+            ext = original_name.rsplit('.', 1)[-1].lower()
+        else:
+            ext = ''
+        nuevo.name = self._biocreto_nombre_cotizacion(ext)
+
+        # 4) Fijar como main (Lote 2). force=True permite reemplazo.
+        self._message_set_main_attachment_id(nuevo, force=True)
 
     def button_confirm_registro(self):
         """Boton 'Confirmar OC' multi-estado (usado en draft y en registro):
@@ -310,6 +396,24 @@ class PurchaseOrder(models.Model):
 
         if not from_registro:
             return True
+
+        # v19.0.4.0.0 (Lote 4): postear la cotizacion al chatter ANTES de la
+        # transicion. Solo aplica al flujo SIN contrato con adjunto principal.
+        # message_post con attachment_ids de un attachment ya ligado al PO no
+        # reasigna su res_model/res_id (mail_thread.py:2407-2411 solo reasigna
+        # los provenientes de mail.compose.message/mail.scheduled.message) —
+        # el adjunto queda enlazado al mensaje Y sigue en el PO, por lo que
+        # el preview lateral (message_main_attachment_id) no se pierde.
+        for order in from_registro:
+            att = order.message_main_attachment_id
+            if att and not order.requisition_id:
+                order.message_post(
+                    body=_(
+                        "Cotización de proveedor adjuntada %s",
+                        order.partner_ref or '',
+                    ),
+                    attachment_ids=att.ids,
+                )
 
         # Movemos a 'sent' con tracking_disable para evitar entrada doble
         # en el chatter (Registro → sent → to approve/purchase).
