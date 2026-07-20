@@ -31,7 +31,13 @@
         ================================================================
     -->
     <template id="sc_layout">
-        <t t-set="ctrl" t-value="o.env['biocreto.documento.control'].get_control_for_qweb('compras_sc')"/>
+        <!-- v19.0.1.3.0 CORRECCION 5 (riesgo permisos): sudo() en la lectura
+             del SIG para que un usuario sin acceso a biocreto.documento.control
+             (ej. empleados internos sin rol SIG) tambien pueda imprimir la SC.
+             El helper solo devuelve codigo/version/fecha del documento vigente,
+             no hay dato sensible. Alineado con el patron defensivo usual en
+             lookups de datos SIG desde QWeb. -->
+        <t t-set="ctrl" t-value="o.env['biocreto.documento.control'].sudo().get_control_for_qweb('compras_sc')"/>
 
         <style>
             @page {
@@ -511,9 +517,19 @@
         </div>
 
         <!-- ============ FIRMA (una sola columna centrada) ============ -->
+        <!-- v19.0.1.3.0 CORRECCION 5: imagen de biocreto_firma del create_uid
+             renderizada ARRIBA de la linea (border-top). Mismo mecanismo que
+             venta (biocreto_sale_report_cotizacion:747-750): image_data_uri +
+             t-att-src + t-if guard. Sin sudo (venta tampoco). Si el creador
+             no cargo firma, sale solo linea + nombre + cargo (sin img rota). -->
         <div class="firmas-block">
             <div class="firma-area">
-                <div class="firma-line"/>
+                <div class="firma-line">
+                    <img t-if="firmante.get('firma')"
+                         t-att-src="image_data_uri(firmante.get('firma'))"
+                         class="firma-img"
+                         alt="Firma solicitante"/>
+                </div>
                 <div class="firma-who"><t t-out="firmante.get('nombre', '')"/></div>
                 <div class="firma-role"><t t-out="firmante.get('cargo', '')"/></div>
             </div>

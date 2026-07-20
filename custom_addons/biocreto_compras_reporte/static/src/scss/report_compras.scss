@@ -422,32 +422,56 @@ main.biocreto-sc {
     }
 }
 
-// =========== BLOQUE DE FIRMAS (v19.0.1.1.0) ===========
-// firma-line con border-TOP (linea horizontal ARRIBA), margen calculado con
-// el aire para la firma manual encima. Cambia de <p> a <div> (mas consistente).
+// =========== BLOQUE DE FIRMAS (v19.0.1.3.1 CORRECCION 5.1) ===========
+// Valores CLONADOS 1:1 del reporte de cotizacion de venta
+// (biocreto_sale_report_cotizacion/static/src/scss/report_cotizacion.scss:537-609).
+// Solo dos adaptaciones justificadas por la diferencia estructural (1 col vs 3):
+//   1) .firmas-block: justify-content center (venta usa space-between con 3 cols)
+//   2) .firma-area: flex 0 0 33% (venta usa flex:1 en 3 cols => equivalente ~33%)
+// Los nombres de clase tipograficas se mantienen (firma-who / firma-role) pero
+// reciben los MISMOS valores que .firma-label / .firma-name en venta:
+//   firma-who <- estilos de firma-label (bold uppercase - nombre en mayusculas)
+//   firma-role <- estilos de firma-name  (regular gris - cargo)
 .biocreto-sc .firmas-block {
-    display: flex !important;
-    justify-content: center;
-    margin-top: 24pt;
+    display: flex;
+    justify-content: center;         // adaptacion: 1 col centrada (venta: space-between)
+    align-items: flex-end;
+    margin: 0 0 8pt 0;
+    gap: 24pt;
 }
 .biocreto-sc .firma-area {
-    width: 48%;
+    flex: 0 0 33%;                   // adaptacion: replica ancho del asesor en 3 cols de venta (venta: flex:1)
     text-align: center;
 }
 .biocreto-sc .firma-line {
-    border-top: 1.5px solid #58595b;
-    margin: 26pt 10pt 5pt 10pt;
+    position: relative;
+    height: 70pt;
+    border-bottom: 1px solid #58595b;
+    margin: 0 auto 6pt auto;
+    max-width: 230px;
+
+    img.firma-img {
+        position: absolute;
+        bottom: 2px;
+        left: 50%;
+        transform: translateX(-50%);
+        max-height: 90%;
+        max-width: 96%;
+        object-fit: contain;
+    }
 }
-.biocreto-sc .firma-who {
+.biocreto-sc .firma-who {           // equivalente semantico a .firma-label de venta
+    margin: 0;
     font-weight: bold;
-    color: #58595b;
     font-size: 9pt;
-}
-.biocreto-sc .firma-role {
-    font-size: 7.5pt;
-    color: #888;
+    color: #1d1d1b;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.5px;
+}
+.biocreto-sc .firma-role {          // equivalente semantico a .firma-name de venta
+    margin: 2pt 0 0 0;
+    font-size: 8.5pt;
+    color: #58595b;
 }
 
 // =========== NOTA (Evaluacion de Proveedores) + LEGAL (v19.0.1.1.0 CORRECCION 3) ===========

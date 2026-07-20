@@ -163,9 +163,24 @@ class PurchaseOrder(models.Model):
         return self.order_line.filtered(lambda l: not l.display_type)
 
     # -----------------------------------------------------------------
-    # Firmante: create_uid del registro. Nombre en mayusculas, cargo
-    # en `function` del partner del usuario. Ambos strings vacios si
-    # no hay dato (dato del cliente, no bug del reporte).
+    # Firmante: create_uid del registro (NO env.user - la firma es del
+    # que EMITIO la SC, no del que la imprime).
+    #   nombre : upper() del create_uid.name
+    #   cargo  : create_uid.partner_id.function (Char nativo)
+    #   firma  : create_uid.biocreto_firma (Binary attachment=True,
+    #            biocreto_base/models/res_users.py). False si vacia
+    #            para que el t-if del QWeb no dibuje img rota.
+    #
+    # v19.0.1.3.0 CORRECCION 5: se agrega 'firma'. Mismo mecanismo que
+    # venta (biocreto_sale_report_cotizacion), cambiando el origen:
+    #   venta   -> o.user_id.biocreto_firma
+    #   compras -> o.create_uid.biocreto_firma
+    # Sin sudo(): venta NO lo usa (probado en produccion). El binario
+    # atado a res.users vive en ir.attachment pero es legible por
+    # cualquier usuario que pueda leer el res.users (SELF_READABLE_FIELDS
+    # de biocreto_base incluye biocreto_firma para el propio user, y el
+    # ACL de res.users permite lectura general). Ver criterio 21 del
+    # checklist para prueba end-to-end.
     # -----------------------------------------------------------------
     def biocreto_sc_firmante(self):
         self.ensure_one()
@@ -173,4 +188,5 @@ class PurchaseOrder(models.Model):
         return {
             'nombre': (creador.name or '').upper(),
             'cargo': creador.partner_id.function or '',
+            'firma': creador.biocreto_firma or False,
         }
