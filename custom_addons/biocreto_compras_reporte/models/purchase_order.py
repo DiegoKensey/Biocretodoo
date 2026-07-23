@@ -155,12 +155,53 @@ class PurchaseOrder(models.Model):
         }
 
     # -----------------------------------------------------------------
-    # Lineas a imprimir. Filtra display_type (sections/notes) igual que
-    # los helpers de venta.
+    # Lineas a imprimir. v19.0.1.4.0 CORRECCION 6: incluye TODAS las
+    # lineas (productos + secciones + subsecciones + notas) preservando
+    # el orden de captura y con el correlativo YA calculado.
+    #
+    # Retorna list[dict]:
+    #   {'num': int|False, 'line': record, 'tipo': str}
+    # - 'num' solo se asigna a lineas de producto (display_type falsy).
+    #   Secciones y notas llevan False y NO consumen numero.
+    # - 'tipo' in ('producto', 'line_section', 'line_subsection', 'line_note').
+    #
+    # Orden: self.order_line respeta `_order = order_id, sequence, id`
+    # (verificado en runtime: purchase.order.line._order). No hace falta
+    # .sorted('sequence') explicito.
+    #
+    # Decision: NO excluir product_qty == 0. En una SC una cantidad 0 es
+    # error de captura que conviene visibilizar. El nativo filtra con
+    # `l.display_type or l.product_qty != 0`; aca no.
     # -----------------------------------------------------------------
     def biocreto_sc_lineas(self):
         self.ensure_one()
-        return self.order_line.filtered(lambda l: not l.display_type)
+        res = []
+        contador = 0
+        for line in self.order_line:
+            if line.display_type:
+                res.append({'num': False, 'line': line, 'tipo': line.display_type})
+            else:
+                contador += 1
+                res.append({'num': contador, 'line': line, 'tipo': 'producto'})
+        return res
+
+    # -----------------------------------------------------------------
+    # v19.0.1.4.0 CORRECCION 6: descripcion de compra SIN el nombre.
+    # line.name es armado por _get_product_purchase_description en
+    # purchase/models/purchase_order_line.py:568-574 como:
+    #   name = product.display_name
+    #   if product.description_purchase:
+    #       name += '\n' + description_purchase
+    # Partimos por el PRIMER salto de linea: lo anterior es el nombre
+    # (ya impreso en negrita en la celda), lo posterior es la descripcion.
+    # Retorna '' si no hay descripcion -> la celda queda solo con el nombre.
+    # -----------------------------------------------------------------
+    def biocreto_sc_desc_extra(self, line):
+        self.ensure_one()
+        if not line or not line.name:
+            return ''
+        partes = line.name.split('\n', 1)
+        return partes[1].strip() if len(partes) > 1 else ''
 
     # -----------------------------------------------------------------
     # Firmante: create_uid del registro (NO env.user - la firma es del
@@ -190,3 +231,114 @@ class PurchaseOrder(models.Model):
             'cargo': creador.partner_id.function or '',
             'firma': creador.biocreto_firma or False,
         }
+
+    # =================================================================
+    # v19.0.2.0.0 — helpers exclusivos del body_oc.
+    # =================================================================
+
+    def biocreto_sc_moneda_simbolo(self):
+        """Simbolo corto de la moneda para renglones de importe."""
+        self.ensure_one()
+        cur = self.currency_id
+        if not cur:
+            return ''
+        if cur.name == 'PEN':
+            return 'S/'
+        if cur.name == 'USD':
+            return '$'
+        return cur.symbol or cur.name or ''
+
+    def biocreto_oc_monto_palabras(self, amount):
+        """Monto a texto en formato bancario peruano: '<Palabras> con XX/100 <moneda>'.
+
+        Clon 1:1 de biocreto_sale_extension.sale_order.biocreto_contrato_monto_palabras
+        (sale_order.py:459-511), con UNA parametrizacion adicional: el sufijo
+        final ('soles' / 'dolares' / '<curr_name>') depende de self.currency_id
+        en vez de hardcodearse a 'soles'. El .upper() se aplica en el QWeb.
+        """
+        self.ensure_one()
+        try:
+            amount = float(amount or 0.0)
+        except (TypeError, ValueError):
+            return ''
+        integer_part = int(amount)
+        centimos = int(round((amount - integer_part) * 100))
+        if centimos == 100:
+            integer_part += 1
+            centimos = 0
+        raw = self.currency_id.amount_to_text(integer_part) or ''
+        unit = (self.currency_id.currency_unit_label or '').strip()
+        if unit and raw.endswith(' ' + unit):
+            palabras = raw[:-(len(unit) + 1)]
+        elif ' ' in raw:
+            palabras = raw.rsplit(' ', 1)[0]
+        else:
+            palabras = raw
+        palabras = palabras.strip().lower().capitalize()
+        cname = (self.currency_id.name or '').upper()
+        if cname == 'PEN':
+            sufijo = 'soles'
+        elif cname == 'USD':
+            sufijo = 'dólares'
+        else:
+            sufijo = (self.currency_id.currency_unit_label or cname or '').lower()
+            if sufijo and not sufijo.endswith('s'):
+                sufijo += 's'
+        return f'{palabras} con {centimos:02d}/100 {sufijo}'
+
+    def biocreto_oc_descuento_total(self):
+        """Suma de descuentos de linea. Devuelve 0.0 si no hay ninguno.
+        El grupo product.group_discount_per_so_line NO aplica a compras
+        (es de sale y ni siquiera existe en esta BD) — leemos line.discount directo."""
+        self.ensure_one()
+        return sum(
+            (l.price_unit or 0.0) * (l.product_qty or 0.0) * ((l.discount or 0.0) / 100.0)
+            for l in self.order_line if not l.display_type
+        )
+
+    def biocreto_oc_condiciones(self):
+        """Valores de las condiciones pactadas para la OC. Cadena vacia => el
+        QWeb pinta la linea punteada en blanco (mismo criterio para los 7)."""
+        self.ensure_one()
+        fecha = ''
+        if self.date_planned:
+            dt = self._biocreto_to_lima(self.date_planned)
+            fecha = dt.strftime('%d/%m/%Y') if dt else ''
+
+        garantia = ''
+        meses = self.biocreto_garantia_meses or 0
+        if meses > 0:
+            garantia = '%s %s' % (meses, 'mes' if meses == 1 else 'meses')
+
+        cta = self.biocreto_cuenta_deposito_id
+        return {
+            'fecha_entrega': fecha,
+            'forma_pago': self.payment_term_id.name or '',
+            'medio_pago': self.biocreto_medio_pago_id.name or '',
+            'garantia': garantia,
+            'banco': (cta.bank_id.name or cta.bank_name or '') if cta else '',
+            'cuenta': (cta.acc_number or '') if cta else '',
+            'cci': (cta.biocreto_cci or '') if cta else '',
+        }
+
+    def biocreto_oc_firmantes(self):
+        """Firmas de la OC: creador (izquierda) + gerente de sede (derecha).
+        Si manager_id esta vacio, devuelve lista de 1 sola firma — el QWeb
+        centra la unica columna, igual criterio que la SC.
+        Sin sudo (mismo criterio que biocreto_sc_firmante, ver docstring alli).
+        Formato: nombre en mayusculas + function, SIN prefijo tipo 'Solicitado por'."""
+        self.ensure_one()
+        creador = self.create_uid
+        gerente = self.company_id.manager_id
+        firmantes = [{
+            'nombre': (creador.name or '').upper(),
+            'cargo': creador.partner_id.function or '',
+            'firma': creador.biocreto_firma or False,
+        }]
+        if gerente and gerente != creador:
+            firmantes.append({
+                'nombre': (gerente.name or '').upper(),
+                'cargo': gerente.partner_id.function or '',
+                'firma': gerente.biocreto_firma or False,
+            })
+        return firmantes

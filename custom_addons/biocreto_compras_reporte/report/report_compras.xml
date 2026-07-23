@@ -37,7 +37,10 @@
              El helper solo devuelve codigo/version/fecha del documento vigente,
              no hay dato sensible. Alineado con el patron defensivo usual en
              lookups de datos SIG desde QWeb. -->
-        <t t-set="ctrl" t-value="o.env['biocreto.documento.control'].sudo().get_control_for_qweb('compras_sc')"/>
+        <!-- v19.0.2.0.0: ruteo SIG por tipo (SC=compras_sc / OC=compras_oc).
+             biocreto_sc_es_oc() devuelve True solo en state='purchase'. -->
+        <t t-set="sig_key" t-value="'compras_oc' if o.biocreto_sc_es_oc() else 'compras_sc'"/>
+        <t t-set="ctrl" t-value="o.env['biocreto.documento.control'].sudo().get_control_for_qweb(sig_key)"/>
 
         <style>
             @page {
@@ -481,10 +484,32 @@
                 </tr>
             </thead>
             <tbody>
-                <t t-foreach="o.biocreto_sc_lineas()" t-as="line">
-                    <tr>
-                        <td class="col-item"><span t-out="line_index + 1"/></td>
-                        <td class="text-left"><span t-out="line.product_id.display_name or line.name or ''"/></td>
+                <t t-foreach="o.biocreto_sc_lineas()" t-as="row">
+                    <t t-set="line" t-value="row['line']"/>
+
+                    <!-- SECCION -->
+                    <tr t-if="row['tipo'] == 'line_section'" class="sc-section">
+                        <td colspan="5"><span t-out="line.name or ''"/></td>
+                    </tr>
+
+                    <!-- SUBSECCION -->
+                    <tr t-if="row['tipo'] == 'line_subsection'" class="sc-subsection">
+                        <td colspan="5"><span t-out="line.name or ''"/></td>
+                    </tr>
+
+                    <!-- NOTA -->
+                    <tr t-if="row['tipo'] == 'line_note'" class="sc-note">
+                        <td colspan="5"><span t-out="line.name or ''"/></td>
+                    </tr>
+
+                    <!-- PRODUCTO -->
+                    <tr t-if="row['tipo'] == 'producto'">
+                        <td class="col-item"><span t-out="row['num']"/></td>
+                        <td class="text-left col-desc">
+                            <div class="prod-name"><span t-out="line.product_id.display_name or line.name or ''"/></div>
+                            <t t-set="extra" t-value="o.biocreto_sc_desc_extra(line)"/>
+                            <div t-if="extra" class="prod-desc"><span t-out="extra"/></div>
+                        </td>
                         <td><span t-out="'%.2f' % (line.product_qty or 0)"/></td>
                         <td><span t-out="line.product_uom_id.name or ''"/></td>
                         <td class="col-cotiza"></td>
@@ -503,9 +528,9 @@
         <div class="requisitos">
             <div class="requisitos-title">Condiciones a indicar por el proveedor</div>
             <div class="req-grid">
-                <div class="req-item"><span class="r-label">Tiempo de entrega</span><div class="r-line"/></div>
+                <div class="req-item"><span class="r-label">Fecha de entrega</span><div class="r-line"/></div>
                 <div class="req-item"><span class="r-label">Forma de pago</span><div class="r-line"/></div>
-                <div class="req-item"><span class="r-label">Validez de la oferta</span><div class="r-line"/></div>
+                <div class="req-item"><span class="r-label">Medio de pago</span><div class="r-line"/></div>
                 <div class="req-item"><span class="r-label">Garantía</span><div class="r-line"/></div>
             </div>
             <div class="req-sub">Datos para pago (a completar por el proveedor)</div>
@@ -555,8 +580,244 @@
         ================================================================
     -->
     <template id="body_oc">
-        <!-- TODO v19.0.2.0.0: body dedicado de Orden de Compra. -->
-        <t t-call="biocreto_compras_reporte.body_sc"/>
+        <t t-set="comprador" t-value="o.biocreto_sc_solicitante()"/>
+        <t t-set="proveedor" t-value="o.biocreto_sc_proveedor()"/>
+        <t t-set="cond" t-value="o.biocreto_oc_condiciones()"/>
+        <t t-set="simbolo" t-value="o.biocreto_sc_moneda_simbolo()"/>
+        <t t-set="descuento" t-value="o.biocreto_oc_descuento_total()"/>
+        <t t-set="firmantes" t-value="o.biocreto_oc_firmantes()"/>
+
+        <!-- ============ CABECERA (tag vertical 'Orden' + N° + meta) ============ -->
+        <div class="sc-header">
+            <div class="sc-title">
+                <div class="sc-vertical-tag"><span t-out="o.biocreto_sc_rotulo()"/></div>
+                <div class="sc-number">N° <span t-out="o.name or ''"/></div>
+            </div>
+            <div class="sc-meta">
+                <table>
+                    <tr>
+                        <td>Fecha de emisión:</td>
+                        <td><span t-out="o.biocreto_sc_fecha_emision()"/></td>
+                    </tr>
+                    <tr>
+                        <td>Moneda:</td>
+                        <td><span t-out="o.biocreto_sc_moneda_label()"/></td>
+                    </tr>
+                    <tr>
+                        <td>Requerimiento:</td>
+                        <td></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- ============ BLOQUE COMPRADOR (amarillo) ============ -->
+        <div class="info-block solicitante">
+            <div class="info-row">
+                <div class="info-cell">
+                    <span class="info-label">Comprador</span>
+                    <span class="info-value"><t t-out="comprador.get('nombre', '')"/></span>
+                </div>
+                <div class="info-cell">
+                    <span class="info-label"><t t-out="comprador.get('doc_tipo', '')"/></span>
+                    <span class="info-value"><t t-out="comprador.get('doc_num', '')"/></span>
+                </div>
+            </div>
+            <div class="info-row">
+                <div class="info-cell">
+                    <span class="info-label">Contacto</span>
+                    <span class="info-value"><i class="fa fa-phone"/>&#160;<t t-out="comprador.get('telefono') or '—'"/></span>
+                </div>
+                <div class="info-cell">
+                    <span class="info-label">Atención</span>
+                    <span class="info-value"><t t-out="comprador.get('atencion', '')"/></span>
+                </div>
+            </div>
+            <div class="info-row">
+                <div class="info-cell info-cell-full">
+                    <span class="info-label">Dirección</span>
+                    <span class="info-value"><t t-out="comprador.get('direccion') or '—'"/></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ BLOQUE PROVEEDOR (celeste) ============ -->
+        <div class="info-block">
+            <div class="info-row">
+                <div class="info-cell">
+                    <span class="info-label">Proveedor</span>
+                    <span class="info-value"><t t-out="proveedor.get('nombre', '')"/></span>
+                </div>
+                <div class="info-cell">
+                    <span class="info-label"><t t-out="proveedor.get('doc_tipo', '')"/></span>
+                    <span class="info-value"><t t-out="proveedor.get('doc_num', '')"/></span>
+                </div>
+            </div>
+            <div class="info-row">
+                <div class="info-cell">
+                    <span class="info-label">Contacto</span>
+                    <span class="info-value"><i class="fa fa-phone"/>&#160;<t t-out="proveedor.get('telefono') or '—'"/></span>
+                </div>
+                <div class="info-cell">
+                    <span class="info-label">Atención</span>
+                    <span class="info-value"><t t-out="proveedor.get('atencion', '')"/></span>
+                </div>
+            </div>
+            <div class="info-row">
+                <div class="info-cell info-cell-full">
+                    <span class="info-label">Dirección</span>
+                    <span class="info-value"><t t-out="proveedor.get('direccion') or '—'"/></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ TABLA DE LINEAS (6 columnas) ============ -->
+        <table class="sc-table">
+            <thead>
+                <tr>
+                    <th style="width:6%;">Ítem</th>
+                    <th style="width:40%;">Descripción</th>
+                    <th style="width:11%;">Cantidad</th>
+                    <th style="width:11%;">Unidad</th>
+                    <th style="width:14%;">P. Unitario</th>
+                    <th style="width:18%;" class="col-importe">Importe</th>
+                </tr>
+            </thead>
+            <tbody>
+                <t t-foreach="o.biocreto_sc_lineas()" t-as="row">
+                    <t t-set="line" t-value="row['line']"/>
+
+                    <tr t-if="row['tipo'] == 'line_section'" class="sc-section">
+                        <td colspan="6"><span t-out="line.name or ''"/></td>
+                    </tr>
+
+                    <tr t-if="row['tipo'] == 'line_subsection'" class="sc-subsection">
+                        <td colspan="6"><span t-out="line.name or ''"/></td>
+                    </tr>
+
+                    <tr t-if="row['tipo'] == 'line_note'" class="sc-note">
+                        <td colspan="6"><span t-out="line.name or ''"/></td>
+                    </tr>
+
+                    <tr t-if="row['tipo'] == 'producto'">
+                        <td class="col-item"><span t-out="row['num']"/></td>
+                        <td class="text-left col-desc">
+                            <div class="prod-name"><span t-out="line.product_id.display_name or line.name or ''"/></div>
+                            <t t-set="extra" t-value="o.biocreto_sc_desc_extra(line)"/>
+                            <div t-if="extra" class="prod-desc"><span t-out="extra"/></div>
+                        </td>
+                        <td><span t-out="'%.2f' % (line.product_qty or 0)"/></td>
+                        <td><span t-out="line.product_uom_id.name or ''"/></td>
+                        <td class="r"><t t-out="simbolo"/> <span t-out="o.biocreto_sc_money(line.price_unit)"/></td>
+                        <td class="col-importe r"><t t-out="simbolo"/> <span t-out="o.biocreto_sc_money(line.price_subtotal)"/></td>
+                    </tr>
+                </t>
+            </tbody>
+        </table>
+
+        <!-- ============ TOTALES (subtotal, descuento?, IGV) ============ -->
+        <div class="totals-section">
+            <table class="subtotals-table">
+                <tr>
+                    <td class="s-label">Subtotal (sin IGV)</td>
+                    <td class="s-value"><t t-out="simbolo"/> <t t-out="o.biocreto_sc_money(o.amount_untaxed)"/></td>
+                </tr>
+                <t t-if="descuento">
+                    <tr>
+                        <td class="s-label">Descuento</td>
+                        <td class="s-value"><t t-out="simbolo"/> <t t-out="o.biocreto_sc_money(descuento)"/></td>
+                    </tr>
+                </t>
+                <tr class="subtotal-total">
+                    <td class="s-label">IGV (18%)</td>
+                    <td class="s-value"><t t-out="simbolo"/> <t t-out="o.biocreto_sc_money(o.amount_tax)"/></td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- ============ GRAN TOTAL (franja amarilla + monto en letras) ============ -->
+        <div class="grand-total">
+            <span class="grand-total-label">Importe a pagar
+                <span class="grand-total-sub"><t t-out="o.biocreto_oc_monto_palabras(o.amount_total).upper()"/></span>
+            </span>
+            <span class="grand-total-value"><t t-out="simbolo"/> <t t-out="o.biocreto_sc_money(o.amount_total)"/></span>
+        </div>
+
+        <!-- ============ AVISO (texto OC, con negritas) ============ -->
+        <div class="aviso">
+            <i class="fa fa-info-circle"/>
+            <span>Toda entrega debe adjuntar <b>guía de remisión</b> y <b>factura</b> consignando el N° de esta orden de compra. No se recibirá mercadería sin documento sustentatorio.</span>
+        </div>
+
+        <!-- ============ CONDICIONES PACTADAS ============ -->
+        <div class="requisitos">
+            <div class="requisitos-title">Condiciones pactadas</div>
+            <div class="req-grid">
+                <div class="req-item">
+                    <span class="r-label">Fecha de entrega</span>
+                    <t t-if="cond['fecha_entrega']"><span class="r-val"><t t-out="cond['fecha_entrega']"/></span></t>
+                    <t t-else=""><div class="r-line"/></t>
+                </div>
+                <div class="req-item">
+                    <span class="r-label">Forma de pago</span>
+                    <t t-if="cond['forma_pago']"><span class="r-val"><t t-out="cond['forma_pago']"/></span></t>
+                    <t t-else=""><div class="r-line"/></t>
+                </div>
+                <div class="req-item">
+                    <span class="r-label">Medio de pago</span>
+                    <t t-if="cond['medio_pago']"><span class="r-val"><t t-out="cond['medio_pago']"/></span></t>
+                    <t t-else=""><div class="r-line"/></t>
+                </div>
+                <div class="req-item">
+                    <span class="r-label">Garantía</span>
+                    <t t-if="cond['garantia']"><span class="r-val"><t t-out="cond['garantia']"/></span></t>
+                    <t t-else=""><div class="r-line"/></t>
+                </div>
+            </div>
+            <div class="req-sub">Datos para pago al proveedor</div>
+            <div class="req-grid">
+                <div class="req-item">
+                    <span class="r-label">Banco</span>
+                    <t t-if="cond['banco']"><span class="r-val"><t t-out="cond['banco']"/></span></t>
+                    <t t-else=""><div class="r-line"/></t>
+                </div>
+                <div class="req-item">
+                    <span class="r-label">Cta. bancaria</span>
+                    <t t-if="cond['cuenta']"><span class="r-val"><t t-out="cond['cuenta']"/></span></t>
+                    <t t-else=""><div class="r-line"/></t>
+                </div>
+                <div class="req-item">
+                    <span class="r-label">N° CCI</span>
+                    <t t-if="cond['cci']"><span class="r-val"><t t-out="cond['cci']"/></span></t>
+                    <t t-else=""><div class="r-line"/></t>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ FIRMAS (1 o 2 columnas) ============ -->
+        <div class="firmas-block firmas-oc">
+            <t t-foreach="firmantes" t-as="f">
+                <div class="firma-area">
+                    <div class="firma-line">
+                        <img t-if="f.get('firma')"
+                             t-att-src="image_data_uri(f.get('firma'))"
+                             class="firma-img"
+                             alt="Firma"/>
+                    </div>
+                    <div class="firma-who"><t t-out="f.get('nombre', '')"/></div>
+                    <div class="firma-role"><t t-out="f.get('cargo', '')"/></div>
+                </div>
+            </t>
+        </div>
+
+        <!-- ============ NOTA + LEGAL (idéntico al body_sc) ============ -->
+        <div class="notas">
+            <div class="notas-title">Nota — Evaluación de Proveedores</div>
+            <ul>
+                <li>Nuestros proveedores son evaluados y reevaluados de manera continua conforme a las normas ISO 9001, ISO 14001 e ISO 45001. Criterios: tiempo de entrega, cumplimiento de especificaciones técnicas, capacidad del proveedor, garantía, comunicación y soporte, entrega de documentos, cumplimiento de SST y ambiental, y condición de transporte/equipos.</li>
+            </ul>
+            <div class="legal">&quot;Este documento ha sido elaborado únicamente para el uso de la organización; así mismo no se encuentra controlado en formato físico, en caso se requiera imprimir debe asegurarse que se encuentre en la carpeta VIGENTE, finalmente queda prohibida la modificación y/o reproducción sin la autorización previa de la Alta Dirección del grupo corporativo BIOCRETO.&quot;</div>
+        </div>
     </template>
 
     <!--

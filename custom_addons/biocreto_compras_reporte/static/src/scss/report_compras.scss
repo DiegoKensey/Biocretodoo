@@ -346,9 +346,69 @@ main.biocreto-sc {
     tbody td.col-cotiza {
         background: #eaf6fc;   // celeste tenue, se ve vacio a proposito.
     }
-    tbody tr:nth-child(even) td:not(.col-item):not(.col-cotiza) {
+    // v19.0.1.4.0 CORRECCION 6: excluir sc-section / sc-subsection / sc-note
+    // del zebra. Sin la exclusion, una seccion en fila par pierde su fondo
+    // gris (#f0f0f0 vs #fafafa) y desaparece visualmente como seccion.
+    // v19.0.2.0.0: se agrega :not(.col-importe) para NO pisar el fondo celeste
+    // de la columna Importe del body_oc en filas pares. Misma especificidad
+    // que el selector original — no hace falta !important.
+    tbody tr:not(.sc-section):not(.sc-subsection):not(.sc-note):nth-child(even) td:not(.col-item):not(.col-cotiza):not(.col-importe) {
         background: #fafafa;
     }
+}
+
+// =========== v19.0.1.4.0 CORRECCION 6: DESCRIPCION + SECCIONES + NOTAS ===========
+// Diseno sobrio, sin fondos de color agresivos (para no competir con las
+// franjas amarilla/celeste de los bloques Solicitante/Proveedor).
+//
+// Celda de producto: nombre en negrita + descripcion debajo en gris.
+.biocreto-sc table.sc-table tbody td.col-desc {
+    text-align: left;
+}
+.biocreto-sc .prod-name {
+    font-weight: bold;
+    color: #1d1d1b;
+}
+.biocreto-sc .prod-desc {
+    font-size: 7.5pt;
+    color: #666666;
+    line-height: 1.3;
+    margin-top: 1pt;
+    white-space: pre-line;   // respeta \n en la description_purchase.
+}
+
+// Secciones: negrita mayusculas, fondo gris. Alineadas a la izquierda.
+.biocreto-sc table.sc-table tbody tr.sc-section td {
+    text-align: left;
+    font-weight: bold;
+    color: #58595b;
+    text-transform: uppercase;
+    letter-spacing: .3px;
+    font-size: 8pt;
+    background: #f0f0f0;
+}
+// Subsecciones: negrita normal, fondo mas claro.
+.biocreto-sc table.sc-table tbody tr.sc-subsection td {
+    text-align: left;
+    font-weight: bold;
+    color: #58595b;
+    font-size: 8pt;
+    background: #f7f7f7;
+}
+// Notas: italica, gris medio. Sin fondo especial.
+.biocreto-sc table.sc-table tbody tr.sc-note td {
+    text-align: left;
+    font-style: italic;
+    color: #666666;
+    font-size: 8pt;
+    white-space: pre-line;
+}
+
+// Una seccion/subseccion nunca queda huerfana al pie de la pagina.
+// (complementa el bloque anti-corte de la CORRECCION 4).
+.biocreto-sc table.sc-table tbody tr.sc-section,
+.biocreto-sc table.sc-table tbody tr.sc-subsection {
+    break-after: avoid;
 }
 
 // =========== AVISO (amarillo con fa fa-info-circle) ===========
@@ -508,4 +568,105 @@ main.biocreto-sc {
     font-style: italic;
     text-align: justify;
     line-height: 1.4;
+}
+
+/* ================================================================
+   v19.0.2.0.0 — Estilos exclusivos del body_oc (Orden de Compra).
+   Sin calc(), sin CSS Grid (PlutoPrint). @page sigue solo en el
+   <style> literal del sc_layout.
+   ================================================================ */
+
+/* ---- TABLA OC: columna P. Unitario (gris) + Importe (celeste) ---- */
+.biocreto-sc table.sc-table tbody td.r {
+    text-align: right;
+}
+.biocreto-sc table.sc-table tbody td.col-importe {
+    background: #eaf6fc !important;
+    font-weight: bold;
+    text-align: right;
+}
+.biocreto-sc table.sc-table thead th.col-importe {
+    background: #1ea8e0 !important;
+    border-bottom: 5px solid #58595b !important;
+}
+
+/* ---- TOTALES (tabla derecha) ---- */
+.biocreto-sc .totals-section {
+    display: flex !important;
+    justify-content: flex-end;
+    margin-top: 9pt;
+    break-inside: avoid;
+}
+.biocreto-sc table.subtotals-table {
+    border-collapse: collapse;
+    font-size: 9pt;
+    margin-left: auto;
+}
+.biocreto-sc table.subtotals-table td {
+    padding: 3pt 12pt 3pt 20pt;
+    text-align: right;
+    white-space: nowrap;
+}
+.biocreto-sc table.subtotals-table td.s-label {
+    color: #58595b;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 8.5pt;
+    letter-spacing: 0.3px;
+}
+.biocreto-sc table.subtotals-table td.s-value {
+    font-weight: bold;
+    min-width: 95px;
+    color: #1d1d1b;
+}
+.biocreto-sc table.subtotals-table tr.subtotal-total td {
+    border-top: 2px solid #58595b;
+    padding-top: 5pt;
+}
+
+/* ---- GRAN TOTAL (franja amarilla + monto en letras debajo del label) ---- */
+.biocreto-sc .grand-total {
+    margin-top: 8pt;
+    padding: 8pt 16pt;
+    background: #f9bc09;
+    color: #1d1d1b;
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    letter-spacing: 0.5px;
+    break-inside: avoid;
+}
+.biocreto-sc .grand-total-label {
+    font-size: 10.5pt;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.biocreto-sc .grand-total-sub {
+    font-size: 7pt;
+    font-weight: normal;
+    text-transform: none;
+    letter-spacing: 0;
+    display: block;
+    color: #5c4708;
+}
+.biocreto-sc .grand-total-value {
+    font-size: 16pt;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+/* ---- CONDICIONES pactadas con valor real ---- */
+.biocreto-sc .req-item .r-val {
+    color: #1d1d1b;
+    font-size: 8.5pt;
+    font-weight: bold;
+}
+
+/* ---- FIRMAS OC: hasta 2 columnas repartidas ---- */
+.biocreto-sc .firmas-block.firmas-oc {
+    justify-content: space-around;
+}
+.biocreto-sc .firmas-block.firmas-oc .firma-area {
+    flex: 1;
+    width: auto;
 }

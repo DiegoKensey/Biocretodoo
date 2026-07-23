@@ -106,6 +106,46 @@ class PurchaseOrder(models.Model):
     )
 
     # ─────────────────────────────────────────────────────────────────
+    # v19.0.6.0.0: Datos de pago (consumidos por el reporte de OC).
+    #
+    # biocreto_commercial_partner_id: ancla del dominio de cuentas
+    # bancarias. res.partner.bank.partner_id tiene
+    # domain=['|', ('is_company','=',True), ('parent_id','=',False)]
+    # ⇒ no se pueden colgar cuentas de un contacto hijo. Si el proveedor
+    # es "Pedro Francisco (contacto de UNACEM)", sus cuentas viven en
+    # UNACEM. Filtrar por commercial_partner_id (no partner_id) evita
+    # que el dropdown quede vacio en ese caso.
+    #
+    # Ninguno es required: hoy 0 proveedores tienen bank_ids cargados
+    # y el reporte pinta linea punteada si el campo queda vacio.
+    # ─────────────────────────────────────────────────────────────────
+    biocreto_commercial_partner_id = fields.Many2one(
+        comodel_name='res.partner',
+        related='partner_id.commercial_partner_id',
+        string="Proveedor (empresa)",
+        store=False,
+    )
+
+    biocreto_medio_pago_id = fields.Many2one(
+        comodel_name='biocreto.medio.pago',
+        string="Medio de pago",
+        domain="[('company_id', '=', company_id)]",
+    )
+
+    biocreto_garantia_meses = fields.Integer(
+        string="Garantía (meses)",
+        help="Meses de garantia pactados. 0 = no aplica (el reporte "
+             "muestra la linea punteada en blanco).",
+    )
+
+    biocreto_cuenta_deposito_id = fields.Many2one(
+        comodel_name='res.partner.bank',
+        string="Cuenta depósito",
+        domain="[('partner_id', '=', biocreto_commercial_partner_id)]",
+        help="Cuenta bancaria del proveedor donde se realizara el deposito.",
+    )
+
+    # ─────────────────────────────────────────────────────────────────
     # Redefinicion del dominio de alternative_po_ids (viene de purchase_requisition,
     # models/purchase.py:30-34). Solo cambia el domain: se mantiene el related
     # sobre purchase_group_id.order_ids, el string, check_company y help.

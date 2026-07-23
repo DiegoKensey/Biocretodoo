@@ -20,5 +20,19 @@
             <field name="fecha_version" eval="'2026-07-08'"/>
         </record>
 
+        <!--
+            v19.0.2.0.0: registro SIG para el reporte de Orden de Compra.
+            Consultado desde el QWeb via
+              env['biocreto.documento.control'].get_control_for_qweb('compras_oc')
+            en sc_layout (ruteo por o.biocreto_sc_es_oc()).
+        -->
+        <record id="documento_oc_compras" model="biocreto.documento.control">
+            <field name="name">Orden de Compra</field>
+            <field name="codigo">BC-GL-FR-19</field>
+            <field name="codigo_documento">compras_oc</field>
+            <field name="version">01</field>
+            <field name="fecha_version" eval="'2026-07-08'"/>
+        </record>
+
     </data>
 </odoo>

@@ -264,6 +264,75 @@
                 <attribute name="reload_on_attachment">True</attribute>
             </xpath>
 
+            <!-- ═══════════════════════════════════════════════════════════════
+                 v19.0.5.0.0: rotulo de cabecera correcto para los estados custom.
+                 El oe_title nativo (purchase/views/purchase_views.xml:197-199)
+                 solo tiene 2 spans: 'Request for Quotation' (invisible si state
+                 not in ('draft','sent')) y 'Purchase Order' (invisible si state
+                 in ('draft','sent')). Los estados custom BIOCRETO 'registro' y
+                 'to approve' no estan en la tupla ('draft','sent') -> caen en
+                 el span de "Orden de compra", que es incorrecto: en registro
+                 aun no es una OC.
+
+                 Solucion aditiva:
+                   1. Restringimos el span 2 (Orden de compra) a purchase+cancel.
+                      Cancel se mantiene con "Orden de compra" porque es el
+                      status quo. Si el usuario decide mas adelante que un
+                      documento cancelado desde 'registro' o 'sent' NO deberia
+                      leerse como OC, se agrega un span mas condicionado a
+                      cancel (ver reporte).
+                   2. Insertamos un span "Registro de compra" visible solo en
+                      state=='registro'.
+                   3. Insertamos un span "Por aprobar" visible solo en
+                      state=='to approve' (con espacio, es la clave nativa
+                      del state).
+
+                 Verificado en el recon: la vista combinada tiene exactamente
+                 estos 2 spans como hijos directos del oe_title, ninguna otra
+                 herencia (base ni biocreto) los toca -> xpath por posicion
+                 [@class='o_form_label'][2] es estable.
+
+                 Ambos `position="after"` sobre el MISMO ancla se aplican en
+                 orden inverso al de aparicion en el arch: el ultimo declarado
+                 queda pegado al ancla. En este caso el orden visual entre los
+                 dos spans nuevos no importa (los estados 'registro' y 'to
+                 approve' son mutuamente excluyentes, se ve UNO SOLO a la vez).
+                 -->
+            <xpath expr="//div[hasclass('oe_title')]/span[hasclass('o_form_label')][2]" position="attributes">
+                <attribute name="invisible">state not in ('purchase', 'cancel')</attribute>
+            </xpath>
+
+            <xpath expr="//div[hasclass('oe_title')]/span[hasclass('o_form_label')][2]" position="after">
+                <span class="o_form_label" invisible="state != 'registro'">Registro de compra </span>
+            </xpath>
+
+            <xpath expr="//div[hasclass('oe_title')]/span[hasclass('o_form_label')][2]" position="after">
+                <span class="o_form_label" invisible="state != 'to approve'">Por aprobar </span>
+            </xpath>
+
+            <!-- v19.0.6.0.0: grupo "Datos de pago" en la pestana "Other Information".
+                 Insertado despues del <group name="invoice_info"> nativo
+                 (purchase/views/purchase_views.xml:404-408). colspan="2" ocupa
+                 la fila completa debajo de los dos grupos nativos.
+                 biocreto_commercial_partner_id va invisible=1 pero DEBE estar
+                 en el arch para que el domain de biocreto_cuenta_deposito_id
+                 pueda resolverlo en el widget. -->
+            <xpath expr="//page[@name='purchase_delivery_invoice']/group/group[@name='invoice_info']" position="after">
+                <group name="biocreto_pagos" string="Datos de pago" colspan="2">
+                    <field name="biocreto_commercial_partner_id" invisible="1"/>
+                    <field name="biocreto_medio_pago_id"
+                           options="{'no_create': True}"
+                           readonly="state in ('to approve', 'purchase', 'cancel')"/>
+                    <field name="biocreto_garantia_meses"
+                           readonly="state in ('to approve', 'purchase', 'cancel')"/>
+                    <field name="biocreto_cuenta_deposito_id"
+                           context="{'biocreto_bank_display': True}"
+                           options="{'no_create': True}"
+                           placeholder="Registrar la cuenta en la ficha del proveedor"
+                           readonly="state in ('to approve', 'purchase', 'cancel')"/>
+                </group>
+            </xpath>
+
         </field>
     </record>
 

@@ -1,6 +1,6 @@
 {
     'name': 'BIOCRETO Compras',
-    'version': '19.0.4.0.0',
+    'version': '19.0.6.0.0',
     'category': 'Supply Chain/Purchase',
     'summary': 'Estado "Registro" en purchase.order, numeracion CP-AAAA-PLANTA-####, ajustes de UI (precios/impuestos/incoterm ocultos), Alternativas hasta Registro.',
     'description': (
@@ -21,6 +21,8 @@
         'biocreto_base',
     ],
     'data': [
+        'security/ir.model.access.csv',
+        'views/biocreto_medio_pago_views.xml',
         'views/purchase_order_views.xml',
     ],
     'application': False,

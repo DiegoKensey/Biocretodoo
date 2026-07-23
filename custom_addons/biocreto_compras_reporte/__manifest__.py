@@ -1,6 +1,6 @@
 {
     'name': 'BIOCRETO Compras Reporte',
-    'version': '19.0.1.3.1',
+    'version': '19.0.2.0.0',
     'category': 'Purchases',
     'summary': 'Reportes BIOCRETO de Solicitud de Cotizacion y Orden de Compra',
     'description': (
