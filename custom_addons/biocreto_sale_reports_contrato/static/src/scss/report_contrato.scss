@@ -10,13 +10,6 @@
 //  Scopeado bajo .biocreto-contrato para no pisar otros reportes.
 // =================================================================
 
-// --------- Tipografia: Century Gothic con fallbacks ---------
-@font-face {
-    font-family: 'Century Gothic Fallback';
-    src: local('Century Gothic'), local('CenturyGothic'),
-         local('URW Gothic'), local('AvantGarde'), local('Avant Garde');
-}
-
 // Reset global (no scopeado): mismo patron que cotizacion para
 // que el @page no quede empujado por el margin default del UA.
 html, body {
@@ -37,8 +30,13 @@ body {
 // --------- Tipografia base del wrapper ---------
 .biocreto-contrato {
     box-sizing: border-box;
-    font-family: 'Century Gothic', 'Century Gothic Fallback',
-                 'URW Gothic', 'AvantGarde', 'Trebuchet MS', sans-serif;
+    // Century Gothic esta instalada a nivel sistema (Windows:
+    // C:\Windows\Fonts, servidor: /usr/share/fonts/truetype/biocreto/).
+    // PlutoPrint la resuelve sola. NO usar @font-face con src: local():
+    // registra una familia VACIA que gana la cascada y rompe el render en
+    // Linux. 'URW Gothic' es el equivalente metrico libre, red de seguridad
+    // real en el servidor.
+    font-family: 'Century Gothic', 'URW Gothic', sans-serif;
     font-size: 10pt;
     line-height: 1.35;
     color: #1d1d1b;

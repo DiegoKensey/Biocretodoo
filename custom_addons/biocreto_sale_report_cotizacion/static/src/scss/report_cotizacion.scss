@@ -23,13 +23,6 @@
 // queda en este archivo: esas son reglas de selector normales que
 // el bundle sí aplica sin problema.
 
-// --------- Tipografia: Century Gothic con fallbacks ---------
-@font-face {
-    font-family: 'Century Gothic Fallback';
-    src: local('Century Gothic'), local('CenturyGothic'),
-         local('URW Gothic'), local('AvantGarde'), local('Avant Garde');
-}
-
 // v19.0.2.0.5: reset margin/padding global. Sin esto, el body trae
 // el margin default del UA (~8px) y empuja el contenido + corre el
 // `@page` -> hueco blanco arriba del header SVG. Es regla a nivel
@@ -57,8 +50,13 @@ body {
 // --------- Tipografia base del wrapper ---------
 .biocreto-cot {
     box-sizing: border-box;
-    font-family: 'Century Gothic', 'Century Gothic Fallback',
-                 'URW Gothic', 'AvantGarde', 'Trebuchet MS', sans-serif;
+    // Century Gothic esta instalada a nivel sistema (Windows:
+    // C:\Windows\Fonts, servidor: /usr/share/fonts/truetype/biocreto/).
+    // PlutoPrint la resuelve sola. NO usar @font-face con src: local():
+    // registra una familia VACIA que gana la cascada y rompe el render en
+    // Linux. 'URW Gothic' es el equivalente metrico libre, red de seguridad
+    // real en el servidor.
+    font-family: 'Century Gothic', 'URW Gothic', sans-serif;
     font-size: 10pt;
     line-height: 1.35;
     color: #1d1d1b;
