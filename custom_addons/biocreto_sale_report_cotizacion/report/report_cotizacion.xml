@@ -581,7 +581,9 @@
                             <td><span t-out="line.product_id.biocreto_fc_resistencia or ''"/></td>
                             <td class="text-left"><span t-out="line.biocreto_tipo_cemento.name or ''"/></td>
                             <td><span t-out="line.biocreto_huso_tmn.name or ''"/></td>
-                            <td><span t-out="'%g' % (line.biocreto_slump or 0)"/></td>
+                            <!-- v19.0.1.8.0: se imprime el computado, NUNCA se reconstruye
+                                 el formato aqui. Un solo sitio donde cambiarlo. -->
+                            <td><span t-out="line.biocreto_slump_rango or ''"/></td>
                             <td><span t-out="'%.2f' % (line.product_uom_qty or 0)"/></td>
                             <td class="text-right"><span t-out="'%.2f' % (line.price_unit or 0)"/></td>
                             <td class="text-right"><span t-out="o.biocreto_cot_money(line.price_subtotal)"/></td>
@@ -634,7 +636,10 @@
                                     <t t-if="line.biocreto_tuberia_adicional"><span t-out="line.biocreto_tuberia_adicional"/></t>
                                     <t t-else="">—</t>
                                 </td>
-                                <td><span t-out="'%g' % (line.biocreto_slump_bombeable or 0)"/></td>
+                                <!-- v19.0.1.9.2: se lee por la relacion (no hay campo related).
+                                     Solo el RANGO: el prefijo "L1 -" es exclusivo del
+                                     desplegable en pantalla, nunca del papel. -->
+                                <td><span t-out="line.biocreto_slump_bombeable_line_id.biocreto_slump_rango or ''"/></td>
                                 <td><span t-out="'%.2f' % (line.product_uom_qty or 0)"/></td>
                                 <td class="text-right"><span t-out="'%.2f' % (line.price_unit or 0)"/></td>
                                 <td class="text-right"><span t-out="o.biocreto_cot_money(line.price_subtotal)"/></td>
@@ -777,6 +782,33 @@
           - firmas-block
           - Notas / Condiciones generales (texto estatico FR-09)
     -->
+    <!--
+        ============================================================
+        Texto de la forma de pago  -  cot_pago_texto
+        ============================================================
+        SOLO el contenido, sin contenedor. Los dos cuerpos lo envuelven
+        distinto (el menor en un <li> de una lista a 8pt, el mayor en un
+        <li> dentro de una tarjeta al 48,5% a 8.5pt), asi que se duplica
+        el contenedor pero NO el contenido. Esa duplicacion del contenido
+        es la que tenia a los dos reportes diciendo cosas distintas:
+        "50% restante al arribo del mixer a obra" en uno y "saldo contra
+        entrega" en el otro, mientras la base decia "Pago inmediato" en
+        11 de las 12 ordenes con termino.
+
+        `note` es un campo Html (account_payment_term.py:25), asi que el
+        ORM devuelve un markupsafe.Markup y `t-field` lo renderiza SIN
+        escapar: un <b> o un <br/> del termino salen como formato, no
+        como texto. Mismo mecanismo que el reporte nativo de cotizacion
+        (sale/report/ir_actions_report_templates.xml:335).
+
+        La guarda NO va aqui sino en el <li> de cada cuerpo: si fuera
+        aqui, el <li> se pintaria igual y quedaria una vineta huerfana.
+    -->
+    <template id="cot_pago_texto">
+        <span t-field="o.payment_term_id.note"/>
+    </template>
+
+
     <template id="cot_body_menor">
         <t t-call="biocreto_sale_report_cotizacion.cot_body_common"/>
         <!--
@@ -794,7 +826,18 @@
                 <ul>
                     <li>Esta cotización tiene una vigencia de <b><span t-out="o.biocreto_cot_vigencia_dias()"/> días calendario</b> a partir de la fecha de emisión.</li>
                     <li>Los precios incluyen IGV (18%) y son válidos exclusivamente para el volumen y resistencia indicados.</li>
-                    <li>Forma de pago: 50% adelanto al confirmar pedido; 50% restante al arribo del mixer a obra (modificable previa autorización de gerencia).</li>
+                    <!-- Forma de pago: sale del `note` del termino de la
+                         orden. Sin termino, o con el note vacio, el <li>
+                         entero desaparece: sin texto por defecto y sin
+                         vineta huerfana. `is_html_empty` cubre en una sola
+                         llamada los dos casos y todas las formas de vacio
+                         del editor Html (False, '', <p></p>, <p><br></p>,
+                         &amp;nbsp;) segun odoo/tools/mail.py:488. El motor de
+                         reportes la inyecta siempre en el contexto QWeb
+                         (base/models/ir_actions_report.py:1138). -->
+                    <li t-if="not is_html_empty(o.payment_term_id.note)">
+                        <t t-call="biocreto_sale_report_cotizacion.cot_pago_texto"/>
+                    </li>
                     <li>La programación del despacho requiere confirmación con al menos <b>48 horas</b> de anticipación.</li>
                     <li>Las condiciones de aceptación de probetas se rigen por la NTP 339.033, NTP 339.034 y NTP 339.036.</li>
                 </ul>
@@ -842,7 +885,25 @@
             <div class="info-card">
                 <h3 class="info-card-title">Términos y Condiciones</h3>
                 <ul>
-                    <li>Moneda y pago: Soles (S/) — 50% anticipo y saldo contra entrega</li>
+                    <!-- Una sola vineta: la moneda es fija y el termino de
+                         pago se engancha detras del guion largo.
+
+                         La vineta NUNCA desaparece, porque la moneda es un
+                         dato que siempre aplica. Lo que desaparece, cuando
+                         no hay termino o su `note` esta vacio, es el guion
+                         Y el texto: por eso el `—` va DENTRO del t-if y no
+                         en el texto fijo. Sin esa precaucion, una orden sin
+                         termino imprimiria "Soles (S/) —" con el guion
+                         colgando.
+
+                         El <t t-if> no genera nodo propio, asi que todo
+                         queda en el mismo <li>: una vineta, una frase.
+
+                         Cuidado al reformatear: los espacios alrededor del
+                         guion son significativos (nodos de texto de QWeb).
+                         Partir esta linea meteria saltos y sangrias dentro
+                         de la frase. Por eso va en una sola linea larga. -->
+                    <li>Moneda y pago: Soles (S/)<t t-if="not is_html_empty(o.payment_term_id.note)"> — <t t-call="biocreto_sale_report_cotizacion.cot_pago_texto"/></t></li>
                     <li>Anticipación: 72 horas con pre-programación semanal</li>
                     <li>Flete adicional: atenciones ≤ 5 m³ con cargo extra por viaje</li>
                     <li>Disponibilidad: lunes a sábado · nocturno y feriados con recargo</li>
@@ -873,7 +934,37 @@
 
         <!-- Banda: Cuentas Bancarias (dinamica desde company.bank_ids) -->
         <div class="info-band">
-            <h3 class="info-band-title">Cuentas Bancarias · Soles</h3>
+            <!--
+                v19.0.2.0.17: emisor de las cuentas (razon social + RUC) DENTRO
+                del propio <h3>, en la misma linea del titulo. Reemplaza al <p>
+                suelto de v19.0.2.0.14: una sola linea visual, sin altura extra
+                sobre el bloque (que vive bajo `break-inside: avoid`, ver
+                :822-826).
+
+                Separadores: `|` entre el titulo y el emisor, `·` (U+00B7) entre
+                nombre y RUC — el mismo punto medio que ya usa el titulo.
+
+                MAYUSCULAS por CSS, nunca por Python: `.info-band-title` ya
+                declara `text-transform: uppercase` (report_cotizacion.scss:699),
+                asi que el nombre de la compania se pone en mayusculas al
+                pintarse. Un `.upper()` en Python romperia tildes y Ñ.
+
+                100% dinamico. El unico literal es "RUC " porque el proyecto no
+                tiene formateador de RUC (solo la autoseleccion DNI/RUC de
+                biocreto_base/models/res_partner.py:10, que elige el TIPO).
+
+                Fallback `o.company_id.vat or o.company_id.partner_id.vat`: en
+                v19 `res.company.vat` es un related NO almacenado a
+                `partner_id.vat` (verificado: `_fields['vat'].related ==
+                'partner_id.vat'`, store=False), asi que los dos caminos leen
+                el MISMO dato y el fallback nunca llega a usarse. Se deja
+                igualmente por peticion expresa: coste cero y cubre el dia que
+                esa relacion cambie.
+
+                Bordes: sin nombre no se pinta el `|`; sin RUC no se pinta el
+                `·`. Con los dos vacios el titulo queda exactamente como antes.
+            -->
+            <h3 class="info-band-title">Cuentas Bancarias · Soles<t t-set="biocreto_ruc" t-value="o.company_id.vat or o.company_id.partner_id.vat"/><t t-if="o.company_id.name"> | <t t-out="o.company_id.name"/><t t-if="biocreto_ruc"> · RUC <t t-out="biocreto_ruc"/></t></t></h3>
             <table class="cuentas-table">
                 <thead>
                     <tr>

@@ -24,25 +24,43 @@
                         <group>
                             <!-- Dirección estructurada (mismo apilado que
                                  res.partner: clases o_address_* nativas).
-                                 Orden visual: Calle → Distrito → Provincia
-                                 → Departamento (de lo específico a lo
-                                 general, como contactos en Odoo). -->
+                                 Orden visual: Calle → Departamento →
+                                 Provincia → Distrito, de lo general a lo
+                                 específico.
+
+                                 v19.0.1.9.3: antes iba al revés (Distrito
+                                 primero), imitando el bloque de contactos
+                                 de Odoo. Pero ese orden contradice la
+                                 cascada: los dominios filtran hacia abajo
+                                 (state → city → district, sale_order.py:
+                                 24-38), así que el primer campo que veía
+                                 el usuario era justo el único que todavía
+                                 no podía rellenar: con el departamento
+                                 vacío, Distrito abre "Sin registros".
+
+                                 Solo cambia el ORDEN de los tres <field>.
+                                 Ningún atributo se toca, ni las clases:
+                                 el readonly por estado lo inyecta
+                                 biocreto_sale_contract_state por xpath
+                                 //field[@name=...], que localiza por
+                                 nombre y no por posición, así que mover
+                                 los campos no lo afecta. -->
                             <label for="biocreto_street" string="Dirección"/>
                             <div class="o_address_format">
                                 <field name="biocreto_street"
                                        placeholder="Calle / Av. / Jr. y número..."
                                        class="o_address_street"/>
-                                <field name="biocreto_district_id"
-                                       placeholder="Distrito"
-                                       class="o_address_city"
+                                <field name="biocreto_state_id"
+                                       placeholder="Departamento"
+                                       class="o_address_state"
                                        options="{'no_open': True, 'no_create': True}"/>
                                 <field name="biocreto_city_id"
                                        placeholder="Provincia"
                                        class="o_address_city"
                                        options="{'no_open': True, 'no_create': True}"/>
-                                <field name="biocreto_state_id"
-                                       placeholder="Departamento"
-                                       class="o_address_state"
+                                <field name="biocreto_district_id"
+                                       placeholder="Distrito"
+                                       class="o_address_city"
                                        options="{'no_open': True, 'no_create': True}"/>
                             </div>
                             <!-- Geolocalización (obra): dos Float nativos
@@ -69,6 +87,13 @@
                                        nolabel="1"
                                        class="oe_inline"/>
                             </div>
+                            <!-- v19.0.1.7.6: tercer camino para la ubicacion.
+                                 Debajo de los dos Float y del boton GPS, que
+                                 siguen funcionando igual. El onchange del
+                                 modelo resuelve el enlace y rellena lat/lng;
+                                 si no puede, avisa y conserva el texto. -->
+                            <field name="biocreto_maps_url"
+                                   placeholder="https://maps.app.goo.gl/... o -12.075359, -75.253739"/>
                             <field name="biocreto_tipo_proyecto"/>
                         </group>
                         <group/>
@@ -220,8 +245,15 @@
                     <group>
                         <field name="biocreto_huso_tmn"
                                required="biocreto_product_categ == 'Concreto'"/>
-                        <field name="biocreto_slump"
+                        <!-- v19.0.1.8.0: slump por RANGO. Mismo criterio de
+                             obligatoriedad que el campo unico anterior
+                             (categoria == 'Concreto'), aplicado ahora a los
+                             DOS extremos. -->
+                        <field name="biocreto_slump_min"
                                required="biocreto_product_categ == 'Concreto'"/>
+                        <field name="biocreto_slump_max"
+                               required="biocreto_product_categ == 'Concreto'"/>
+                        <field name="biocreto_slump_rango" readonly="1"/>
                     </group>
                 </group>
 
@@ -248,7 +280,14 @@
                         <field name="biocreto_vehiculo_id"
                                domain="biocreto_vehiculo_domain"/>
                         <field name="biocreto_tuberia_adicional"/>
-                        <field name="biocreto_slump_bombeable"/>
+                        <!-- v19.0.1.9.0: apunta a la linea de concreto de la
+                             propia cotizacion. El dominio es computado (una
+                             orden sin guardar no resuelve parent.id) y el
+                             context activa la etiqueta "L1 - 6\"" solo aqui. -->
+                        <field name="biocreto_slump_bombeable_domain" invisible="1"/>
+                        <field name="biocreto_slump_bombeable_line_id"
+                               context="{'biocreto_slump_line_label': 1}"
+                               options="{'no_create': True, 'no_open': True}"/>
                     </group>
                     <group/>
                 </group>
@@ -352,8 +391,15 @@
                     <group>
                         <field name="biocreto_huso_tmn"
                                required="biocreto_product_categ == 'Concreto'"/>
-                        <field name="biocreto_slump"
+                        <!-- v19.0.1.8.0: slump por RANGO. Mismo criterio de
+                             obligatoriedad que el campo unico anterior
+                             (categoria == 'Concreto'), aplicado ahora a los
+                             DOS extremos. -->
+                        <field name="biocreto_slump_min"
                                required="biocreto_product_categ == 'Concreto'"/>
+                        <field name="biocreto_slump_max"
+                               required="biocreto_product_categ == 'Concreto'"/>
+                        <field name="biocreto_slump_rango" readonly="1"/>
                     </group>
                 </group>
 
@@ -375,7 +421,14 @@
                         <field name="biocreto_vehiculo_id"
                                domain="biocreto_vehiculo_domain"/>
                         <field name="biocreto_tuberia_adicional"/>
-                        <field name="biocreto_slump_bombeable"/>
+                        <!-- v19.0.1.9.0: apunta a la linea de concreto de la
+                             propia cotizacion. El dominio es computado (una
+                             orden sin guardar no resuelve parent.id) y el
+                             context activa la etiqueta "L1 - 6\"" solo aqui. -->
+                        <field name="biocreto_slump_bombeable_domain" invisible="1"/>
+                        <field name="biocreto_slump_bombeable_line_id"
+                               context="{'biocreto_slump_line_label': 1}"
+                               options="{'no_create': True, 'no_open': True}"/>
                     </group>
                     <group/>
                 </group>
@@ -404,6 +457,31 @@
                 <filter name="groupby_tipo_proyecto"
                         string="Tipo de proyecto"
                         context="{'group_by': 'biocreto_tipo_proyecto'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         4. BÚSQUEDA DE LÍNEAS — agrupar por rango de slump
+         v19.0.1.8.0. Es la ganancia principal de haber hecho
+         `biocreto_slump_rango` un computado ALMACENADO: sin store, el
+         cliente ni siquiera pide el campo en el `read_group` y la
+         agrupación no existiría.
+         Se hereda `sale.view_sales_order_line_filter`, que es la ÚNICA
+         search view nativa de sale.order.line en v19 (verificado en BD:
+         las otras dos son de sale_account_accountant y de
+         biocreto_laboratorio).
+         ══════════════════════════════════════════════════════════════ -->
+    <record id="view_sales_order_line_filter_biocreto" model="ir.ui.view">
+        <field name="name">sale.order.line.search.biocreto</field>
+        <field name="model">sale.order.line</field>
+        <field name="inherit_id" ref="sale.view_sales_order_line_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="groupby_biocreto_slump_rango"
+                        string="Slump (rango)"
+                        context="{'group_by': 'biocreto_slump_rango'}"/>
             </xpath>
         </field>
     </record>

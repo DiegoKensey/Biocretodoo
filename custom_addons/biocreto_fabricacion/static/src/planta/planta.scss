@@ -1,0 +1,222 @@
+// -----------------------------------------------------------------------------
+// Centro de control del plantero — estilos (clonados/adaptados del nativo
+// mrp_display.scss, cambiando prefijo o_mrp_display_ -> o_biocreto_planta_).
+// -----------------------------------------------------------------------------
+
+// Icono mixer SVG inline en el stat button "Entrega" del form sale.order.
+// Replica el footprint de un FontAwesome fixed-width: ancho fa-fw
+// (1.28571429em), centrado, baseline -0.125em; fill: currentColor hereda
+// el color gris del stat button. El viewBox del SVG ya viene recortado al
+// bounding box del dibujo, sin aire vertical.
+.o_biocreto_icon_mixer {
+    display: inline-block;
+    width: 1.28571429em;
+    height: 1em;
+    text-align: center;
+    vertical-align: -0.125em;
+    padding-right: 5px; // separacion icono-contador validada en DevTools
+
+    svg {
+        height: 1em;
+        max-width: 100%;
+        fill: currentColor;
+    }
+}
+
+.o_biocreto_planta {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--o-view-background-color, #f8f9fa);
+    overflow: hidden;
+    position: relative;
+
+    // ---------------- Topbar ----------------
+    .o_biocreto_topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem 1rem;
+        background: white;
+        border-bottom: 1px solid #dee2e6;
+        gap: 1rem;
+        flex-shrink: 0;
+
+        .o_biocreto_topbar_left,
+        .o_biocreto_topbar_right {
+            display: flex;
+            align-items: center;
+        }
+
+        .o_biocreto_topbar_center {
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+            max-width: 600px;
+            margin: 0 auto;
+
+            .o_biocreto_search {
+                flex-grow: 1;
+            }
+        }
+    }
+
+    // ---------------- Burger menu ----------------
+    .o_biocreto_burger {
+        position: absolute;
+        top: 3.5rem;
+        left: 1rem;
+        z-index: 10;
+        min-width: 220px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    // ---------------- Body ----------------
+    .o_biocreto_body {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+    }
+
+    .o_biocreto_main {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem;
+    }
+
+    // ---------------- Breadcrumb interno ----------------
+    .o_biocreto_breadcrumb {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+        color: #6c757d;
+
+        .o_biocreto_bc_item {
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            transition: background 0.15s;
+
+            &:hover {
+                background: #e9ecef;
+                color: #212529;
+            }
+        }
+    }
+
+    // ---------------- Grid de tarjetas ----------------
+    .o_biocreto_grid {
+        display: grid;
+        grid-template-columns: repeat(1, 1fr);
+        gap: 1rem;
+
+        @media (min-width: 768px) {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        @media (min-width: 1400px) {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    // ---------------- Tarjetas ----------------
+    .o_biocreto_record {
+        border: 1px solid #dee2e6;
+        transition: box-shadow 0.15s, transform 0.15s;
+
+        &:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            background: white;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .o_biocreto_record_title {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .o_biocreto_progreso {
+            white-space: nowrap;
+        }
+
+        .card-footer {
+            background: #f8f9fa;
+            padding: 0.5rem 1rem;
+        }
+    }
+
+    // ---------------- Vacio ----------------
+    .o_biocreto_empty {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #6c757d;
+    }
+
+    // ---------------- Panel operadores ----------------
+    .o_biocreto_employees_panel {
+        width: 280px;
+        background: white;
+        border-right: 1px solid #dee2e6;
+        overflow-y: auto;
+        flex-shrink: 0;
+
+        .o_biocreto_employee {
+            cursor: pointer;
+            transition: background 0.15s;
+
+            &:hover {
+                background: #f8f9fa;
+            }
+        }
+    }
+
+    // ---------------- Panel produccion (nivel 3) ----------------
+    .o_biocreto_produccion {
+        .o_biocreto_tira_superior {
+            background: linear-gradient(to right, #e7f3ff, #f0f9ff);
+            border: 1px solid #b6dbff;
+        }
+
+        .o_biocreto_carga_curso {
+            .card-header {
+                background: #fff3cd;
+                border-bottom-color: #ffeaa7;
+            }
+        }
+
+        .o_biocreto_dosif {
+            input {
+                text-align: right;
+            }
+        }
+    }
+
+    // ---------------- Onboarding ----------------
+    .o_biocreto_onboarding {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        padding: 2rem;
+    }
+
+    .o_biocreto_onboarding_content {
+        text-align: center;
+        max-width: 720px;
+    }
+
+    .o_biocreto_onboarding_img {
+        max-width: 100%;
+        height: auto;
+        margin-bottom: 2rem;
+    }
+
+    .o_biocreto_onboarding_action {
+        margin-top: 1rem;
+    }
+}

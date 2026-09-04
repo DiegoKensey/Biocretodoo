@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Referencia estable a la categoria "Concreto".
+
+         noupdate="1" protege el registro: si el usuario la renombra desde la
+         interfaz, una actualizacion del modulo no le devuelve el nombre.
+         Odoo salta el registro por completo (odoo/tools/convert.py:356-371).
+
+         En bases donde la categoria ya existia sin xmlid, hooks.py se lo
+         asocia ANTES de que este data corra, para no crear un duplicado. -->
+    <data noupdate="1">
+        <record id="product_category_concreto" model="product.category">
+            <field name="name">Concreto</field>
+        </record>
+    </data>
+
+</odoo>

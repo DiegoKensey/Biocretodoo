@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        ============================================================
+        Formulario de entrega  (se abre como MODAL, target='new')
+        ============================================================
+        No lleva <header> ni statusbar: es un dialogo de un solo paso.
+        Los botones viven en <footer>, que es lo que Odoo pinta en la
+        barra inferior del dialogo.
+
+        "Confirmar entrega" es type="object": el cliente GUARDA el
+        registro antes de invocar el metodo, asi que `self` ya es un
+        registro real dentro de action_confirmar. "Descartar" usa
+        special="cancel", que cierra sin crear nada.
+    -->
+    <record id="biocreto_requerimiento_entrega_view_form" model="ir.ui.view">
+        <field name="name">biocreto.requerimiento.entrega.view.form</field>
+        <field name="model">biocreto.requerimiento.entrega</field>
+        <field name="arch" type="xml">
+            <form string="Registrar entrega">
+                <field name="company_id" invisible="1"/>
+                <field name="state" invisible="1"/>
+                <sheet>
+                    <div class="oe_title" invisible="not name">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="requerimiento_id" readonly="1"
+                                   options="{'no_open': True}"/>
+                            <field name="employee_id"
+                                   options="{'no_create': True}"
+                                   readonly="state == 'confirmado'"/>
+                            <field name="department_id"/>
+                        </group>
+                        <group>
+                            <field name="fecha" readonly="state == 'confirmado'"/>
+                            <field name="entregado_por_id"/>
+                        </group>
+                    </group>
+
+                    <field name="linea_ids" nolabel="1"
+                           readonly="state == 'confirmado'">
+                        <!--
+                            readonly="bloqueada" por FILA sobre la celda de
+                            cantidad + decoration-muted en la fila entera:
+                            patron exacto de
+                            stock/views/stock_picking_views.xml:304-307
+                            (product_uom_qty readonly="not
+                            is_initial_demand_editable").
+
+                            `seleccionada` tambien va readonly cuando la
+                            fila esta bloqueada: si no, se podria marcar
+                            una linea sin stock y el bloqueo solo saltaria
+                            al confirmar.
+                        -->
+                        <list editable="bottom" create="0" delete="0"
+                              decoration-muted="bloqueada">
+                            <!--
+                                IMPRESCINDIBLE, aunque no se pinte: el
+                                cliente web construye el `fields_spec` del
+                                x2many con los <field> de esta sublista y
+                                SOLO devuelve al servidor esos campos. Sin
+                                esta linea, `requerimiento_linea_id` no
+                                viaja en el (0, 0, vals) del guardado y el
+                                INSERT muere con NotNullViolation. No basta
+                                con que el compute lo ponga: cuando el
+                                cliente manda `linea_ids`, el compute no se
+                                dispara.
+                            -->
+                            <field name="requerimiento_linea_id" column_invisible="1"/>
+                            <field name="bloqueada" column_invisible="1"/>
+                            <field name="afecta_inventario" column_invisible="1"/>
+                            <field name="seleccionada" string="Entregar"
+                                   readonly="bloqueada"/>
+                            <field name="product_id" readonly="1"
+                                   options="{'no_open': True}"/>
+                            <field name="descripcion" readonly="1"/>
+                            <field name="cantidad_pedida" string="Pedido" readonly="1"/>
+                            <field name="cantidad_ya_entregada" string="Entregado"
+                                   readonly="1"/>
+                            <field name="cantidad_pendiente" string="Pendiente"
+                                   readonly="1"/>
+                            <field name="cantidad_entregar" string="A entregar"
+                                   readonly="bloqueada"
+                                   decoration-danger="cantidad_entregar > cantidad_pendiente"/>
+                            <field name="stock_disponible" string="Stock disponible"
+                                   readonly="1"
+                                   decoration-danger="afecta_inventario and stock_disponible &lt;= 0"/>
+                            <field name="product_uom_id" string="Unidad" readonly="1"
+                                   groups="uom.group_uom"/>
+                            <!-- Se pinta solo cuando tiene contenido: sirve
+                                 tanto de motivo de bloqueo como de nota
+                                 informativa ("No afecta inventario"). -->
+                            <field name="motivo_bloqueo" string="Observación"
+                                   readonly="1"
+                                   decoration-warning="bloqueada"/>
+                            <field name="stock_move_id" optional="hide" readonly="1"/>
+                        </list>
+                    </field>
+
+                    <!--
+                        Firma EN LINEA, dentro del asistente.
+
+                        Se probo sacarla a un segundo dialogo y no funciona:
+                        dos act_window con target='new' NO se apilan, porque el
+                        servicio de acciones guarda una sola ranura y mata la
+                        anterior (`if (nextDialog) { nextDialog.remove(); }`,
+                        action_service.js:1071-1078). Ademas, el boton que
+                        habria que pulsar para abrirlo es type="object", y eso
+                        GUARDA el formulario: la entrega nacia en borrador a
+                        mitad de camino. Aqui el unico boton que persiste el
+                        registro es "Confirmar entrega".
+
+                        options.full_name apunta al Char de arriba: sin el, la
+                        pestana "Auto" del dialogo de firma NO aparece (solo se
+                        pinta si hay defaultName; web/static/src/views/fields/
+                        signature/signature_field.js:95-105). Mismo criterio que
+                        biocreto_base/views/res_users_views.xml:41-43.
+                    -->
+                    <group string="Firma del receptor">
+                        <field name="firma_receptor_nombre"
+                               readonly="state == 'confirmado'"/>
+                    </group>
+                    <!--
+                        El lienzo sale FUERA del <group> a proposito. Un
+                        <group> es una rejilla de dos columnas (etiqueta |
+                        campo), asi que el recuadro solo disponia de media
+                        anchura; aqui ocupa el ancho util entero.
+
+                        Y SIN `size`. Ese option no dimensiona el lienzo de
+                        dibujo, solo la caja que se ve en el formulario, y lo
+                        hace con estilo EN LINEA:
+                            width:600px; max-width:600px; height:200px
+                        (signature_field.js:56-79). Un max-width en linea no
+                        lo baja ninguna hoja de estilos, asi que en un movil
+                        de ~380px el recuadro se salia de la pantalla. Sin
+                        `size`, sizeStyle devuelve cadena vacia y la caja la
+                        gobierna el CSS de aqui al lado.
+                    -->
+                    <div class="o_biocreto_firma_entrega w-100 mb-2">
+                        <field name="firma_receptor" widget="signature" nolabel="1"
+                               options="{'full_name': 'firma_receptor_nombre'}"
+                               readonly="state == 'confirmado'"/>
+                    </div>
+                    <div class="text-muted small">
+                        Quien recibe el material firma aquí mismo, en esta
+                        pantalla. No necesita tener usuario en Odoo.
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_confirmar" string="Confirmar entrega"
+                            type="object" class="btn-primary" data-hotkey="q"
+                            invisible="state == 'confirmado'"/>
+                    <button string="Descartar" class="btn-secondary"
+                            special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="biocreto_requerimiento_entrega_view_list" model="ir.ui.view">
+        <field name="name">biocreto.requerimiento.entrega.view.list</field>
+        <field name="model">biocreto.requerimiento.entrega</field>
+        <field name="arch" type="xml">
+            <list string="Entregas" create="0"
+                  decoration-muted="state == 'borrador'">
+                <field name="name"/>
+                <field name="requerimiento_id"/>
+                <field name="fecha"/>
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="entregado_por_id"/>
+                <field name="company_id" column_invisible="True"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'confirmado'"/>
+                <!-- Unica via para terminar un borrador. Abrir la fila
+                     llevaria al formulario en PAGINA COMPLETA, y ahi el
+                     <footer> del asistente no se pinta: form_controller.js
+                     :241-250 lo saca del arch y form_controller.xml:13 solo
+                     lo monta dentro de un dialogo. -->
+                <button name="action_continuar" type="object"
+                        string="Continuar" icon="fa-pencil"
+                        class="btn btn-link"
+                        invisible="state == 'confirmado'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="biocreto_requerimiento_entrega_view_search" model="ir.ui.view">
+        <field name="name">biocreto.requerimiento.entrega.view.search</field>
+        <field name="model">biocreto.requerimiento.entrega</field>
+        <field name="arch" type="xml">
+            <search string="Entregas">
+                <field name="name"/>
+                <field name="requerimiento_id"/>
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <filter name="confirmadas" string="Confirmadas"
+                        domain="[('state', '=', 'confirmado')]"/>
+                <!-- Para ver los borradores huerfanos: los que deja el
+                     boton "Aceptar y firmar" cuando el usuario abandona el
+                     dialogo con la X. No tocaron inventario ni emitieron
+                     constancia, pero conviene poder listarlos. -->
+                <filter name="borradores" string="Borradores"
+                        domain="[('state', '=', 'borrador')]"/>
+                <filter name="borradores_sin_firma" string="Borradores sin firma"
+                        domain="[('state', '=', 'borrador'),
+                                 ('firma_receptor', '=', False)]"/>
+                <!-- En v19 el <group> de agrupaciones NO admite `expand`
+                     ni `string`: el RelaxNG de la vista search los
+                     rechaza. Patron nativo en
+                     stock/views/stock_picking_views.xml:400-407. -->
+                <group>
+                    <filter name="group_area" string="Área" domain="[]"
+                            context="{'group_by': 'department_id'}"/>
+                    <filter name="group_receptor" string="Recibido por" domain="[]"
+                            context="{'group_by': 'employee_id'}"/>
+                    <filter name="group_fecha" string="Fecha" domain="[]"
+                            context="{'group_by': 'fecha'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_biocreto_requerimiento_entrega" model="ir.actions.act_window">
+        <field name="name">Entregas de material</field>
+        <field name="res_model">biocreto.requerimiento.entrega</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todavía no hay entregas registradas</p>
+            <p>Las entregas se registran desde el requerimiento, con el botón
+               <b>Registrar entrega</b>, cuando está en proceso.</p>
+        </field>
+    </record>
+
+</odoo>

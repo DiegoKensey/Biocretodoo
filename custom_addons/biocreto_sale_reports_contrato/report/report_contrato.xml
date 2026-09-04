@@ -507,7 +507,7 @@
                                     <tr>
                                         <td><t t-out="line_index + 1"/></td>
                                         <td><t t-out="line.biocreto_vehiculo_id.display_name or line.product_id.display_name or '—'"/></td>
-                                        <td><t t-out="'%g' % (line.biocreto_slump_bombeable or 0)"/></td>
+                                        <td><t t-out="line.biocreto_slump_bombeable_line_id.biocreto_slump_rango or ''"/></td>
                                         <td><t t-out="o.biocreto_cot_money(line.product_uom_qty)"/></td>
                                         <td><t t-out="o.biocreto_cot_money(line.price_unit)"/></td>
                                         <td><t t-out="o.biocreto_cot_money(line.price_subtotal)"/></td>

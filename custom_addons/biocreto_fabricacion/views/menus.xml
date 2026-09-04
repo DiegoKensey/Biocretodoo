@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- App raiz -->
+    <menuitem id="menu_biocreto_fabricacion_root"
+              name="Fabricacion"
+              web_icon="biocreto_fabricacion,static/description/icono_fabrica.svg"
+              sequence="147"/>
+
+    <!-- Item principal: abre la client action fullscreen -->
+    <menuitem id="menu_biocreto_planta"
+              name="Centro de control"
+              parent="menu_biocreto_fabricacion_root"
+              action="action_biocreto_planta"
+              sequence="10"/>
+
+    <!-- Item secundario: cargas (auditoria) -->
+    <menuitem id="menu_biocreto_cargas"
+              name="Cargas"
+              parent="menu_biocreto_fabricacion_root"
+              action="action_biocreto_carga"
+              sequence="20"/>
+
+</odoo>

@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============ HUMEDAD ============ -->
+    <record id="view_biocreto_lab_humedad_list" model="ir.ui.view">
+        <field name="name">biocreto.lab.humedad.list</field>
+        <field name="model">biocreto.lab.humedad</field>
+        <field name="arch" type="xml">
+            <list string="Humedades">
+                <field name="fecha"/>
+                <field name="tipo_agregado"/>
+                <field name="humedad"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_biocreto_lab_humedad_form" model="ir.ui.view">
+        <field name="name">biocreto.lab.humedad.form</field>
+        <field name="model">biocreto.lab.humedad</field>
+        <field name="arch" type="xml">
+            <form string="Humedad">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="fecha"/>
+                            <field name="tipo_agregado"/>
+                            <field name="humedad"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Observaciones">
+                        <field name="observaciones" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_biocreto_lab_humedad" model="ir.actions.act_window">
+        <field name="name">Humedades</field>
+        <field name="res_model">biocreto.lab.humedad</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ============ POZA TEMP ============ -->
+    <record id="view_biocreto_lab_poza_temp_list" model="ir.ui.view">
+        <field name="name">biocreto.lab.poza.temp.list</field>
+        <field name="model">biocreto.lab.poza.temp</field>
+        <field name="arch" type="xml">
+            <list string="Temperatura de poza">
+                <field name="fecha"/>
+                <field name="temperatura"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_biocreto_lab_poza_temp_form" model="ir.ui.view">
+        <field name="name">biocreto.lab.poza.temp.form</field>
+        <field name="model">biocreto.lab.poza.temp</field>
+        <field name="arch" type="xml">
+            <form string="Temperatura de poza">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="fecha"/>
+                            <field name="temperatura"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Observaciones">
+                        <field name="observaciones" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_biocreto_lab_poza_temp" model="ir.actions.act_window">
+        <field name="name">Temperatura de poza</field>
+        <field name="res_model">biocreto.lab.poza.temp</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ============ PH ============ -->
+    <record id="view_biocreto_lab_ph_list" model="ir.ui.view">
+        <field name="name">biocreto.lab.ph.list</field>
+        <field name="model">biocreto.lab.ph</field>
+        <field name="arch" type="xml">
+            <list string="pH">
+                <field name="fecha"/>
+                <field name="ph"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_biocreto_lab_ph_form" model="ir.ui.view">
+        <field name="name">biocreto.lab.ph.form</field>
+        <field name="model">biocreto.lab.ph</field>
+        <field name="arch" type="xml">
+            <form string="pH">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="fecha"/>
+                            <field name="ph"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Observaciones">
+                        <field name="observaciones" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_biocreto_lab_ph" model="ir.actions.act_window">
+        <field name="name">pH</field>
+        <field name="res_model">biocreto.lab.ph</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

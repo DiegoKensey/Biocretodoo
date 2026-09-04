@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============ MENU RAIZ (app) ============ -->
+    <menuitem id="menu_biocreto_laboratorio_root"
+              name="Laboratorio"
+              web_icon="biocreto_laboratorio,static/description/PruebaLaboratorio.svg"
+              sequence="60"/>
+
+    <!-- ============ Cola de diseños ============ -->
+    <menuitem id="menu_biocreto_cola_disenos"
+              name="Cola de diseños"
+              parent="menu_biocreto_laboratorio_root"
+              action="action_biocreto_cola_disenos"
+              sequence="10"/>
+
+    <!-- ============ Probetas ============ -->
+    <menuitem id="menu_biocreto_probetas"
+              name="Probetas"
+              parent="menu_biocreto_laboratorio_root"
+              action="action_biocreto_probeta"
+              sequence="20"/>
+
+    <!-- ============ Slump ============ -->
+    <menuitem id="menu_biocreto_slump"
+              name="Slump"
+              parent="menu_biocreto_laboratorio_root"
+              action="action_biocreto_slump"
+              sequence="30"/>
+
+    <!-- ============ Controles diarios (contenedor) ============ -->
+    <menuitem id="menu_biocreto_controles_diarios"
+              name="Controles diarios"
+              parent="menu_biocreto_laboratorio_root"
+              sequence="40"/>
+
+    <menuitem id="menu_biocreto_lab_humedad"
+              name="Humedades"
+              parent="menu_biocreto_controles_diarios"
+              action="action_biocreto_lab_humedad"
+              sequence="10"/>
+
+    <menuitem id="menu_biocreto_lab_poza_temp"
+              name="Temperatura de poza"
+              parent="menu_biocreto_controles_diarios"
+              action="action_biocreto_lab_poza_temp"
+              sequence="20"/>
+
+    <menuitem id="menu_biocreto_lab_ph"
+              name="pH"
+              parent="menu_biocreto_controles_diarios"
+              action="action_biocreto_lab_ph"
+              sequence="30"/>
+
+    <!-- ============ Diseños (mrp.bom) ============ -->
+    <menuitem id="menu_biocreto_bom"
+              name="Diseños"
+              parent="menu_biocreto_laboratorio_root"
+              action="action_biocreto_bom"
+              sequence="50"/>
+
+    <!-- ============ Configuración (contenedor sin acción) ============ -->
+    <menuitem id="menu_biocreto_lab_config"
+              name="Configuración"
+              parent="menu_biocreto_laboratorio_root"
+              sequence="99"/>
+
+    <menuitem id="menu_biocreto_probeta_edad"
+              name="Edades de probeta"
+              parent="menu_biocreto_lab_config"
+              action="action_biocreto_probeta_edad"
+              sequence="10"/>
+
+    <menuitem id="menu_biocreto_probeta_tamano"
+              name="Tamaños de probeta"
+              parent="menu_biocreto_lab_config"
+              action="action_biocreto_probeta_tamano"
+              sequence="20"/>
+
+</odoo>

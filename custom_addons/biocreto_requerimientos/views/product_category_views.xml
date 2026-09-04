@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Vista heredada: product.product_category_form_view
+        (odoo/addons/product/views/product_category_views.xml:4).
+        Widget color_picker: supportedTypes ["integer"] y canToggle solo fuera
+        de list -> en formulario se despliega expandido
+        (odoo/addons/web/static/src/views/fields/color_picker/color_picker_field.js:28-33).
+        RECORD_COLORS = [0..11], que casan con o_badge_color_0..11.
+    -->
+    <record id="product_category_form_view_biocreto_color" model="ir.ui.view">
+        <field name="name">product.category.form.biocreto.color</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product.product_category_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='first']" position="inside">
+                <field name="color" widget="color_picker"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,550 @@
+// ══════════════════════════════════════════════════════════════════════
+//  BIOCRETO — Constancia de entrega de materiales
+//  Motor: PlutoPrint (biocreto_pdf_engine)
+// ══════════════════════════════════════════════════════════════════════
+//
+//  RESTRICCIONES DEL MOTOR — respetadas en todo el archivo:
+//    · NO se usa CSS Grid (no soportado).
+//    · NO se usa calc().
+//    · El bloque @page NO vive aqui: va como <style> literal en el QWeb
+//      (report_constancia_entrega.xml, template ent_layout). Diagnostico
+//      ya cerrado para la cotizacion: el bundle minificado llega a
+//      PlutoPrint con el @page intacto pero el motor NO lo aplica cuando
+//      viene inlineado dentro del bundle CSS.
+//
+//  Todo va scopeado bajo .biocreto-ent — cabecera, pie Y cuerpo — para
+//  no contaminar ningun otro reporte que cargue
+//  web.report_assets_common. Hasta v19.0.1.8.0 el cuerpo (.ent-page)
+//  quedaba fuera; ver la nota del bloque.
+// ══════════════════════════════════════════════════════════════════════
+
+$ent-azul:     #1ea8e0;
+$ent-amarillo: #f9bc09;
+$ent-gris:     #58595b;
+$ent-tinta:    #1d1d1b;
+$ent-borde:    #c9ccce;
+
+// --------- Cabecera / pie como running elements ---------
+// El @page (en el QWeb) los materializa con element(hdr) / element(ftr).
+// margin y padding a 0: cualquier holgura aqui desalinea la banda
+// respecto al margen de 26.5mm reservado por @page y deja una franja
+// blanca sobre el SVG.
+//
+// FRAGIL — LEER ANTES DE TOCAR: estas dos reglas son las UNICAS del
+// archivo sin scope, y no pueden tenerlo (el elemento que lleva
+// position:running() es el propio .page-header/.page-footer). Estan
+// declaradas IDENTICAS en report_compras.scss:45-46 y en los SCSS de
+// cotizacion y contrato, y los cuatro comparten el bundle
+// web.report_assets_common: gana el ultimo que se compile. Hoy es
+// inofensivo porque el contenido coincide al caracter. Cambiar una
+// sola de las cuatro rompe silenciosamente a las otras tres.
+// Unificarlas en un partial comun es trabajo aparte; no se toca aqui.
+.page-header { position: running(hdr); margin: 0; padding: 0; }
+.page-footer { position: running(ftr); margin: 0; padding: 0; }
+
+.biocreto-ent {
+    box-sizing: border-box;
+    // Century Gothic esta instalada a nivel sistema (Windows:
+    // C:\Windows\Fonts, servidor: /usr/share/fonts/truetype/biocreto/).
+    // PlutoPrint la resuelve sola. NO usar @font-face con src: local():
+    // registra una familia VACIA que gana la cascada y rompe el render en
+    // Linux. 'URW Gothic' es el equivalente metrico libre, red de seguridad
+    // real en el servidor.
+    font-family: 'Century Gothic', 'URW Gothic', sans-serif;
+    color: $ent-tinta;
+
+    // Sin esto los .info-cell (flex:1 + padding-right) desbordan la fila.
+    // report_compras.scss:39.
+    *, *::before, *::after { box-sizing: border-box; }
+
+    // Altura en mm igual al margen del @page (26.5mm), para que la
+    // banda ocupe exactamente el hueco reservado y ni sobre ni falte.
+    .hwrap, .fwrap {
+        position: relative;
+        width: 100%;
+        height: 26.5mm;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    // 101/102% y no 100%: al escalar el SVG a un ancho no entero el
+    // redondeo sub-pixel deja una linea blanca de un pixel entre la
+    // banda y el borde del papel. Compras lo aprendio y desborda a
+    // proposito; el .hwrap/.fwrap tiene overflow:hidden y recorta.
+    // (report_compras.scss:58-63)
+    svg { display: block; width: 101%; height: 102%; }
+
+    // Recuadro superior DERECHO (SIG codigo/version/fecha).
+    // v19.0.1.8.0: estaba en `left: 3mm`. Geometria calcada de
+    // report_compras.scss:66-88 para que caiga sobre el mismo recuadro
+    // del logotipo, que ahora es el mismo SVG. width/height en % y px
+    // del viewBox 794x100, no en mm: el SVG se estira con
+    // preserveAspectRatio="none" y las unidades absolutas se
+    // desalinearian del recuadro al escalar.
+    .header-code {
+        position: absolute;
+        top: 0;
+        right: 0;
+        transform: translateX(3px);
+        width: 14.6%;
+        height: 66.1px;
+        color: #ffffff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        line-height: 1.4;
+        font-size: 8pt;
+        font-weight: bold;
+        letter-spacing: 0.2px;
+
+        .row {
+            display: block;
+            padding: 1px 4px;
+        }
+    }
+
+    // Numeracion 1/N sobre el recuadro derecho del SVG del pie.
+    // v19.0.1.8.0: antes era `counter(page)` a secas y salia "1" sin
+    // total. `counter(pages)` lo resuelve PlutoPrint SOLO dentro de un
+    // elemento con position: running() (validado en el proyecto, ver
+    // report_compras.scss:91-94); este div vive dentro de .fwrap, que
+    // cuelga de .page-footer, que es running(ftr). Condicion cumplida.
+    // Geometria calcada de report_compras.scss:95-111.
+    .footer-pagenum {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        transform: translateX(4px);
+        width: 5.2%;
+        height: 37.45px;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 9pt;
+        font-weight: bold;
+
+        &::after { content: counter(page) "/" counter(pages); }
+    }
+
+    // --------- Cuerpo ---------
+    // v19.0.1.8.0: RE-ANIDADO. Hasta esta version .ent-page vivia como
+    // selector de primer nivel, sin scope, en un bundle
+    // (web.report_assets_common) que comparten cinco reportes. No era
+    // un descuido gratuito: el cuerpo colgaba de un <t t-out="0"/>
+    // desnudo, fuera de todo elemento .biocreto-ent, asi que el scope
+    // no le llegaba y habia que repetir aqui font-family y color.
+    //
+    // Con el <main class="biocreto-ent"> que ahora envuelve el cuerpo
+    // (report_constancia_entrega.xml) las dos declaraciones sobran y se
+    // han eliminado. `font-size: 9pt` SI se conserva: el scope padre no
+    // fija ninguno, y sin el la tabla heredaria el del navegador.
+    //
+    // v19.0.1.9.0: font-size 9pt -> 10pt y line-height 1.35, los valores
+    // base de .biocreto-sc (report_compras.scss:35-36); el padding pasa
+    // de 6mm/14mm a los 4px/20px de main.biocreto-sc (:158-160). Los
+    // 14mm laterales estrechaban la caja ~33px por lado respecto a la
+    // referencia y la tabla de 7 columnas no cuadraba con la de compras.
+    .ent-page {
+        font-size: 10pt;
+        line-height: 1.35;
+        padding: 4px 20px 14px 20px;
+
+        // ═════════════════════════════════════════════════════════════
+        //  v19.0.1.9.0 — El cuerpo replica el de la solicitud de
+        //  cotizacion de compra (body_sc). TODOS los colores y medidas
+        //  de aqui abajo estan copiados de
+        //  biocreto_compras_reporte/static/src/scss/report_compras.scss
+        //  con la linea de origen anotada en cada bloque. No se han
+        //  tomado del HTML de maqueta del cliente.
+        //
+        //  Restricciones del motor respetadas: sin calc(), sin CSS Grid,
+        //  sin @page. Solo flexbox y tablas.
+        // ═════════════════════════════════════════════════════════════
+
+        // --------- Anti-corte de pagina (report_compras.scss:113-142) ---------
+        // Por bloque individual, no en un wrapper unico: asi cada uno
+        // salta de pagina solo si le falta sitio.
+        .ent-header,
+        .ent-info-block,
+        .ent-resumen,
+        .ent-aviso {
+            break-inside: avoid;
+        }
+        .ent-title { break-after: avoid; }
+
+        // =========== CABECERA (rotulo vertical + N° + meta) ===========
+        // report_compras.scss:163-234.
+        .ent-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid $ent-azul;
+            padding-bottom: 6pt;
+            margin-bottom: 12pt;
+        }
+        // `!important` scopeado: refuerzo anti-Bootstrap, igual que
+        // .sc-title en report_compras.scss:172-177.
+        .ent-header-left {
+            display: flex !important;
+            align-items: center !important;
+            padding-left: 22px;
+            white-space: nowrap;
+        }
+        // El rotulo NO se dimensiona por el largo del texto: 28px x 115px
+        // fijos y el <span> centrado en absoluto con rotate(-90deg). Por
+        // eso «Entrega» (7 letras) queda centrada igual que «Cotización»
+        // (10) u «Orden» (5). Valores literales de report_compras.scss:178-200.
+        .ent-vertical-tag {
+            display: inline-block;
+            flex: 0 0 auto;
+            width: 28px !important;
+            height: 115px;
+            background: $ent-azul;
+            position: relative;
+            overflow: hidden;
+
+            span {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) rotate(-90deg);
+                transform-origin: center;
+                color: #ffffff;
+                font-size: 9pt;
+                font-weight: bold;
+                letter-spacing: 3px;
+                text-transform: uppercase;
+                white-space: nowrap;
+            }
+        }
+        .ent-number {
+            padding-left: 14px;
+            font-size: 19pt;
+            font-weight: bold;
+            color: $ent-tinta;
+            letter-spacing: 0.5px;
+            line-height: 1;
+        }
+        .ent-meta {
+            text-align: right;
+            font-size: 9pt;
+
+            table {
+                border-collapse: collapse;
+                margin-left: auto;
+            }
+            td {
+                padding: 1pt 4pt;
+                font-family: inherit;
+            }
+            td:first-child {
+                color: $ent-gris;
+                font-weight: bold;
+                text-align: right;
+                text-transform: uppercase;
+                font-size: 8pt;
+                letter-spacing: 0.3px;
+            }
+            td:last-child {
+                text-align: left;
+                color: $ent-tinta;
+                min-width: 80pt;
+            }
+        }
+
+        // =========== TITULO ===========
+        // NO existe equivalente en body_sc (su cabecera pasa directa al
+        // primer info-block). Este h1 es propio de la constancia; se le
+        // aplica el tratamiento tipografico de los titulos de seccion de
+        // compras (.requisitos-title / .notas-title, report_compras.scss:
+        // 444-451 y 546-553) escalado a titulo de documento. Pierde el
+        // border-bottom que tenia: la divisoria celeste ya la pone
+        // .ent-header y dos lineas seguidas se leian como un error.
+        .ent-title {
+            margin: 0 0 12pt 0;
+            font-size: 12pt;
+            font-weight: bold;
+            color: $ent-gris;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+
+        // =========== BLOQUES DE FRANJA LATERAL ===========
+        // report_compras.scss:239-288. Celeste por defecto (quien
+        // entrega); la variante .ent-receptor lleva el amarillo
+        // BIOCRETO, igual que .info-block.solicitante en compras, y va
+        // PRIMERA por el mismo criterio: manda quien recibe.
+        .ent-info-block {
+            background: #f5f5f5;
+            border-left: 3px solid $ent-azul;
+            padding: 8pt 14pt;
+            margin: 0 0 10pt 0;
+
+            .info-row {
+                display: flex;
+                margin: 2pt 0;
+            }
+            .info-cell {
+                flex: 1;
+                display: flex;
+                align-items: flex-start;
+                font-size: 9.5pt;
+                padding-right: 14pt;
+                line-height: 1.4;
+                gap: 12px;
+            }
+            .info-cell.info-cell-full {
+                padding-right: 0;
+                flex: 1 1 100%;
+            }
+            .info-label {
+                color: $ent-gris;
+                font-weight: bold;
+                text-transform: uppercase;
+                font-size: 8pt;
+                letter-spacing: 0.3px;
+                min-width: 100px;
+                flex-shrink: 0;
+            }
+            .info-value {
+                flex: 1;
+                color: $ent-tinta;
+            }
+        }
+        .ent-info-block.ent-receptor {
+            border-left: 3px solid $ent-amarillo;
+        }
+
+        // =========== TABLA DE LINEAS ===========
+        // report_compras.scss:300-358. Cabecera gris #58595b con franja
+        // inferior celeste de 5px; la columna destacada invierte los dos
+        // (cabecera celeste, franja gris) tal cual .col-cotiza-th.
+        .ent-tabla {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+            margin: 0 0 8pt 0;
+
+            thead th {
+                background: $ent-gris;
+                color: #ffffff;
+                padding: 7pt 5pt !important;
+                font-weight: bold;
+                text-align: center;
+                font-size: 8.5pt;
+                letter-spacing: 0.4px;
+                font-family: inherit;
+                border-bottom: 5px solid $ent-azul;
+                text-transform: uppercase;
+                // Obligatorio: el 1.35 heredado rompe el centrado vertical
+                // en la celda de dos lineas («Entregado ahora»).
+                line-height: 1.1;
+                vertical-align: middle;
+            }
+            thead th.col-entregado-th {
+                background: $ent-azul;
+                border-bottom: 5px solid $ent-gris;
+            }
+            tbody td {
+                border: 1px solid #d4d4d4;
+                padding: 5pt 6pt;
+                text-align: center;
+                font-family: inherit;
+                background: #ffffff;
+                vertical-align: middle;
+                line-height: 1.3;
+            }
+            tbody td.c-cod,
+            tbody td.c-prod { text-align: left; }
+            tbody td.c-num  { text-align: right; }
+            tbody td.c-item {
+                font-weight: bold;
+                background: #f5f5f5;
+                color: $ent-gris;
+            }
+            tbody td.col-entregado {
+                background: #eaf6fc;
+                font-weight: bold;
+            }
+            // Zebra, excluyendo las dos columnas con fondo propio para no
+            // pisarlas en las filas pares (mismo criterio que compras).
+            tbody tr:nth-child(even) td:not(.c-item):not(.col-entregado) {
+                background: #fafafa;
+            }
+
+            .prod-name {
+                font-weight: bold;
+                color: $ent-tinta;
+            }
+
+            // Cabecera repetida si la tabla parte de pagina.
+            thead { display: table-header-group; }
+            tbody tr { break-inside: avoid; }
+
+            .c-item { width: 6%; }
+            .c-cod  { width: 13%; }
+            .c-prod { width: 34%; }
+            .c-num  { width: 11%; }
+            .c-uom  { width: 10%; }
+            .col-entregado-th,
+            .col-entregado { width: 15%; }
+
+            .vacio {
+                padding: 4mm;
+                color: #7a7d80;
+                font-style: italic;
+                text-align: center;
+            }
+        }
+
+        // =========== RESUMEN (cuatro celdas) ===========
+        // Sin equivalente en body_sc. Toma el tratamiento de la tabla
+        // —etiqueta sobre el gris #58595b de thead, valor sobre celda
+        // blanca con el borde #d4d4d4 de tbody— pero SIN las franjas de
+        // 5px. El separador entre pares es el borde blanco de .r-sep.
+        .ent-resumen {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+            margin: 0 0 10pt 0;
+
+            td {
+                border: 1px solid #d4d4d4;
+                padding: 5pt 6pt;
+                vertical-align: middle;
+                line-height: 1.3;
+            }
+            .r-label {
+                width: 18%;
+                background: $ent-gris;
+                color: #ffffff;
+                font-weight: bold;
+                text-transform: uppercase;
+                font-size: 8.5pt;
+                letter-spacing: 0.4px;
+                text-align: center;
+                white-space: nowrap;
+            }
+            .r-value {
+                width: 32%;
+                background: #ffffff;
+                color: $ent-tinta;
+                text-align: left;
+            }
+            .r-sep {
+                border-left: 3px solid #ffffff;
+            }
+        }
+
+        // =========== AVISO DE PENDIENTES ===========
+        // report_compras.scss:415-430. Unica adaptacion: align-items pasa
+        // de `center` a `flex-start` porque aqui el cuerpo es una lista de
+        // varias lineas, no el texto de una sola de compras; con `center`
+        // el icono flotaba a media altura del bloque.
+        .ent-aviso {
+            margin: 6pt 0 12pt 0;
+            padding: 8pt 12pt;
+            background: #fff8e1;
+            border-left: 3px solid $ent-amarillo;
+            font-size: 9pt;
+            color: $ent-tinta;
+            display: flex;
+            align-items: flex-start;
+            gap: 8pt;
+
+            .fa {
+                color: $ent-amarillo;
+                font-size: 11pt;
+                line-height: 1.3;
+            }
+            .aviso-body { flex: 1; }
+            .aviso-title {
+                font-weight: bold;
+                text-transform: uppercase;
+                font-size: 8.5pt;
+                letter-spacing: 0.3px;
+                color: $ent-gris;
+                margin-bottom: 3pt;
+            }
+            ul {
+                margin: 0;
+                padding-left: 16pt;
+            }
+            li {
+                line-height: 1.4;
+                margin-bottom: 1pt;
+            }
+            .aviso-nota {
+                margin-top: 4pt;
+                font-size: 8pt;
+                color: #6d5a12;
+            }
+        }
+
+        // --------- Firmas ---------
+        // Flexbox, no grid. break-inside: avoid para que el bloque no se
+        // parta entre dos paginas y deje una firma huerfana.
+        .firmas-block {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            margin-bottom: 8mm;
+            break-inside: avoid;
+
+            .firma-area {
+                width: 42%;
+                text-align: center;
+            }
+
+            // El recuadro se pinta SIEMPRE. Si no hay firma cargada queda
+            // la linea base vacia, que es justo lo que pide el formato.
+            .firma-line {
+                position: relative;
+                height: 22mm;
+                margin-bottom: 1.5mm;
+                border-bottom: 0.75pt solid $ent-tinta;
+            }
+
+            .firma-img {
+                max-width: 100%;
+                max-height: 21mm;
+                margin: 0 auto;
+                display: block;
+            }
+
+            .firma-label {
+                margin: 0;
+                font-size: 8pt;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+            }
+
+            .firma-name {
+                margin: 0.6mm 0 0 0;
+                font-size: 8.5pt;
+            }
+
+            .firma-meta {
+                margin: 0.4mm 0 0 0;
+                font-size: 7.5pt;
+                color: #6d7073;
+            }
+        }
+
+        .ent-legal {
+            margin: 0;
+            padding-top: 2.5mm;
+            border-top: 0.5pt solid $ent-borde;
+            font-size: 6.8pt;
+            line-height: 1.45;
+            color: #55585b;
+            text-align: justify;
+        }
+    }
+}

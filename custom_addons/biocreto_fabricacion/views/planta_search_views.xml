@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Search view del panel del plantero (aplicada sobre mrp.production).
+        Filtro "Hoy" por defecto: OFs cuya date_start es hoy.
+        Removible para ver todas las pendientes.
+    -->
+    <record id="view_biocreto_planta_search" model="ir.ui.view">
+        <field name="name">biocreto.planta.search</field>
+        <field name="model">mrp.production</field>
+        <field name="arch" type="xml">
+            <search string="Buscar OFs">
+                <field name="name"/>
+                <field name="origin" string="Orden de venta"/>
+                <field name="product_id"/>
+                <field name="sale_line_id"/>
+                <filter name="hoy" string="Hoy"
+                        domain="[('date_start','&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0))),
+                                 ('date_start','&lt;', datetime.datetime.combine(context_today() + relativedelta(days=1), datetime.time(0,0,0)))]"/>
+                <filter name="confirmadas" string="Confirmadas"
+                        domain="[('state','=','confirmed')]"/>
+                <filter name="en_proceso" string="En proceso"
+                        domain="[('state','in',['progress','to_close'])]"/>
+                <separator/>
+                <group>
+                    <filter name="group_origin" string="Orden de venta"
+                            context="{'group_by': 'origin'}"/>
+                    <filter name="group_product" string="Producto"
+                            context="{'group_by': 'product_id'}"/>
+                    <filter name="group_state" string="Estado"
+                            context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+</odoo>

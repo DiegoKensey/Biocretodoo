@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        1) Popup por-linea (inline). Inserta "Especificaciones de laboratorio"
+           ANTES del grupo "biocreto_envio_group" (verificado: la extension nativa
+           declara el hueco en la linea 228-230 de biocreto_sale_extension/views).
+    -->
+    <record id="view_sale_order_lab_inline" model="ir.ui.view">
+        <field name="name">sale.order.form.biocreto.laboratorio.inline</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="biocreto_sale_extension.view_order_form_biocreto"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='biocreto_envio_group']" position="before">
+                <group string="Especificaciones de laboratorio"
+                       name="biocreto_lab_group"
+                       invisible="biocreto_product_categ != 'Concreto'">
+                    <group>
+                        <field name="biocreto_probetas_a_generar"/>
+                    </group>
+                    <group>
+                        <field name="biocreto_probetas_generadas" readonly="1"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!--
+        2) Popup form STANDALONE (biocreto_sale_extension.sale_order_line_view_form_biocreto).
+           Mismo grupo, mismo criterio: ANTES del "biocreto_envio_group_form".
+    -->
+    <record id="view_sale_order_line_form_biocreto_lab" model="ir.ui.view">
+        <field name="name">sale.order.line.form.biocreto.laboratorio</field>
+        <field name="model">sale.order.line</field>
+        <field name="inherit_id" ref="biocreto_sale_extension.sale_order_line_view_form_biocreto"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='biocreto_envio_group_form']" position="before">
+                <group string="Especificaciones de laboratorio"
+                       name="biocreto_lab_group_form"
+                       invisible="biocreto_product_categ != 'Concreto'">
+                    <group>
+                        <field name="biocreto_probetas_a_generar"/>
+                    </group>
+                    <group>
+                        <field name="biocreto_probetas_generadas" readonly="1"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!--
+        3) Smart buttons: Probetas y Slump en el button_box del form principal
+           de sale.order (patron nativo Odoo).
+    -->
+    <record id="view_order_form_biocreto_lab_buttons" model="ir.ui.view">
+        <field name="name">sale.order.form.biocreto.laboratorio.buttons</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_biocreto_probetas"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-database"
+                        invisible="state not in ('sale', 'done')">
+                    <field name="biocreto_probeta_count" widget="statinfo" string="Probetas"/>
+                </button>
+                <button name="action_view_biocreto_slumps"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-filter fa-rotate-180"
+                        invisible="state not in ('sale', 'done')">
+                    <field name="biocreto_slump_count" widget="statinfo" string="Slump"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Cola de diseños: lista de sale.order.line de categoria Concreto en
+        estado programado o sale, con badge de estado de diseño.
+        Filtro por defecto "Pendientes de diseño" (bom_id vacio), removible.
+    -->
+    <record id="view_biocreto_cola_disenos_list" model="ir.ui.view">
+        <field name="name">biocreto.cola.disenos.list</field>
+        <field name="model">sale.order.line</field>
+        <!-- v19.0.1.0.1: priority=10 para ganar por resolucion natural frente
+             a la nativa sale.view_order_line_tree (priority=16). Ademas la
+             accion ancla view_ids explicito abajo, doble defensa. -->
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <!-- open_form_view="False": impide que el clic en fila abra el
+                 form nativo sale_order_line_view_form_readonly (edit="false"),
+                 que era el clic-muerto reportado. Edicion 100% inline. -->
+            <list string="Cola de diseños" editable="bottom" create="false" open_form_view="False">
+                <field name="order_id" readonly="1"/>
+                <field name="order_partner_id" string="Cliente" readonly="1"/>
+                <field name="product_id" readonly="1"/>
+                <field name="biocreto_fc_resistencia_line" optional="show"
+                       string="f'c" readonly="1"/>
+                <field name="product_uom_qty" string="m³" readonly="1"/>
+                <field name="biocreto_fecha_vaceo_inicio" string="Fecha de vaceo" readonly="1"/>
+                <field name="bom_id"
+                       domain="biocreto_bom_domain"
+                       options="{'no_create': False, 'no_create_edit': False}"/>
+                <field name="biocreto_estado_diseno" widget="badge"
+                       decoration-danger="biocreto_estado_diseno == 'pendiente'"
+                       decoration-success="biocreto_estado_diseno == 'asignado'"/>
+                <field name="biocreto_bom_domain" column_invisible="1"/>
+                <field name="state" column_invisible="1"/>
+                <field name="biocreto_product_categ" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_biocreto_cola_disenos_calendar" model="ir.ui.view">
+        <field name="name">biocreto.cola.disenos.calendar</field>
+        <field name="model">sale.order.line</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <calendar string="Cola de diseños"
+                      date_start="biocreto_fecha_vaceo_inicio"
+                      color="biocreto_estado_diseno"
+                      mode="month">
+                <field name="order_id"/>
+                <field name="product_id"/>
+                <field name="product_uom_qty"/>
+            </calendar>
+        </field>
+    </record>
+
+    <record id="view_biocreto_cola_disenos_search" model="ir.ui.view">
+        <field name="name">biocreto.cola.disenos.search</field>
+        <field name="model">sale.order.line</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="order_id"/>
+                <field name="order_partner_id" string="Cliente"/>
+                <field name="product_id"/>
+                <filter name="pendientes" string="Pendientes de diseño"
+                        domain="[('bom_id','=', False)]"/>
+                <filter name="asignados" string="Con diseño"
+                        domain="[('bom_id','!=', False)]"/>
+                <separator/>
+                <filter name="programado" string="En Programado"
+                        domain="[('state','=','programado')]"/>
+                <filter name="ov" string="En OV"
+                        domain="[('state','=','sale')]"/>
+                <group>
+                    <filter name="group_fc" string="Resistencia"
+                            context="{'group_by': 'biocreto_fc_resistencia_line'}"/>
+                    <filter name="group_partner" string="Cliente"
+                            context="{'group_by': 'order_partner_id'}"/>
+                    <filter name="group_state" string="Estado orden"
+                            context="{'group_by': 'state'}"/>
+                    <filter name="group_estado_diseno" string="Estado diseño"
+                            context="{'group_by': 'biocreto_estado_diseno'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!--
+        Domain estatico (regla del proyecto: dominios dinamicos se pierden con F5).
+        Categoria Concreto por nombre literal + estado in programado/sale.
+        Filtro "Pendientes de diseño" ACTIVO por defecto via search_default_pendientes.
+    -->
+    <record id="action_biocreto_cola_disenos" model="ir.actions.act_window">
+        <field name="name">Cola de diseños</field>
+        <field name="res_model">sale.order.line</field>
+        <field name="view_mode">list,calendar</field>
+        <field name="search_view_id" ref="view_biocreto_cola_disenos_search"/>
+        <field name="domain">[('display_type', '=', False), ('biocreto_product_categ', '=', 'Concreto'), ('state', 'in', ['programado', 'sale'])]</field>
+        <field name="context">{'search_default_pendientes': 1}</field>
+        <!-- v19.0.1.0.1: view_ids explicito para anclar las vistas custom
+             (list + calendar). Sin esto, Odoo resuelve por priority ascendente
+             y gana la nativa sale.view_order_line_tree (priority=16), lo que
+             enmascaraba TODO el diseno de esta cola. -->
+        <field name="view_ids"
+               eval="[(5, 0, 0),
+                      (0, 0, {'view_mode': 'list', 'view_id': ref('view_biocreto_cola_disenos_list')}),
+                      (0, 0, {'view_mode': 'calendar', 'view_id': ref('view_biocreto_cola_disenos_calendar')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay líneas de Concreto pendientes de asignar diseño.
+            </p>
+        </field>
+    </record>
+
+</odoo>

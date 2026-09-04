@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Campos de guia de remision en el form NATIVO del picking.
+         Solo herencia aditiva de campos: Validar/Firma/Devolver/Imprimir
+         nativos intactos. -->
+    <record id="view_picking_form_biocreto" model="ir.ui.view">
+        <field name="name">stock.picking.form.biocreto</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <!-- Codigo presinto bajo Documento origen -->
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="biocreto_codigo_presinto"/>
+            </xpath>
+            <!-- Datos de guia + guia electronica en Informacion adicional -->
+            <xpath expr="//page[@name='extra']" position="inside">
+                <group string="Guía de remisión" name="biocreto_guia">
+                    <field name="biocreto_datos_guia" nolabel="1" colspan="2"/>
+                    <field name="biocreto_guia_electronica"
+                           filename="biocreto_guia_electronica_filename"/>
+                    <field name="biocreto_guia_electronica_filename" invisible="1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

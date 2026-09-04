@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Edad -->
+    <record id="view_biocreto_probeta_edad_list" model="ir.ui.view">
+        <field name="name">biocreto.probeta.edad.list</field>
+        <field name="model">biocreto.probeta.edad</field>
+        <field name="arch" type="xml">
+            <list string="Edades de probeta" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="valor"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_biocreto_probeta_edad" model="ir.actions.act_window">
+        <field name="name">Edades de probeta</field>
+        <field name="res_model">biocreto.probeta.edad</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <!-- Tamaño -->
+    <record id="view_biocreto_probeta_tamano_list" model="ir.ui.view">
+        <field name="name">biocreto.probeta.tamano.list</field>
+        <field name="model">biocreto.probeta.tamano</field>
+        <field name="arch" type="xml">
+            <list string="Tamaños de probeta" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_biocreto_probeta_tamano" model="ir.actions.act_window">
+        <field name="name">Tamaños de probeta</field>
+        <field name="res_model">biocreto.probeta.tamano</field>
+        <field name="view_mode">list</field>
+    </record>
+
+</odoo>

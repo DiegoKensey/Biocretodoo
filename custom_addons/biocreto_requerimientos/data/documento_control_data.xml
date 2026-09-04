@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!--
+            Registro SIG de la Constancia de Entrega de Materiales.
+
+            Consultado desde el QWeb via
+              env['biocreto.documento.control'].sudo()
+                  .get_control_for_qweb('entrega_materiales')
+            (report/report_constancia_entrega.xml, template ent_layout),
+            que devuelve {codigo, version, fecha_version} o {} si no
+            encuentra la clave.
+
+            La clave tecnica `entrega_materiales` YA estaba cableada en la
+            plantilla antes de existir este registro: el reporte se diseno
+            para caer al literal [POR CONFIRMAR] mientras el area SIG no
+            asignara codigo, en vez de inventarse uno. Este archivo es lo
+            que enciende el recuadro.
+
+            `codigo_documento` tiene UNIQUE en base
+            (biocreto_sig/models/documento_control.py:49-52), asi que si
+            alguien crea `entrega_materiales` a mano la instalacion
+            fallaria. Verificado libre antes de sembrarlo.
+
+            noupdate="1": mismo criterio que compras. Si el area SIG sube
+            la version a 02 desde la interfaz, un -u posterior NO se la
+            pisa. Ojo: eso significa que cambiar los valores de aqui NO
+            tiene efecto sobre una base donde el registro ya existe; hay
+            que editarlo en Ajustes > SIG > Documentos.
+
+            PENDIENTE DE CONFIRMAR CON EL AREA SIG: la fecha 01/06/2024 es
+            anterior a la de los otros dos codigos BC-GL-FR del sistema
+            (08/07/2026, ver biocreto_compras_reporte). Se registra tal
+            cual se recibio; si resulta ser un error se corrige desde la
+            interfaz, no desde aqui (noupdate).
+        -->
+        <record id="documento_entrega_materiales" model="biocreto.documento.control">
+            <field name="name">Constancia de Entrega de Materiales</field>
+            <field name="codigo">BC-GL-FR-11</field>
+            <field name="codigo_documento">entrega_materiales</field>
+            <field name="version">01</field>
+            <field name="fecha_version" eval="'2024-06-01'"/>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biocreto_fabricacion.RecordOrden">
+    <div class="card o_biocreto_record o_biocreto_record_orden">
+        <div class="card-header d-flex align-items-start justify-content-between">
+            <div class="o_biocreto_record_title">
+                <div class="fw-bold" t-out="props.orden.orden?.name || props.orden.key"/>
+                <div class="small text-muted" t-if="props.orden.orden?.partner"
+                     t-out="props.orden.orden.partner"/>
+            </div>
+            <span class="badge" t-att-class="badgeClass" t-out="badgeLabel"/>
+        </div>
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="o_biocreto_productos">
+                    <t t-foreach="props.orden.productos" t-as="prod" t-key="prod_index">
+                        <div t-out="prod"/>
+                    </t>
+                </div>
+                <div class="o_biocreto_progreso text-end">
+                    <span class="fs-5 fw-bold" t-out="props.orden.producido.toFixed(1)"/>
+                    <span class="text-muted"> / </span>
+                    <span class="text-muted" t-out="props.orden.total.toFixed(1)"/>
+                    <span class="text-muted"> m³</span>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <button class="btn btn-primary" t-on-click="() =&gt; props.onOpen()">
+                <i class="fa fa-play me-1"/> Iniciar produccion
+            </button>
+            <div class="dropdown position-relative">
+                <button class="btn btn-link p-1" t-on-click="toggleKebab">
+                    <i class="fa fa-ellipsis-v"/>
+                </button>
+                <div t-if="state.kebabOpen" class="dropdown-menu dropdown-menu-end show">
+                    <button class="dropdown-item" t-on-click="onNota">
+                        <i class="fa fa-sticky-note me-2"/> Registrar una nota
+                    </button>
+                    <button class="dropdown-item text-danger" t-on-click="onCancelar">
+                        <i class="fa fa-ban me-2"/> Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</t>
+
+</templates>

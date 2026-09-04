@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Ubicaciones de destino por area.
+
+        Vista heredada: hr.view_department_form
+        (odoo/addons/hr/views/hr_department_views.xml). Se inyecta un
+        <group> propio DENTRO del <sheet>, despues del primer <group>,
+        para no depender de ningun name= que hr pueda renombrar.
+
+        company_id ya esta en el formulario nativo; hace falta que este
+        presente en el arch para que check_company_auto filtre las
+        ubicaciones por compania en el desplegable.
+    -->
+    <record id="view_department_form_biocreto_entregas" model="ir.ui.view">
+        <field name="name">hr.department.form.biocreto.entregas</field>
+        <field name="model">hr.department</field>
+        <field name="inherit_id" ref="hr.view_department_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group[1]" position="after">
+                <group string="BIOCRETO — Entregas de materiales"
+                       name="biocreto_entregas">
+                    <field name="biocreto_ubicacion_activos"
+                           options="{'no_create': True}"/>
+                    <field name="biocreto_ubicacion_consumo"
+                           options="{'no_create': True}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

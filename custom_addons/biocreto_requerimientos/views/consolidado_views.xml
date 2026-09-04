@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- === BIOCRETO CONSOLIDADO v1 — INICIO (archivo completo reversible) ===
+     Ver REVERSION_CONSOLIDADO.md en la raíz del módulo. -->
+<odoo>
+
+    <!-- ═════════════════════════════════════════════════════════════
+         Lista SUELTA de líneas del consolidado.
+
+         Es la pantalla principal, no una lista embebida: un x2many usa
+         StaticList (static_list.js:78), que no implementa isGrouped ni
+         groupBy, y x2many_field.js nunca lee defaultGroupBy -> dentro de un
+         <field> el default_group_by se ignora en silencio.
+         Precedente nativo de editable + default_group_by en vista suelta:
+         l10n_in/views/account_invoice_views.xml:107.
+
+         Limpieza visual (v19.0.1.3.0):
+           · group_create="0" quita el «Agregar Categoría» del pie. NO lo
+             controla create="false": canCreateGroup mira
+             activeActions.createGroup (list_renderer.js:459-468), que sale
+             del atributo `group_create` y vale true por defecto
+             (list_arch_parser.js:192).
+           · export_xlsx="0" vacía el engranaje del título. El CogMenu se
+             pinta siempre (list_controller.xml:42) pero su plantilla lleva
+             t-if="hasItems" (cog_menu.xml:5); sus dos únicos candidatos aquí
+             eran «Importar» —ya descartado por create="false"
+             (import_records.js:38-47)— y «Exportar todo», que este atributo
+             apaga (export_all.js:31-38).
+         ═════════════════════════════════════════════════════════════ -->
+    <record id="consolidado_linea_view_list" model="ir.ui.view">
+        <field name="name">biocreto.requerimiento.consolidado.linea.view.list</field>
+        <field name="model">biocreto.requerimiento.consolidado.linea</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" default_group_by="categoria_producto_id"
+                  create="false" delete="false"
+                  group_create="0" export_xlsx="0"
+                  string="Consolidado"
+                  decoration-warning="sin_producto">
+                <!--
+                    SIN display="always": con el valor por defecto
+                    ("selection", views/utils.js:236) el botón se pinta como
+                    botón DIRECTO en la barra de selección, al lado del
+                    contador de filas marcadas (list_controller.xml:63-79),
+                    en vez de esconderse dentro del desplegable del
+                    engranaje. Aparece solo al marcar filas, que es
+                    exactamente lo que se quiere de una acción de lote.
+                -->
+                <header>
+                    <button name="action_generar_cotizacion" type="object"
+                        string="Generar cotización"
+                        class="btn-primary"/>
+                </header>
+
+                <field name="consolidado_id" column_invisible="True"/>
+                <field name="sin_producto" column_invisible="True"/>
+                <field name="stock_suficiente" column_invisible="True"/>
+                <field name="categoria_producto_id" column_invisible="True"/>
+                <field name="fecha_requerimiento" column_invisible="True"/>
+
+                <field name="descripcion" readonly="1"/>
+                <field name="usuarios_texto" readonly="1" class="text-muted"/>
+                <!-- Estado de COTIZACIÓN, derivado de purchase_line_id. No se
+                     sincroniza con el estado de la línea de requerimiento: son
+                     dos cosas distintas (ver el comentario del compute).
+                     widget="badge" sí admite decoration-*: las lee de la prop
+                     `decorations` y las traduce a text-bg-*
+                     (badge_field.js:26-41), donde `muted` cae en text-bg-300.
+                     Aquí no da el problema de editabilidad que tuvo
+                     selection_badge en la línea de requerimiento porque es un
+                     compute de solo lectura. -->
+                <field name="estado_cotizacion" widget="badge" readonly="1"
+                    decoration-muted="estado_cotizacion == 'por_cotizar'"
+                    decoration-warning="estado_cotizacion == 'parcial'"
+                    decoration-success="estado_cotizacion == 'cotizado'"/>
+                <!-- sum="..." es obligatorio para el TOTAL GENERAL al pie:
+                     list_renderer.js:723 solo agrega columnas con el atributo.
+                     El subtotal por grupo, en cambio, es automático para
+                     Float/Integer almacenados (aggregator='sum' de fábrica,
+                     odoo/orm/fields_numeric.py:23,112). Ambos se calculan
+                     sobre las filas VISIBLES, así que reflejan el filtro. -->
+                <field name="cantidad_solicitada" readonly="1" sum="Total"/>
+                <field name="product_uom_id" readonly="1" groups="uom.group_uom"
+                    options="{'no_create': True, 'no_open': True}"/>
+                <!-- Sin sum: compute no almacenado, _description_aggregator
+                     devuelve None (odoo/orm/fields.py:942-955). Las
+                     decoraciones sí aplican, se evalúan por registro. -->
+                <field name="stock_actual" readonly="1"
+                    decoration-success="stock_suficiente"
+                    decoration-danger="not stock_suficiente"/>
+                <field name="cantidad_comprar" sum="A comprar"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ═════════════════════════════════════════════════════════════
+         Búsqueda: el periodo ya no es un parámetro del cálculo, es este
+         filtro.
+
+         `date="..."` + `default_period="month"` es el filtro de periodo
+         NATIVO de v19 (search_arch_parser.js:226-247): pinta el desplegable
+         con Mes / Trimestre / Año y los periodos anteriores, en vez de un
+         dominio fijo escrito a mano con context_today(). Mismo uso que
+         purchase/views/purchase_views.xml:803 y
+         stock/views/stock_move_line_views.xml:148.
+
+         Se activa desde el contexto de la acción con
+         search_default_mes_actual, NUNCA como domain de la acción: así se
+         puede quitar desde la barra de búsqueda.
+         ═════════════════════════════════════════════════════════════ -->
+    <record id="consolidado_linea_view_search" model="ir.ui.view">
+        <field name="name">biocreto.requerimiento.consolidado.linea.view.search</field>
+        <field name="model">biocreto.requerimiento.consolidado.linea</field>
+        <field name="arch" type="xml">
+            <search string="Consolidado">
+                <field name="descripcion"/>
+                <field name="categoria_producto_id"/>
+                <field name="product_id"/>
+                <filter name="mes_actual" string="Este mes"
+                    date="fecha_requerimiento" default_period="month"/>
+                <separator/>
+                <filter name="sin_producto" string="Sin producto"
+                    domain="[('sin_producto', '=', True)]"/>
+                <!-- «Algo por cotizar», no «Por cotizar» a secas: el dominio
+                     cruza el m2m, así que también trae las filas `parcial`
+                     (alguna línea de origen sin cotizar). -->
+                <filter name="algo_por_cotizar" string="Algo por cotizar"
+                    domain="[('requerimiento_linea_ids.purchase_line_id', '=', False)]"/>
+                <group>
+                    <filter name="group_categoria" string="Categoría" domain="[]"
+                        context="{'group_by': 'categoria_producto_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ═════════════════════════════════════════════════════════════
+         Diálogo del proveedor.
+
+         Un solo campo visible y dos botones. Se abre DESPUÉS de que
+         action_generar_cotizacion haya validado las filas marcadas: pedir el
+         proveedor para luego avisar de que falta un producto sería absurdo.
+
+         partner_id es required en este modelo, así que el cliente no deja
+         pulsar «Generar» sin él y nunca puede llegar vacío al create de
+         purchase.order. Si se descarta el diálogo no se crea nada.
+         ═════════════════════════════════════════════════════════════ -->
+    <record id="consolidado_cotizacion_view_form" model="ir.ui.view">
+        <field name="name">biocreto.requerimiento.cotizacion.wizard.view.form</field>
+        <field name="model">biocreto.requerimiento.cotizacion.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Generar cotización">
+                <field name="consolidado_id" invisible="1"/>
+                <field name="linea_ids" invisible="1"/>
+                <group>
+                    <field name="partner_id"
+                        options="{'no_create_edit': True}"
+                        placeholder="ej. UNACEM"/>
+                </group>
+                <footer>
+                    <button name="action_generar" type="object" string="Generar"
+                        class="btn-primary" data-hotkey="q"/>
+                    <button string="Descartar" class="btn-secondary"
+                        special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ═════════════════════════════════════════════════════════════
+         Acción del menú: crea el consolidado, lo calcula y devuelve la
+         acción sobre la lista de líneas.
+         ═════════════════════════════════════════════════════════════ -->
+    <record id="action_abrir_consolidado" model="ir.actions.server">
+        <field name="name">Consolidado</field>
+        <field name="model_id" ref="model_biocreto_requerimiento_consolidado"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_abrir_consolidado()</field>
+    </record>
+
+</odoo>
+<!-- === BIOCRETO CONSOLIDADO v1 — FIN === -->

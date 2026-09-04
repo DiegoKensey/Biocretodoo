@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biocreto_fabricacion.RecordOf">
+    <div class="card o_biocreto_record o_biocreto_record_of">
+        <div class="card-header d-flex align-items-start justify-content-between">
+            <div class="o_biocreto_record_title">
+                <div class="fw-bold" t-out="props.cadena.base_name"/>
+                <div class="small text-muted" t-out="props.cadena.product"/>
+            </div>
+            <span class="badge" t-att-class="badgeClass" t-out="badgeLabel"/>
+        </div>
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div t-if="fcResistencia" class="text-muted" t-out="fcResistencia"/>
+                    <div t-if="props.cadena.bom" class="small text-muted">
+                        <i class="fa fa-flask me-1"/>
+                        <t t-out="props.cadena.bom"/>
+                    </div>
+                </div>
+                <div class="o_biocreto_progreso text-end">
+                    <span class="fs-5 fw-bold" t-out="props.cadena.producido.toFixed(1)"/>
+                    <span class="text-muted"> / </span>
+                    <span class="text-muted" t-out="props.cadena.total.toFixed(1)"/>
+                    <span class="text-muted"> m³</span>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <button class="btn btn-primary" t-on-click="() =&gt; props.onOpen()">
+                <i class="fa fa-flask me-1"/> Producir
+            </button>
+            <div class="dropdown position-relative">
+                <button class="btn btn-link p-1" t-on-click="toggleKebab">
+                    <i class="fa fa-ellipsis-v"/>
+                </button>
+                <div t-if="state.kebabOpen" class="dropdown-menu dropdown-menu-end show">
+                    <button class="dropdown-item" t-on-click="onAbrirOF">
+                        <i class="fa fa-external-link me-2"/> Abrir orden de fabricacion
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</t>
+
+</templates>

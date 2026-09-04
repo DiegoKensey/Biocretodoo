@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_biocreto_carga_list" model="ir.ui.view">
+        <field name="name">biocreto.carga.list</field>
+        <field name="model">biocreto.carga</field>
+        <field name="arch" type="xml">
+            <list string="Cargas" create="false">
+                <field name="name"/>
+                <field name="sale_order_id"/>
+                <field name="production_id"/>
+                <field name="vehiculo_id"/>
+                <field name="volumen_operativo"/>
+                <field name="volumen_facturado"/>
+                <field name="hora_inicio"/>
+                <field name="hora_fin"/>
+                <field name="estado" widget="badge"
+                       decoration-warning="estado == 'en_curso'"
+                       decoration-success="estado == 'terminada'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_biocreto_carga_form" model="ir.ui.view">
+        <field name="name">biocreto.carga.form</field>
+        <field name="model">biocreto.carga</field>
+        <field name="arch" type="xml">
+            <form string="Carga">
+                <header>
+                    <field name="estado" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="production_id" readonly="1"/>
+                            <field name="sale_order_id" readonly="1"/>
+                            <field name="sale_line_id" readonly="1"/>
+                            <field name="production_group_id" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="vehiculo_id"/>
+                            <field name="volumen_operativo"/>
+                            <field name="volumen_facturado"/>
+                            <field name="hora_inicio"/>
+                            <field name="hora_fin"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <!-- Snapshot de dosificacion: visible solo en modo desarrollador -->
+                        <page string="Dosificacion enviada" groups="base.group_no_one">
+                            <field name="linea_ids">
+                                <list>
+                                    <field name="product_id"/>
+                                    <field name="cantidad"/>
+                                    <field name="uom_id"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_biocreto_carga_search" model="ir.ui.view">
+        <field name="name">biocreto.carga.search</field>
+        <field name="model">biocreto.carga</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="production_id"/>
+                <field name="sale_order_id"/>
+                <field name="vehiculo_id"/>
+                <filter name="en_curso" string="En curso" domain="[('estado','=','en_curso')]"/>
+                <filter name="terminadas" string="Terminadas" domain="[('estado','=','terminada')]"/>
+                <group>
+                    <filter name="group_of" string="Orden de Fabricacion" context="{'group_by': 'production_id'}"/>
+                    <filter name="group_ov" string="Orden de Venta" context="{'group_by': 'sale_order_id'}"/>
+                    <filter name="group_estado" string="Estado" context="{'group_by': 'estado'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_biocreto_carga" model="ir.actions.act_window">
+        <field name="name">Cargas</field>
+        <field name="res_model">biocreto.carga</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_biocreto_carga_search"/>
+    </record>
+
+</odoo>

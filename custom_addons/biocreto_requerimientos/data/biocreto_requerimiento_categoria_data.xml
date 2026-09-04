@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Categoría compartida entre plantas: company_id se deja vacío.
+             image se deja vacío a propósito (se proveerá después). -->
+        <record id="requerimiento_categoria_aprovisionamiento" model="biocreto.requerimiento.categoria">
+            <field name="name">Aprovisionamiento</field>
+            <field name="sequence">1</field>
+            <field name="automated_sequence" eval="True"/>
+            <field name="sequence_code">SLT</field>
+            <field name="has_product">optional</field>
+            <field name="has_quantity">required</field>
+            <field name="requirer_document">optional</field>
+            <field name="has_date">no</field>
+            <field name="has_period">no</field>
+            <field name="has_amount">no</field>
+            <field name="has_reference">no</field>
+            <field name="has_partner">no</field>
+            <field name="has_location">no</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_biocreto_probeta_user,biocreto.probeta.user,model_biocreto_probeta,base.group_user,1,1,1,1
+access_biocreto_probeta_edad_user,biocreto.probeta.edad.user,model_biocreto_probeta_edad,base.group_user,1,1,1,1
+access_biocreto_probeta_tamano_user,biocreto.probeta.tamano.user,model_biocreto_probeta_tamano,base.group_user,1,1,1,1
+access_biocreto_slump_user,biocreto.slump.user,model_biocreto_slump,base.group_user,1,1,1,1
+access_biocreto_lab_humedad_user,biocreto.lab.humedad.user,model_biocreto_lab_humedad,base.group_user,1,1,1,1
+access_biocreto_lab_poza_temp_user,biocreto.lab.poza.temp.user,model_biocreto_lab_poza_temp,base.group_user,1,1,1,1
+access_biocreto_lab_ph_user,biocreto.lab.ph.user,model_biocreto_lab_ph,base.group_user,1,1,1,1

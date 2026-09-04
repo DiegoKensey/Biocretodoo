@@ -1,7 +1,13 @@
+import logging
+import re
 from urllib.parse import quote
+
+import requests
 
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 class SaleOrder(models.Model):
@@ -69,6 +75,25 @@ class SaleOrder(models.Model):
         digits=(10, 7),
         help="Longitud de la obra en grados decimales. Ej.: -75.2049000",
     )
+
+    # ─────────────────────────────────────────────────────────────────
+    # v19.0.1.7.6: tercer camino para capturar la ubicacion de la obra.
+    #
+    # Los tres conviven y son alternativos, no excluyentes:
+    #   1. Tecleo manual de los dos Float.
+    #   2. Boton GPS (widget OWL biocreto_geo_field) -> navegador.
+    #   3. Este campo: pegar un enlace de Google Maps o las coordenadas.
+    #
+    # El enlace se CONSERVA siempre, se haya podido resolver o no: es
+    # trazabilidad de lo que pego el usuario y permite reintentarlo.
+    # ─────────────────────────────────────────────────────────────────
+    biocreto_maps_url = fields.Char(
+        string="Enlace de Google Maps",
+        help="Pega aquí el enlace corto de Google Maps (maps.app.goo.gl/...) "
+             "o las coordenadas directas (-12.075359, -75.253739). "
+             "Las coordenadas se completarán automáticamente.",
+    )
+
     biocreto_tipo_proyecto = fields.Selection(
         selection=[
             ('menor', 'Menor envergadura'),
@@ -246,6 +271,190 @@ class SaleOrder(models.Model):
         if self.biocreto_district_id and self.biocreto_district_id.city_id != self.biocreto_city_id:
             self.biocreto_district_id = False
 
+    # ═════════════════════════════════════════════════════════════════
+    # v19.0.1.7.6: resolucion del enlace de Google Maps -> lat/lng.
+    #
+    # PRIMERA llamada HTTP saliente del proyecto (verificado: no habia
+    # ninguna; `urllib.parse.quote` solo codifica, no abre socket). Por
+    # eso el codigo es explicito con timeouts, excepciones y logging:
+    # sienta el patron para lo que venga despues.
+    #
+    # REGLA INNEGOCIABLE: esto NUNCA puede bloquear el guardado de la
+    # cotizacion. Ni timeout, ni Google caido, ni enlace mal pegado.
+    # Por eso:
+    #   · toda la red va envuelta en try/except (incluido un Exception
+    #     generico de cierre),
+    #   · los fallos devuelven un `warning` del onchange, NUNCA un
+    #     UserError ni un ValidationError (que si abortarian el write),
+    #   · el enlace pegado se conserva intacto y lat/lng NO se tocan.
+    #
+    # `_logger.warning` y no `.exception`: un enlace mal pegado o una
+    # caida de Google son sucesos ESPERABLES, no errores del sistema.
+    # Un traceback por cada uno solo ensuciaria el log.
+    # ═════════════════════════════════════════════════════════════════
+
+    # Coordenadas planas: "-12.075359, -75.253739". Se prueba SIEMPRE
+    # primero porque no necesita red -> instantaneo e infalible.
+    _BIOCRETO_RE_COORDS = re.compile(
+        r'^\s*(-?\d{1,3}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)\s*$'
+    )
+
+    # Hosts que aceptamos resolver. Lista blanca a proposito: evita que
+    # el campo se convierta en un cliente HTTP de proposito general
+    # (pegar ahi una URL interna seria un SSRF de manual).
+    _BIOCRETO_MAPS_HOSTS = (
+        'maps.app.goo.gl',
+        'goo.gl/maps',
+        'google.com/maps',
+        'maps.google.com',
+    )
+
+    # Los CUATRO patrones que Google usa segun como se compartio el sitio.
+    # Se prueban en este orden; el primero que casa, gana.
+    _BIOCRETO_RE_URL = (
+        # (a) Compartir desde el movil. VERIFICADO con enlace real:
+        #     .../maps/search/-12.075359,+-75.253739?entry=tts&...
+        #     El "+" es un espacio codificado; contemplamos tambien %20,
+        #     %2B y el caso sin separador ninguno.
+        re.compile(r'/maps/search/(-?\d{1,3}\.\d+)\s*(?:,)?\s*(?:\+|%20|%2B|\s)*\s*(-?\d{1,3}\.\d+)'),
+        # (b) URL de navegador con zoom: @lat,lng,17z
+        re.compile(r'@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)'),
+        # (c) Formato interno de "place": !3dlat!4dlng
+        re.compile(r'!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)'),
+        # (d) Query explicita: ?q=lat,lng o &q=lat,lng
+        re.compile(r'[?&]q=(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)'),
+    )
+
+    # Bounding box de Peru, solo para AVISAR (nunca para rechazar).
+    # El error mas comun al pegar a mano es invertir lat y lng.
+    _BIOCRETO_PERU_BBOX = (-18.5, 0.0, -81.5, -68.5)  # lat_min, lat_max, lng_min, lng_max
+
+    @api.model
+    def _biocreto_parse_coords(self, texto):
+        """Extrae (lat, lng) de un texto SIN tocar la red.
+
+        Cubre el caso A (coordenadas planas) y, si se le pasa una URL ya
+        resuelta, tambien los cuatro patrones de Google. Devuelve None si
+        no reconoce nada. Aislado en su propio metodo para poder testearlo
+        sin levantar sockets.
+        """
+        if not texto:
+            return None
+        m = self._BIOCRETO_RE_COORDS.match(texto)
+        if m:
+            return float(m.group(1)), float(m.group(2))
+        for patron in self._BIOCRETO_RE_URL:
+            m = patron.search(texto)
+            if m:
+                return float(m.group(1)), float(m.group(2))
+        return None
+
+    @api.model
+    def _biocreto_resolver_maps_url(self, url):
+        """Sigue la redirección del acortador y devuelve la URL final.
+
+        Las coordenadas viven en la URL FINAL, no en el cuerpo: la
+        respuesta de Google es JavaScript y no contiene el dato en claro
+        (verificado). Por eso solo miramos `r.url` y jamas `r.text`.
+
+        Devuelve None ante cualquier fallo de red. Nunca propaga.
+        """
+        try:
+            # allow_redirects=True: el acortador responde 302 y requests
+            # sigue el salto solo. Verificado con un enlace real:
+            #   302 -> https://www.google.com/maps/search/-12.075359,+-75.253739?...
+            respuesta = requests.get(
+                url,
+                allow_redirects=True,
+                timeout=8,
+                headers={'User-Agent': 'Odoo/19.0 (BIOCRETO)'},
+            )
+            return respuesta.url
+        except requests.Timeout:
+            _logger.warning("BIOCRETO maps: timeout (8s) resolviendo %s", url)
+        except requests.ConnectionError:
+            _logger.warning("BIOCRETO maps: sin conexion resolviendo %s", url)
+        except requests.RequestException as exc:
+            _logger.warning("BIOCRETO maps: fallo HTTP en %s: %s", url, exc)
+        except Exception as exc:  # noqa: BLE001 - red inestable, nunca romper
+            _logger.warning("BIOCRETO maps: error inesperado en %s: %s", url, exc)
+        return None
+
+    @api.onchange('biocreto_maps_url')
+    def _onchange_biocreto_maps_url(self):
+        texto = (self.biocreto_maps_url or '').strip()
+        if not texto:
+            # Vaciar el enlace NO borra las coordenadas: pueden venir del
+            # GPS o estar tecleadas a mano.
+            return
+
+        aviso_titulo = _("Ubicación de la obra")
+
+        # ---- Caso A: coordenadas planas. Sin red. ----
+        coords = None
+        m = self._BIOCRETO_RE_COORDS.match(texto)
+        if m:
+            coords = (float(m.group(1)), float(m.group(2)))
+
+        # ---- Caso B: enlace de Google Maps. Con red. ----
+        elif any(host in texto for host in self._BIOCRETO_MAPS_HOSTS):
+            url_final = self._biocreto_resolver_maps_url(texto)
+            if url_final:
+                coords = self._biocreto_parse_coords(url_final)
+                if coords is None:
+                    _logger.warning(
+                        "BIOCRETO maps: URL resuelta sin coordenadas reconocibles: %s",
+                        url_final,
+                    )
+            # url_final None -> fallo de red, ya logueado. coords sigue None.
+
+        # ---- Nada reconocible ----
+        if coords is None:
+            return {'warning': {
+                'title': aviso_titulo,
+                'message': _(
+                    "No se pudieron obtener las coordenadas de ese enlace. "
+                    "El enlace quedó guardado; puedes escribir la latitud y "
+                    "longitud a mano, o pegar las coordenadas directamente en "
+                    "este campo (por ejemplo: -12.075359, -75.253739)."
+                ),
+            }}
+
+        lat, lng = coords
+
+        # ---- Validacion dura de rango. Fuera de esto no es una coordenada. ----
+        if not (-90.0 <= lat <= 90.0) or not (-180.0 <= lng <= 180.0):
+            _logger.warning(
+                "BIOCRETO maps: coordenadas fuera de rango (%s, %s) en %s",
+                lat, lng, texto,
+            )
+            return {'warning': {
+                'title': aviso_titulo,
+                'message': _(
+                    "Las coordenadas obtenidas (%(lat)s, %(lng)s) están fuera de "
+                    "rango y no se guardaron. El enlace quedó guardado; puedes "
+                    "escribir la latitud y longitud a mano.",
+                    lat=lat, lng=lng,
+                ),
+            }}
+
+        # Validas: se escriben.
+        self.biocreto_latitud = lat
+        self.biocreto_longitud = lng
+
+        # ---- Aviso blando: fuera de Peru. NO rechaza, solo advierte. ----
+        lat_min, lat_max, lng_min, lng_max = self._BIOCRETO_PERU_BBOX
+        if not (lat_min <= lat <= lat_max and lng_min <= lng <= lng_max):
+            return {'warning': {
+                'title': aviso_titulo,
+                'message': _(
+                    "Las coordenadas (%(lat)s, %(lng)s) quedan fuera de Perú. "
+                    "Se guardaron igualmente, pero revísalas: el error más "
+                    "frecuente es intercambiar la latitud con la longitud.",
+                    lat=lat, lng=lng,
+                ),
+            }}
+
     # ─────────────────────────────────────────────────────────────────
     # Naming custom: AÑO-CFC-NV-0001
     # ─────────────────────────────────────────────────────────────────
@@ -361,8 +570,13 @@ class SaleOrder(models.Model):
                         faltantes.append("Tipo de cemento")
                     if not line.biocreto_huso_tmn:
                         faltantes.append("Huso TMN")
-                    if not line.biocreto_slump:
-                        faltantes.append("Slump")
+                    # v19.0.1.8.0: el slump es un RANGO -> se exigen los DOS
+                    # extremos. Mismo criterio de disparo que antes (categoria
+                    # del producto == 'Concreto'), solo cambia el campo.
+                    if not line.biocreto_slump_min:
+                        faltantes.append("Slump mínimo")
+                    if not line.biocreto_slump_max:
+                        faltantes.append("Slump máximo")
                     if faltantes:
                         missing_lines.append(
                             "  • %s: falta %s" % (

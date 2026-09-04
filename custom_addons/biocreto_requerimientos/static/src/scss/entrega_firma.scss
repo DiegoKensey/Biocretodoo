@@ -1,0 +1,55 @@
+// ═══════════════════════════════════════════════════════════════════════
+// Recuadro de firma del asistente de entrega — tamaño responsive
+//
+// Por qué hace falta CSS y no basta con quitar `size`:
+//
+//   Con `size` puesto, SignatureField escribe un estilo EN LINEA sobre la
+//   caja: `width:600px; max-width:600px; height:200px`
+//   (web/static/src/views/fields/signature/signature_field.js:56-79). Un
+//   max-width en línea gana a cualquier selector, así que en un móvil de
+//   ~380px el recuadro desbordaba y había que arrastrar en horizontal para
+//   firmar. Al quitar `size`, `sizeStyle` devuelve cadena vacía y la caja
+//   queda sin dimensiones propias.
+//
+//   Pero sin dimensiones NO se puede dejar: la plantilla pinta dos cosas
+//   distintas según haya firma o no (signature_field.xml:5-20).
+//
+//     · Con firma  -> <img class="o_signature img img-fluid">. `img-fluid`
+//       ya trae `max-width:100%; height:auto`, así que se adapta solo. Aquí
+//       únicamente se le pone un techo para que en escritorio no se estire
+//       hasta el ancho del diálogo.
+//
+//     · Vacío      -> <div class="o_signature o_signature_empty"> cuyo
+//       único contenido con caja es un <svg> sin width ni height; el
+//       <p>SIGNATURE</p> va `position:absolute` y no cuenta. Su SCSS nativo
+//       (signature_field.scss:5-7) solo declara `display:flex`, ninguna
+//       medida. Sin el estilo en línea que ponía `size`, la altura de esa
+//       caja pasa a depender del tamaño por defecto que cada navegador dé a
+//       un SVG inline sin dimensiones. Se fija aquí para no dejarlo al
+//       azar: un recuadro visible y pulsable siempre.
+//
+// La proporción 3:1 no es arbitraria: es el `displaySignatureRatio` con el
+// que NameAndSignature recalcula el canvas de dibujo al montarse
+// (name_and_signature.js:30 y :292-297). Así lo que se ve en el formulario
+// tiene la misma forma que la superficie donde se firma.
+//
+// Todo va dentro de `.o_biocreto_firma_entrega` para no tocar los demás
+// campos de firma de la base (biocreto_base/views/res_users_views.xml:41-43,
+// entre otros).
+// ═══════════════════════════════════════════════════════════════════════
+.o_biocreto_firma_entrega {
+
+    .o_signature {
+        // Techo en escritorio. Por debajo de eso manda el ancho disponible,
+        // que es lo que arregla el móvil.
+        max-width: 600px;
+    }
+
+    // Solo el recuadro vacío necesita medidas propias: la imagen ya las
+    // tiene, y forzarle una proporción la deformaría si la firma guardada
+    // no fuese exactamente 3:1.
+    .o_signature.o_signature_empty {
+        width: 100%;
+        aspect-ratio: 3 / 1;
+    }
+}

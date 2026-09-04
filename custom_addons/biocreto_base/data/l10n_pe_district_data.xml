@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Correccion de DOS nombres de distrito de Junin.
+
+         Contrastados uno a uno contra el padron INEI 2026: de los 1874
+         distritos que trae `l10n_pe`, ocho tienen el nombre desviado.
+         Aqui se corrigen SOLO los dos que caen en zona de operacion de
+         BIOCRETO; uno de ellos en Chupaca, provincia de planta.
+
+           120906  San Juan de Iscos    ->  San Juan de Yscos   (Chupaca)
+           120609  Vizcatan del Enengoa ->  Vizcatan del Ene    (Satipo)
+
+         Los otros seis NO se tocan (Ahuca/Chuca, Kimbiri/Quimbiri,
+         Quisqui, Alomia/Alomias, Allauca/Ayauca, Heroes Albarracin):
+         estan fuera de zona, y en al menos uno de ellos el nombre bueno
+         es el de Odoo y el desviado el del padron. Cualquier correccion
+         de nombres tiene que ser caso por caso, nunca masiva.
+
+         ─── ADVERTENCIA DE MANTENIMIENTO ──────────────────────────────
+         Estos dos registros son de `l10n_pe` y estan cargados con
+         noupdate=FALSE (verificado en ir_model_data: los 2070 registros
+         de res.city + distrito lo estan). Consecuencia:
+
+             -u l10n_pe        ->  revierte los nombres a Iscos/Enengoa
+             -u biocreto_base  ->  los vuelve a corregir
+
+         Es un empate, no una victoria. Quien actualice `l10n_pe` sin
+         actualizar despues `biocreto_base` se queda con los nombres
+         viejos y sin ningun aviso. Si algun dia hay que romper el
+         empate, la via es un post-migration en este modulo, no cambiar
+         el noupdate de `l10n_pe`.
+
+         Se escribe SOLO `name`. `code`, `city_id` e `id` quedan intactos,
+         que es lo que garantiza que el ubigeo enviado a SUNAT no cambie.
+         ═══════════════════════════════════════════════════════════════ -->
+    <data noupdate="0">
+
+        <record id="l10n_pe.district_pe_120906" model="l10n_pe.res.city.district">
+            <field name="name">San Juan de Yscos</field>
+        </record>
+
+        <record id="l10n_pe.district_pe_120609" model="l10n_pe.res.city.district">
+            <field name="name">Vizcatán del Ene</field>
+        </record>
+
+        <!-- `name` es translate=True: los <record> de arriba solo
+             escriben `en_US`, y el usuario trabaja en es_PE. Sin esto
+             el jsonb queda partido y el nombre viejo sigue a la vista:
+
+                 {"en_US": "San Juan de Yscos",
+                  "es_PE": "San Juan de Iscos"}   <- lo que se ve
+
+             El <function> copia `en_US` a todos los idiomas instalados.
+             Corre en CADA carga del archivo, no solo al instalar. -->
+        <function model="l10n_pe.res.city.district"
+                  name="_biocreto_propagar_nombre_a_idiomas"
+                  eval="[['l10n_pe.district_pe_120906',
+                          'l10n_pe.district_pe_120609']]"/>
+
+    </data>
+
+</odoo>

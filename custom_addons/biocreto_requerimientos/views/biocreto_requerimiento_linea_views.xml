@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="biocreto_requerimiento_linea_view_list" model="ir.ui.view">
+        <field name="name">biocreto.requerimiento.linea.view.list</field>
+        <field name="model">biocreto.requerimiento.linea</field>
+        <field name="priority">15</field>
+        <field name="arch" type="xml">
+            <!-- NO se usa open_form_view="True": pinta la palabra literal
+                 "View" (list_renderer.xml:336-340, texto hardcodeado sin icono)
+                 y su switchToForm hace doAction SIN target
+                 (x2many_field.js:269-281) -> abre la PAGINA COMPLETA.
+                 En su lugar, un boton propio con target 'new' (ver el final
+                 de la lista). -->
+            <list editable="bottom" string="Líneas"
+                  decoration-muted="estado == 'cancelado'">
+                <field name="company_id" column_invisible="True"/>
+                <field name="categoria_color" column_invisible="True"/>
+                <field name="sin_producto" column_invisible="True"/>
+                <field name="producto_candidato_ids" column_invisible="True"/>
+                <field name="estado_color" column_invisible="True"/>
+                <!-- SIN widget="badge": BadgeField solo pinta un <span> de
+                     lectura (badge_field.xml:5), no tiene modo edicion, asi que
+                     la categoria no se podia seleccionar. Se deja como many2one
+                     normal. El campo categoria_color se conserva oculto para
+                     uso posterior.
+
+                     El campo va DUPLICADO con `groups` complementarios porque
+                     `options` no admite condicional por grupo. La negacion
+                     `groups="!modulo.grupo"` es valida en v19: el postproceso
+                     de la vista (ir_ui_view.py:1469-1471) delega en
+                     GroupDefinitions.parse, que trata el prefijo `!` como
+                     grupo negativo (odoo/tools/set_expression.py:96-116). El
+                     patron de duplicar un campo con grupos distintos es el que
+                     documenta el propio nucleo en ir_ui_view.py:3556-3560.
+
+                     `no_quick_create` (en vez de `no_create`) obliga a pasar
+                     por el formulario completo, para que la categoria nazca
+                     con su `color` elegido en vez de crearse solo con el
+                     nombre. (Hasta la v19.0.1.5.0 el motivo era
+                     `biocreto_es_activo`, que desde la v19.0.1.6.0 vive en
+                     el producto y ya no en la categoria.) -->
+                <field name="categoria_producto_id"
+                    options="{'no_create': True}"
+                    groups="!biocreto_requerimientos.group_requerimiento_user"/>
+                <field name="categoria_producto_id"
+                    options="{'no_quick_create': True}"
+                    groups="biocreto_requerimientos.group_requerimiento_user"/>
+                <!-- El dominio va contra el M2m de candidatos, NO contra
+                     child_of directamente: con la categoria vacia,
+                     ('categ_id','child_of',False) se optimiza a FALSE
+                     (odoo/orm/domains.py:1721-1722) y el desplegable salia
+                     vacio. Patron canonico v19 de campo de candidatos
+                     (account_payment_view.xml:277, helpdesk_ticket_views.xml:292). -->
+                <field name="product_id"
+                    domain="[('id', 'in', producto_candidato_ids)]"
+                    required="parent.has_product == 'required'"
+                    options="{'no_create_edit': True}"/>
+                <field name="descripcion"/>
+                <field name="cantidad" column_invisible="parent.has_quantity == 'no'"/>
+                <!-- many2one_uom lee el producto del campo 'product_id' por
+                     defecto (many2one_uom_field.js:47) y la cantidad de
+                     'product_uom_qty' (:48); aqui la cantidad se llama
+                     'cantidad', asi que se le indica con quantity_field. -->
+                <field name="product_uom_id" groups="uom.group_uom" widget="many2one_uom"
+                    options="{'no_create': True, 'no_open': True, 'quantity_field': 'cantidad'}"/>
+                <field name="observacion" optional="show"/>
+                <!-- v19.0.1.2.0: cantidad entregada y stock.
+                     `column_invisible` (no `invisible`) porque lo que se
+                     oculta es la COLUMNA entera, no una celda; y va sobre
+                     `parent.state` porque solo tiene sentido mientras el
+                     requerimiento se esta atendiendo.
+                     `groups=` sobre el campo hace que el arch ni siquiera
+                     llegue al solicitante. -->
+                <field name="cantidad_entregada_requerimiento" string="Entregado"
+                    column_invisible="parent.state == 'borrador'"
+                    readonly="1" optional="show"/>
+                <field name="stock_disponible" string="Stock disponible"
+                    column_invisible="parent.state != 'en_proceso'"
+                    groups="biocreto_requerimientos.group_requerimiento_user"
+                    readonly="1"/>
+                <!-- selection_badge: en una lista editable resuelve a
+                     list.selection_badge (field.js:122-131 antepone el
+                     viewType). Fuera de edicion pinta UNA pildora coloreada con
+                     o_badge_color_N leida de color_field; al entrar en la fila
+                     muestra las 3 opciones clicables.
+                     NO admite decoration-*: su extractProps solo toma domain,
+                     size y color_field (list_badge_selection_field.js:38-46).
+                     El solicitante ve el color pero no lo edita; no se usa
+                     groups= porque eso le quitaria la columna del arch. -->
+                <field name="estado" widget="selection_badge"
+                    options="{'color_field': 'estado_color'}"
+                    column_invisible="parent.state == 'borrador'"
+                    readonly="not parent.puede_editar_lineas"/>
+                <field name="motivo" optional="hide"
+                    readonly="not parent.puede_editar_lineas"
+                    required="estado == 'cancelado'"/>
+                <!-- === BIOCRETO CONSOLIDADO v1 — INICIO
+                     (bloque PERMANENTE, no borrar en la reversión) === -->
+                <field name="purchase_order_id" optional="hide" readonly="1"/>
+                <!-- === BIOCRETO CONSOLIDADO v1 — FIN (PERMANENTE) === -->
+                <!-- icon="fa-expand" genera solo
+                     <i class="o_button_icon fa fa-fw fa-expand"/>
+                     (view_button.js:22-33); al no haber `string` no se pinta
+                     ningun texto al lado. -->
+                <button name="action_abrir_linea" type="object"
+                    class="btn btn-link"
+                    title="Ver detalle" icon="fa-expand"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="biocreto_requerimiento_linea_view_form" model="ir.ui.view">
+        <field name="name">biocreto.requerimiento.linea.view.form</field>
+        <field name="model">biocreto.requerimiento.linea</field>
+        <field name="arch" type="xml">
+            <form string="Línea">
+                <sheet>
+                    <group>
+                        <field name="company_id" invisible="1"/>
+                        <field name="producto_candidato_ids" invisible="1"/>
+                        <field name="puede_editar_estado" invisible="1"/>
+                        <field name="estado_color" invisible="1"/>
+                        <!-- Mismo desdoble que en la lista: logistica y
+                             administradores pueden crear la categoria desde el
+                             modal de busqueda; el solicitante no. -->
+                        <field name="categoria_producto_id"
+                            options="{'no_create': True}"
+                            groups="!biocreto_requerimientos.group_requerimiento_user"/>
+                        <field name="categoria_producto_id"
+                            options="{'no_quick_create': True}"
+                            groups="biocreto_requerimientos.group_requerimiento_user"/>
+                        <!-- Mismo motivo que en la lista: el dominio va contra
+                             el M2m de candidatos, no contra child_of. -->
+                        <field name="product_id"
+                            domain="[('id', 'in', producto_candidato_ids)]"
+                            options="{'no_create_edit': True}"/>
+                        <field name="descripcion"/>
+                        <field name="cantidad"/>
+                        <field name="product_uom_id" groups="uom.group_uom" widget="many2one_uom"
+                            options="{'quantity_field': 'cantidad'}"/>
+                        <field name="observacion"/>
+                        <!-- Mismo widget y mismo color_field que en la lista,
+                             para que el badge se vea igual en el modal. -->
+                        <field name="estado" widget="selection_badge"
+                            options="{'color_field': 'estado_color'}"
+                            readonly="not puede_editar_estado"/>
+                        <!-- El dialogo es la via para llenar el motivo sin
+                             tener que activar la columna opcional de la lista. -->
+                        <field name="motivo"
+                            invisible="estado != 'cancelado'"
+                            required="estado == 'cancelado'"
+                            readonly="not puede_editar_estado"/>
+                        <!-- === BIOCRETO CONSOLIDADO v1 — INICIO
+                             (bloque PERMANENTE, no borrar en la reversión) === -->
+                        <field name="purchase_order_id" readonly="1"
+                            invisible="not purchase_order_id"/>
+                        <!-- === BIOCRETO CONSOLIDADO v1 — FIN (PERMANENTE) === -->
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista movil del one2many. Replica el proposito de
+         approvals.approval_product_kanban_mobile_view
+         (approvals/views/approval_product_line_views.xml:57-71), pero mostrando
+         `descripcion` como titulo en vez de `product_id`: la descripcion ya
+         trae el nombre del producto por el compute cuando lo hay, y el texto
+         escrito a mano cuando no, asi que no hace falta logica condicional ni
+         se pinta el id crudo del many2one. -->
+    <record id="biocreto_requerimiento_linea_view_kanban" model="ir.ui.view">
+        <field name="name">biocreto.requerimiento.linea.kanban.mobile</field>
+        <field name="model">biocreto.requerimiento.linea</field>
+        <field name="priority">15</field>
+        <field name="arch" type="xml">
+            <kanban editable="bottom" string="Líneas">
+                <field name="puede_editar_estado"/>
+                <field name="estado_color"/>
+                <templates>
+                    <t t-name="card">
+                        <main class="d-flex justify-content-between align-items-start gap-2">
+                            <div class="d-flex flex-column">
+                                <field name="descripcion" class="fw-bolder fs-5 text-wrap text-break"/>
+                                <field name="observacion" class="text-muted small"
+                                    invisible="not observacion"/>
+                            </div>
+                            <div class="text-nowrap fw-bolder fs-5">
+                                <field name="cantidad"/>
+                                <field name="product_uom_id" groups="uom.group_uom"
+                                    class="ms-1 small fw-normal text-muted"/>
+                            </div>
+                        </main>
+                        <footer>
+                            <!-- La tarjeta es solo presentacion (la edicion va
+                                 por el dialogo), asi que basta widget="badge"
+                                 con el mismo color_field: mismos colores que
+                                 en la lista y en el modal. -->
+                            <field name="estado" widget="badge"
+                                options="{'color_field': 'estado_color'}"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+</odoo>

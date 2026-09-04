@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+<!-- ─────────────────────────  Acciones  ───────────────────────── -->
+
+    <record id="action_requerimiento_mis_solicitudes" model="ir.actions.act_window">
+        <field name="name">Mis solicitudes</field>
+        <field name="res_model">biocreto.requerimiento</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('solicitante_id', '=', uid)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aún no tiene requerimientos
+            </p>
+            <p>
+                Vaya al <a type="action" class="text-primary" name="%(biocreto_requerimientos.action_requerimiento_categoria_tablero)d">Tablero</a> para crear uno.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_requerimiento_por_revisar" model="ir.actions.act_window">
+        <field name="name">Solicitudes por revisar</field>
+        <field name="res_model">biocreto.requerimiento</field>
+        <field name="view_mode">list,form,kanban</field>
+        <field name="domain">[('state', '=', 'enviado')]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay solicitudes por revisar
+            </p>
+        </field>
+    </record>
+
+    <record id="action_requerimiento_todas" model="ir.actions.act_window">
+        <field name="name">Todas las solicitudes</field>
+        <field name="res_model">biocreto.requerimiento</field>
+        <field name="view_mode">list,form,kanban</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay requerimientos
+            </p>
+        </field>
+    </record>
+
+<!-- ─────────────────────────  Búsqueda  ───────────────────────── -->
+
+    <record id="biocreto_requerimiento_view_search" model="ir.ui.view">
+        <field name="name">biocreto.requerimiento.search</field>
+        <field name="model">biocreto.requerimiento</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="solicitante_id"/>
+                <field name="categoria_id"/>
+                <filter string="Mis solicitudes" name="filtro_mias"
+                    domain="[('solicitante_id', '=', uid)]"/>
+                <separator/>
+                <filter string="Por revisar" name="filtro_enviado"
+                    domain="[('state', '=', 'enviado')]"/>
+                <filter string="En proceso" name="filtro_en_proceso"
+                    domain="[('state', '=', 'en_proceso')]"/>
+                <filter string="Entregado" name="filtro_entregado"
+                    domain="[('state', '=', 'entregado')]"/>
+                <filter string="Cancelado" name="filtro_cancelado"
+                    domain="[('state', '=', 'cancelado')]"/>
+                <separator/>
+                <filter string="Archivado" name="filtro_archivado"
+                    domain="[('active', '=', False)]"/>
+                <group>
+                    <filter string="Solicitante" name="agrupar_solicitante"
+                        context="{'group_by': 'solicitante_id'}"/>
+                    <filter string="Categoría" name="agrupar_categoria"
+                        context="{'group_by': 'categoria_id'}"/>
+                    <filter string="Estado" name="agrupar_estado"
+                        context="{'group_by': 'state'}"/>
+                    <filter string="Planta" name="agrupar_planta"
+                        context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+<!-- ─────────────────────────  Lista  ───────────────────────── -->
+
+    <record id="biocreto_requerimiento_view_list" model="ir.ui.view">
+        <field name="name">biocreto.requerimiento.view.list</field>
+        <field name="model">biocreto.requerimiento</field>
+        <field name="arch" type="xml">
+            <list sample="1" decoration-info="state == 'borrador'">
+                <field name="name"/>
+                <field name="solicitante_id" widget="many2one_avatar_user"/>
+                <field name="categoria_id"/>
+                <field name="create_date" string="Creado"/>
+                <field name="company_id" optional="hide" groups="base.group_multi_company"/>
+                <field name="activity_ids" widget="list_activity" optional="hide"/>
+                <field name="state" widget="badge"
+                    decoration-info="state == 'borrador'"
+                    decoration-warning="state == 'enviado'"
+                    decoration-primary="state == 'en_proceso'"
+                    decoration-success="state == 'entregado'"
+                    decoration-danger="state == 'cancelado'"/>
+            </list>
+        </field>
+    </record>
+
+<!-- ─────────────────────────  Kanban  ───────────────────────── -->
+
+    <record id="biocreto_requerimiento_view_kanban" model="ir.ui.view">
+        <field name="name">biocreto.requerimiento.view.kanban</field>
+        <field name="model">biocreto.requerimiento</field>
+        <field name="arch" type="xml">
+            <kanban create="false" sample="1" default_group_by="state"
+                default_order="create_date desc"
+                group_create="false" group_edit="false" group_delete="false">
+                <field name="state"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="row g-2">
+                            <div class="col-auto">
+                                <field name="categoria_image" widget="image"
+                                    options="{'preview_image': 'categoria_image', 'size': [64, 64]}"/>
+                            </div>
+                            <div class="col">
+                                <field name="state" widget="badge" class="float-end"
+                                    decoration-info="state == 'borrador'"
+                                    decoration-warning="state == 'enviado'"
+                                    decoration-primary="state == 'en_proceso'"
+                                    decoration-success="state == 'entregado'"
+                                    decoration-danger="state == 'cancelado'"/>
+                                <field name="name" class="fw-bolder fs-4 pe-5 d-block text-wrap"/>
+                                <field name="solicitante_id" widget="many2one_avatar_user"
+                                    options="{'display_avatar_name': True}" class="fw-bold my-1"/>
+                                <div class="text-muted">
+                                    <field name="categoria_id"/>
+                                </div>
+                            </div>
+                        </div>
+                        <footer class="o_kanban_footer">
+                            <field name="activity_ids" widget="kanban_activity" class="ms-auto"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+<!-- ─────────────────────────  Formulario  ───────────────────────── -->
+
+    <record id="biocreto_requerimiento_view_form" model="ir.ui.view">
+        <field name="name">biocreto.requerimiento.view.form</field>
+        <field name="model">biocreto.requerimiento</field>
+        <field name="arch" type="xml">
+            <form string="Requerimiento">
+                <header>
+                    <!--
+                        Dos declaraciones del mismo widget, una por variante de
+                        color segun haya adjunto o no: patron copiado de
+                        approvals/views/approval_request_views.xml:113 y :122.
+
+                        v19.0.1.5.0: a las dos se les anade
+                        `requirer_document == 'no'`. Como el atributo es
+                        `invisible`, la condicion de visibilidad
+                        "requirer_document != 'no'" se escribe negada y unida
+                        con `or` al resto, que se conserva intacto.
+                    -->
+                    <widget name="attach_document" string="Adjuntar documento"
+                        action="message_post" highlight="1"
+                        invisible="requirer_document == 'no' or attachment_number &gt;= 1 or state != 'borrador' or solicitante_id != uid"/>
+                    <button name="action_enviar" string="Enviar" type="object"
+                        class="btn-primary" data-hotkey="q"
+                        invisible="state != 'borrador'"/>
+                    <button name="action_procesar" string="Procesar" type="object"
+                        class="btn-primary" data-hotkey="v"
+                        groups="biocreto_requerimientos.group_requerimiento_user"
+                        invisible="state != 'enviado'"/>
+                    <!-- v19.0.1.2.0: el boton manual "Entregar" se ELIMINO.
+                         Ahora se registra una entrega (con firma y descuento
+                         de stock) y el requerimiento pasa a 'entregado' solo
+                         cuando ninguna linea queda pendiente ni parcial. -->
+                    <button name="action_registrar_entrega" string="Registrar entrega"
+                        type="object" class="btn-primary" data-hotkey="w"
+                        groups="biocreto_requerimientos.group_requerimiento_user"
+                        invisible="state != 'en_proceso'"/>
+                    <button name="action_cancelar" string="Cancelar" type="object"
+                        data-hotkey="x"
+                        invisible="state in ['entregado', 'cancelado']"/>
+                    <button name="action_volver_borrador" string="Volver a borrador"
+                        type="object" data-hotkey="z"
+                        invisible="state != 'cancelado'"/>
+                    <widget name="attach_document" string="Adjuntar documento"
+                        action="message_post"
+                        invisible="requirer_document == 'no' or attachment_number &lt; 1 or state != 'borrador' or solicitante_id != uid"/>
+                    <field name="state" widget="statusbar"
+                        statusbar_visible="borrador,enviado,en_proceso,entregado"/>
+                </header>
+                <sheet>
+                    <field name="active" invisible="1"/>
+                    <field name="has_date" invisible="1"/>
+                    <field name="has_period" invisible="1"/>
+                    <field name="has_quantity" invisible="1"/>
+                    <field name="has_amount" invisible="1"/>
+                    <field name="has_reference" invisible="1"/>
+                    <field name="has_partner" invisible="1"/>
+                    <field name="has_location" invisible="1"/>
+                    <field name="has_product" invisible="1"/>
+                    <field name="requirer_document" invisible="1"/>
+                    <field name="automated_sequence" invisible="1"/>
+                    <!-- Lo leen las celdas de la lista de líneas como
+                         parent.puede_editar_lineas. -->
+                    <field name="puede_editar_lineas" invisible="1"/>
+
+                    <!--
+                        `attachment_number` se conserva, solo que invisible:
+                        lo leen los `invisible` de los dos widgets
+                        attach_document de más abajo y la validación de
+                        `requirer_document` en action_enviar
+                        (biocreto_requerimiento.py:291). Quitarlo rompería
+                        ambos. Lo que desaparece es únicamente el stat button
+                        «Documentos» que lo mostraba.
+                    -->
+                    <field name="attachment_number" invisible="1"/>
+
+                    <div class="o_not_full oe_button_box" name="button_box">
+                        <!-- === BIOCRETO CONSOLIDADO v1 — INICIO
+                             (bloque PERMANENTE, no borrar en la reversión) === -->
+                        <button name="action_ver_compras"
+                            class="oe_stat_button" icon="fa-shopping-cart" type="object"
+                            invisible="purchase_order_count == 0">
+                            <field name="purchase_order_count" widget="statinfo"
+                                string="Compras"/>
+                        </button>
+                        <!-- === BIOCRETO CONSOLIDADO v1 — FIN (PERMANENTE) === -->
+                        <button name="action_ver_entregas"
+                            class="oe_stat_button" icon="fa-truck" type="object"
+                            invisible="entrega_count == 0">
+                            <field name="entrega_count" widget="statinfo"
+                                string="Entregas"/>
+                        </button>
+                    </div>
+                    <div class="oe_avatar">
+                        <field name="categoria_image" widget="image"
+                            options="{'preview_image': 'categoria_image', 'size': [80, 80]}"
+                            class="bg-view"/>
+                    </div>
+                    <widget name="web_ribbon" title="Archivado"
+                        bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" placeholder="ej. Guantes de nitrilo para planta"
+                                required="not automated_sequence"
+                                readonly="automated_sequence"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group name="principal">
+                            <field name="categoria_id" readonly="state != 'borrador'" force_save="1"/>
+                            <field name="solicitante_id" widget="many2one_avatar_user"
+                                readonly="state != 'borrador'"/>
+                            <field name="company_id" groups="base.group_multi_company"
+                                readonly="state != 'borrador'" options="{'no_create': True}"/>
+                            <field name="fecha_enviado" readonly="1"
+                                invisible="not fecha_enviado"/>
+                            <field name="fecha" invisible="has_date == 'no'"
+                                readonly="state != 'borrador'"
+                                required="has_date == 'required'"/>
+                            <label for="fecha_inicio" string="Periodo" invisible="has_period == 'no'"/>
+                            <div invisible="has_period == 'no'">
+                                <div>
+                                    <label for="fecha_inicio" class="col-lg-2" string="Desde:"/>
+                                    <field name="fecha_inicio" class="oe_inline"
+                                        readonly="state != 'borrador'"
+                                        required="has_period == 'required'"/>
+                                </div>
+                                <div>
+                                    <label for="fecha_fin" class="col-lg-2" string="hasta:"/>
+                                    <field name="fecha_fin" class="oe_inline"
+                                        readonly="state != 'borrador'"
+                                        required="has_period == 'required'"/>
+                                </div>
+                            </div>
+                            <field name="ubicacion" invisible="has_location == 'no'"
+                                readonly="state != 'borrador'"
+                                required="has_location == 'required'"
+                                placeholder="ej. Almacén planta"/>
+                            <field name="partner_id" invisible="has_partner == 'no'"
+                                readonly="state != 'borrador'"
+                                required="has_partner == 'required'"/>
+                        </group>
+                        <group name="detalles">
+                            <field name="cantidad"
+                                invisible="has_quantity == 'no' or has_product != 'no'"
+                                readonly="state != 'borrador'"
+                                required="has_quantity == 'required' and has_product == 'no'"/>
+                            <field name="importe" invisible="has_amount == 'no'"
+                                readonly="state != 'borrador'"
+                                required="has_amount == 'required'"/>
+                            <field name="referencia" invisible="has_reference == 'no'"
+                                required="has_reference == 'required'"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Productos" name="productos"
+                            invisible="has_product == 'no'">
+                            <field name="linea_ids"
+                                context="{'list_view_ref': 'biocreto_requerimientos.biocreto_requerimiento_linea_view_list',
+                                          'kanban_view_ref': 'biocreto_requerimientos.biocreto_requerimiento_linea_view_kanban'}"
+                                readonly="state in ('entregado', 'cancelado')"/>
+                        </page>
+                        <page string="Descripción" name="descripcion">
+                            <field name="motivo" readonly="state not in ('borrador', 'enviado')"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="o_attachment_preview"/>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+</odoo>

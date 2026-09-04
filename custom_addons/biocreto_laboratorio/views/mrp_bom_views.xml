@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Vista lista propia para Disenos (mrp.bom), agrupada por resistencia f'c.
+        NO hereda / no toca el form nativo — solo aporta una lista y una accion.
+    -->
+    <record id="view_biocreto_bom_list" model="ir.ui.view">
+        <field name="name">biocreto.mrp.bom.list</field>
+        <field name="model">mrp.bom</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <list string="Diseños">
+                <field name="code"/>
+                <field name="product_tmpl_id"/>
+                <field name="biocreto_fc_resistencia"/>
+                <field name="type"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_biocreto_bom_search" model="ir.ui.view">
+        <field name="name">biocreto.mrp.bom.search</field>
+        <field name="model">mrp.bom</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="code"/>
+                <field name="product_tmpl_id"/>
+                <field name="biocreto_fc_resistencia"/>
+                <group>
+                    <filter name="group_fc" string="Resistencia f'c"
+                            context="{'group_by': 'biocreto_fc_resistencia'}"/>
+                    <filter name="group_producto" string="Producto"
+                            context="{'group_by': 'product_tmpl_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_biocreto_bom" model="ir.actions.act_window">
+        <field name="name">Diseños</field>
+        <field name="res_model">mrp.bom</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="view_biocreto_bom_list"/>
+        <field name="search_view_id" ref="view_biocreto_bom_search"/>
+        <field name="context">{'search_default_group_fc': 1}</field>
+    </record>
+
+</odoo>

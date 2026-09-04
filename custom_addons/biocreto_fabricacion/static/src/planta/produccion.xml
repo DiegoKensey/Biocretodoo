@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biocreto_fabricacion.Produccion">
+    <div class="o_biocreto_produccion">
+
+        <!-- a) TIRA SUPERIOR -->
+        <div class="o_biocreto_tira_superior card mb-3">
+            <div class="card-body py-2 d-flex justify-content-around align-items-center flex-wrap">
+                <div class="text-center">
+                    <div class="small text-muted">Volumen Operativo</div>
+                    <div class="fs-4 fw-bold">
+                        <t t-out="props.cadena.total.toFixed(1)"/>
+                        <span class="text-muted"> m³</span>
+                    </div>
+                    <div class="small text-info">
+                        Restante:
+                        <span t-out="volumenOperativoRestante.toFixed(1)"/> m³
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="small text-muted">Volumen Facturado</div>
+                    <div class="fs-4 fw-bold">
+                        <t t-out="props.cadena.total.toFixed(1)"/>
+                        <span class="text-muted"> m³</span>
+                    </div>
+                    <div class="small text-info">
+                        Acumulado:
+                        <span t-out="volumenFacturadoAcumulado.toFixed(1)"/> m³
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="small text-muted">Diseno</div>
+                    <div class="fs-5 fw-bold" t-out="props.cadena.bom || '(sin BoM)'"/>
+                    <div class="small text-muted" t-out="props.cadena.product"/>
+                </div>
+                <div class="text-center">
+                    <div class="small text-muted">OF activa</div>
+                    <div class="fs-5 fw-bold" t-out="state.activeOfName || '-'"/>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+
+            <!-- b) IZQ: carga en curso -->
+            <div class="col-md-5 mb-3">
+                <div class="card o_biocreto_carga_curso">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fa fa-truck me-2"/>
+                            Nueva carga
+                            <span t-if="state.cargaEnCursoId"
+                                  class="badge text-bg-warning ms-2">En curso</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label small">Cantidad a producir (m³)</label>
+                            <input class="form-control" type="number" step="0.01" min="0"
+                                   t-att-value="state.volumenOperativo"
+                                   t-on-change="onVolumenOperativoChange"
+                                   t-att-disabled="state.cargaEnCursoId"/>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small">Cantidad a facturar (m³)</label>
+                            <input class="form-control" type="number" step="0.01" min="0"
+                                   t-att-value="state.volumenFacturado"
+                                   t-on-change="onVolumenFacturadoChange"/>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label class="form-label small">Mixer (placa)</label>
+                                <select class="form-select" t-on-change="onVehiculoChange">
+                                    <option value="">-- Seleccionar --</option>
+                                    <t t-foreach="state.vehiculos" t-as="v" t-key="v.id">
+                                        <option t-att-value="v.id"
+                                                t-att-selected="v.id === state.vehiculoId"
+                                                t-out="v.license_plate || v.name"/>
+                                    </t>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small">Código presinto</label>
+                                <input class="form-control" type="text"
+                                       t-att-value="state.codigoPresinto"
+                                       t-on-change="onCodigoPresintoChange"/>
+                            </div>
+                        </div>
+
+                        <h6 class="mt-4 mb-2">Dosificacion</h6>
+                        <table class="table table-sm o_biocreto_dosif">
+                            <thead>
+                                <tr>
+                                    <th>Componente</th>
+                                    <th class="text-end">Cantidad</th>
+                                    <th>UdM</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="state.rawLines" t-as="line" t-key="line.move_id">
+                                    <td t-out="line.product_name"/>
+                                    <td class="text-end">
+                                        <input class="form-control form-control-sm text-end"
+                                               type="number" step="0.001" min="0"
+                                               t-att-value="line.qty"
+                                               t-on-change="(ev) =&gt; this.onRawChange(line, ev)"/>
+                                    </td>
+                                    <td t-out="line.uom_name"/>
+                                </tr>
+                                <tr t-if="!state.rawLines.length">
+                                    <td colspan="3" class="text-center text-muted">
+                                        Sin dosificacion. Asigna un BoM a la OV.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="d-grid gap-2 mt-3">
+                            <button t-if="!state.cargaEnCursoId"
+                                    class="btn btn-lg btn-primary"
+                                    t-att-disabled="state.loading"
+                                    t-on-click="() =&gt; this.onIniciar()">
+                                <i class="fa fa-play me-1"/> INICIAR
+                            </button>
+                            <button t-if="state.cargaEnCursoId"
+                                    class="btn btn-lg btn-success"
+                                    t-att-disabled="state.loading"
+                                    t-on-click="() =&gt; this.onTerminar()">
+                                <i class="fa fa-check me-1"/> TERMINAR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- c) DER: tabla de cargas -->
+            <div class="col-md-7 mb-3">
+                <div class="card o_biocreto_cargas_tabla">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fa fa-list me-2"/>
+                            Cargas de la cadena
+                            <span class="badge text-bg-secondary ms-2"
+                                  t-out="state.cargas.length"/>
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Nº</th>
+                                    <th>Mixer</th>
+                                    <th class="text-end">V. Op.</th>
+                                    <th class="text-end">V. Fact.</th>
+                                    <th>OF</th>
+                                    <th t-out="guiaHeader"/>
+                                    <th>Termino</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="state.cargas" t-as="c" t-key="c.id"
+                                    t-att-class="c.estado === 'en_curso' ? 'table-warning' : ''">
+                                    <td>
+                                        <strong t-out="c.name"/>
+                                        <span t-if="c.estado === 'en_curso'"
+                                              class="badge text-bg-warning ms-1">EN CURSO</span>
+                                    </td>
+                                    <td t-out="c.vehiculo_id ? c.vehiculo_id[1] : '-'"/>
+                                    <td class="text-end" t-out="c.volumen_operativo.toFixed(2)"/>
+                                    <td class="text-end" t-out="c.volumen_facturado.toFixed(2)"/>
+                                    <td>
+                                        <small t-out="c.production_id[1]"/>
+                                    </td>
+                                    <td>
+                                        <!-- Guia E.: PDF solo con archivo subido en la entrega.
+                                             C. Salida: PDF (reporte nativo) apenas exista entrega. -->
+                                        <button t-if="c.tipo_guia === 'guia_e' and c.guia_pdf_disponible"
+                                                class="btn btn-sm btn-outline-danger"
+                                                title="Descargar guía electrónica"
+                                                t-on-click="() =&gt; this.onDescargarGuia(c)">
+                                            <i class="fa fa-file-pdf-o me-1"/>PDF
+                                        </button>
+                                        <button t-if="c.tipo_guia === 'c_salida' and c.picking_id"
+                                                class="btn btn-sm btn-outline-secondary"
+                                                title="Imprimir constancia de salida"
+                                                t-on-click="() =&gt; this.onImprimirPicking(c)">
+                                            <i class="fa fa-file-pdf-o me-1"/>PDF
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <small t-out="c.hora_fin ? c.hora_fin.slice(0, 16).replace('T', ' ') : '-'"/>
+                                    </td>
+                                </tr>
+                                <tr t-if="!state.cargas.length">
+                                    <td colspan="7" class="text-center text-muted p-4">
+                                        Sin cargas registradas todavia.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</t>
+
+</templates>

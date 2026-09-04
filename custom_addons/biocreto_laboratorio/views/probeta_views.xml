@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- =========== KANBAN =========== -->
+    <record id="view_biocreto_probeta_kanban" model="ir.ui.view">
+        <field name="name">biocreto.probeta.kanban</field>
+        <field name="model">biocreto.probeta</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="estado" class="o_kanban_small_column">
+                <progressbar field="activity_state"
+                             colors='{"planned": "success", "today": "warning", "overdue": "danger"}'/>
+                <field name="name"/>
+                <field name="estado"/>
+                <field name="partner_id"/>
+                <field name="biocreto_fc_resistencia"/>
+                <field name="fecha_rotura_programada"/>
+                <field name="activity_ids"/>
+                <field name="activity_state"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_content">
+                            <div class="o_kanban_record_title">
+                                <strong><field name="name"/></strong>
+                            </div>
+                            <div>
+                                <span>f'c: </span><field name="biocreto_fc_resistencia"/>
+                            </div>
+                            <div>
+                                <field name="partner_id"/>
+                            </div>
+                            <div t-if="record.fecha_rotura_programada.raw_value">
+                                <i class="fa fa-hourglass-half"/>
+                                Rotura: <field name="fecha_rotura_programada"/>
+                            </div>
+                            <div class="o_kanban_record_bottom">
+                                <div class="oe_kanban_bottom_right">
+                                    <field name="activity_ids" widget="kanban_activity"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- =========== LIST =========== -->
+    <record id="view_biocreto_probeta_list" model="ir.ui.view">
+        <field name="name">biocreto.probeta.list</field>
+        <field name="model">biocreto.probeta</field>
+        <field name="arch" type="xml">
+            <list string="Probetas" decoration-success="estado == 'certificada'"
+                  decoration-info="estado == 'roturada'"
+                  decoration-muted="estado == 'en_proceso'">
+                <field name="name"/>
+                <field name="sale_id"/>
+                <field name="partner_id"/>
+                <field name="biocreto_fc_resistencia"/>
+                <field name="tamano"/>
+                <field name="edad"/>
+                <field name="fecha_moldeo"/>
+                <field name="fecha_rotura_programada"/>
+                <field name="resistencia_obtenida"/>
+                <field name="estado" widget="badge"
+                       decoration-info="estado == 'moldeada'"
+                       decoration-warning="estado == 'roturada'"
+                       decoration-success="estado == 'certificada'"/>
+                <field name="activity_ids" widget="list_activity"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- =========== FORM =========== -->
+    <record id="view_biocreto_probeta_form" model="ir.ui.view">
+        <field name="name">biocreto.probeta.form</field>
+        <field name="model">biocreto.probeta</field>
+        <field name="arch" type="xml">
+            <form string="Probeta">
+                <header>
+                    <button name="action_biocreto_moldear"
+                            type="object" string="Moldear"
+                            class="btn-primary"
+                            invisible="estado != 'en_proceso'"/>
+                    <button name="action_biocreto_roturar"
+                            type="object" string="Roturar"
+                            class="btn-primary"
+                            invisible="estado != 'moldeada'"/>
+                    <button name="action_biocreto_certificar"
+                            type="object" string="Certificar"
+                            class="btn-primary"
+                            invisible="estado != 'roturada'"/>
+                    <field name="estado" widget="statusbar"
+                           statusbar_visible="en_proceso,moldeada,roturada,certificada"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="sale_id" readonly="1"/>
+                            <field name="sale_line_id" readonly="1"/>
+                            <field name="partner_id" readonly="1"/>
+                            <field name="biocreto_fc_resistencia" readonly="1"/>
+                            <field name="estructura" readonly="1"/>
+                            <field name="bom_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="tamano"/>
+                            <field name="edad"/>
+                            <field name="fecha_moldeo"/>
+                            <field name="fecha_rotura_programada" readonly="1"/>
+                            <field name="resistencia_obtenida"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Observaciones">
+                        <field name="observaciones" nolabel="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- =========== CALENDAR (por fecha de rotura) =========== -->
+    <record id="view_biocreto_probeta_calendar" model="ir.ui.view">
+        <field name="name">biocreto.probeta.calendar</field>
+        <field name="model">biocreto.probeta</field>
+        <field name="arch" type="xml">
+            <calendar string="Rotura de probetas"
+                      date_start="fecha_rotura_programada"
+                      color="estado"
+                      mode="month">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="biocreto_fc_resistencia"/>
+            </calendar>
+        </field>
+    </record>
+
+    <!-- =========== ACTIVITY =========== -->
+    <record id="view_biocreto_probeta_activity" model="ir.ui.view">
+        <field name="name">biocreto.probeta.activity</field>
+        <field name="model">biocreto.probeta</field>
+        <field name="arch" type="xml">
+            <activity string="Actividades de probeta">
+                <field name="name"/>
+                <templates>
+                    <div t-name="activity-box">
+                        <div>
+                            <strong><field name="name"/></strong>
+                        </div>
+                        <div>
+                            <field name="partner_id"/>
+                        </div>
+                    </div>
+                </templates>
+            </activity>
+        </field>
+    </record>
+
+    <!-- =========== SEARCH =========== -->
+    <record id="view_biocreto_probeta_search" model="ir.ui.view">
+        <field name="name">biocreto.probeta.search</field>
+        <field name="model">biocreto.probeta</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="sale_id"/>
+                <field name="partner_id"/>
+                <field name="biocreto_fc_resistencia"/>
+                <filter name="en_proceso" string="En proceso" domain="[('estado','=','en_proceso')]"/>
+                <filter name="moldeadas" string="Moldeadas" domain="[('estado','=','moldeada')]"/>
+                <filter name="roturadas" string="Roturadas" domain="[('estado','=','roturada')]"/>
+                <filter name="certificadas" string="Certificadas" domain="[('estado','=','certificada')]"/>
+                <group>
+                    <filter name="group_estado" string="Estado" context="{'group_by': 'estado'}"/>
+                    <filter name="group_fc" string="Resistencia" context="{'group_by': 'biocreto_fc_resistencia'}"/>
+                    <filter name="group_orden" string="Orden" context="{'group_by': 'sale_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- =========== ACTION =========== -->
+    <record id="action_biocreto_probeta" model="ir.actions.act_window">
+        <field name="name">Probetas</field>
+        <field name="res_model">biocreto.probeta</field>
+        <field name="view_mode">kanban,list,form,calendar,activity</field>
+        <field name="search_view_id" ref="view_biocreto_probeta_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay probetas registradas todavía.
+            </p>
+            <p>
+                Las probetas se generan automáticamente al confirmar una Orden de Venta con líneas de Concreto.
+            </p>
+        </field>
+    </record>
+
+</odoo>

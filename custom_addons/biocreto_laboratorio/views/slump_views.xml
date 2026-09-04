@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_biocreto_slump_list" model="ir.ui.view">
+        <field name="name">biocreto.slump.list</field>
+        <field name="model">biocreto.slump</field>
+        <field name="arch" type="xml">
+            <list string="Slumps">
+                <field name="name"/>
+                <field name="sale_id"/>
+                <field name="partner_id"/>
+                <field name="mixer_id"/>
+                <field name="tipo"/>
+                <field name="valor"/>
+                <field name="fecha"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_biocreto_slump_form" model="ir.ui.view">
+        <field name="name">biocreto.slump.form</field>
+        <field name="model">biocreto.slump</field>
+        <field name="arch" type="xml">
+            <form string="Ensayo de slump">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1" placeholder="(se generará al guardar)"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="sale_id" readonly="1"/>
+                            <field name="sale_line_id"
+                                   domain="[('order_id','=', sale_id), ('biocreto_product_categ','=','Concreto')]"
+                                   required="1"/>
+                            <field name="partner_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="mixer_id"/>
+                            <field name="tipo"/>
+                            <field name="valor"/>
+                            <field name="fecha"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Observaciones">
+                        <field name="observaciones" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_biocreto_slump_search" model="ir.ui.view">
+        <field name="name">biocreto.slump.search</field>
+        <field name="model">biocreto.slump</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="sale_id"/>
+                <field name="mixer_id"/>
+                <filter name="planta" string="Planta" domain="[('tipo','=','planta')]"/>
+                <filter name="obra" string="Obra" domain="[('tipo','=','obra')]"/>
+                <group>
+                    <filter name="group_orden" string="Orden" context="{'group_by': 'sale_id'}"/>
+                    <filter name="group_mixer" string="Mixer" context="{'group_by': 'mixer_id'}"/>
+                    <filter name="group_tipo" string="Tipo" context="{'group_by': 'tipo'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_biocreto_slump" model="ir.actions.act_window">
+        <field name="name">Slumps</field>
+        <field name="res_model">biocreto.slump</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_biocreto_slump_search"/>
+    </record>
+
+</odoo>

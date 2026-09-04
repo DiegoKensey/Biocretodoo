@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Cascada geografica estricta en la direccion del partner.
+
+         POR QUE SE HEREDA ESTA VISTA Y NO `base.view_partner_form`:
+         Peru no usa el bloque de direccion normal. `res.country` de PE
+         trae `address_view_id` apuntando a `l10n_pe.pe_partner_address_form`
+         (l10n_pe/data/res_country_data.xml:3-46, priority 900), y el
+         cliente web sustituye el bloque entero por el arch de esa vista.
+         Cualquier cosa que se anada a la vista normal del partner NO
+         aparece cuando el pais es Peru.
+
+         Es un <form> completo sin `inherit_id`, pero con xmlid estable
+         y por tanto heredable con normalidad. Vive en `data/`, no en
+         `views/`; detalle irrelevante para heredarla, util para
+         encontrarla.
+
+         QUE SE ANADE, campo por campo:
+           · `domain`  : la cascada. Operador `=` ESTRICTO, no `=?`: si
+                         el padre esta vacio el desplegable queda vacio.
+                         Va aqui y no en la definicion de los campos en
+                         Python porque `state_id` ya trae dominio nativo
+                         (base/models/res_partner.py:267) y redefinirlo
+                         seria un cambio no aditivo sobre un campo nativo.
+           · `options` : sin `no_create` el usuario puede crear una
+                         provincia o un distrito desde el desplegable,
+                         y acabaria inventando ubigeos que luego viajan
+                         al XML de SUNAT.
+
+         QUE NO SE TOCA: el `readonly`. Los tres campos quedan SIEMPRE
+         visibles y clicables; su unico `readonly` sigue siendo el nativo
+         `type == 'contact' and parent_id`, sin anadir ni una condicion.
+         Bloquear un hijo mientras falta el padre esconde el problema en
+         vez de explicarlo: el usuario abre el desplegable, lee "Sin
+         registros" y entiende solo que le falta rellenar lo de arriba.
+         Es el mismo criterio de biocreto_sale_extension sobre sale.order
+         (views/sale_order_views.xml:35-46), que no pone ningun readonly.
+         ═══════════════════════════════════════════════════════════════ -->
+    <record id="pe_partner_address_form_biocreto" model="ir.ui.view">
+        <field name="name">pe.partner.form.address.biocreto.cascada</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="l10n_pe.pe_partner_address_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Departamento: filtrado por pais. Sin pais, el desplegable
+                 sale vacio; el campo sigue clicable. -->
+            <field name="state_id" position="attributes">
+                <attribute name="domain">[('country_id', '=', country_id)]</attribute>
+                <attribute name="options">{'no_open': True, 'no_create': True}</attribute>
+                <attribute name="placeholder">Departamento</attribute>
+            </field>
+
+            <!-- Provincia: el dominio nativo filtraba por PAIS, asi que
+                 ofrecia las 196 provincias del Peru. Parecia funcionar
+                 solo porque la provincia escribe el departamento hacia
+                 arriba y nunca se veia una incoherencia.
+                 Se conserva `invisible="not country_enforce_cities"`. -->
+            <field name="city_id" position="attributes">
+                <attribute name="domain">[('state_id', '=', state_id)]</attribute>
+                <attribute name="options">{'no_open': True, 'no_create': True}</attribute>
+                <attribute name="placeholder">Provincia</attribute>
+            </field>
+
+            <!-- Distrito: no tenia dominio NINGUNO, ni en Python ni en
+                 XML. Causa directa de que salieran los 1874. -->
+            <field name="l10n_pe_district" position="attributes">
+                <attribute name="domain">[('city_id', '=', city_id)]</attribute>
+                <attribute name="options">{'no_open': True, 'no_create': True}</attribute>
+                <attribute name="placeholder">Distrito</attribute>
+            </field>
+
+            <!-- ───────────────────────────────────────────────────────
+                 Reordenar a lectura descendente: de lo general a lo
+                 especifico, igual que la cascada. El orden nativo era
+                 el inverso (Distrito, Provincia, Departamento, Pais)
+                 porque el flujo nativo tambien lo era.
+
+                 Se usa `position="move"`, que RELOCALIZA el nodo
+                 existente conservando todos sus atributos. No se borra
+                 ni se recrea ningun campo.
+
+                 Las clases de layout (`o_address_street`, `_city`,
+                 `_state`, `_country`, `_zip`) se conservan intactas.
+                 No hay grid con posiciones fijas: son bloques flex e
+                 inline-block en flujo normal
+                 (web/static/src/views/form/form_controller.scss:786-834),
+                 asi que el orden del DOM es el orden visual.
+                 ─────────────────────────────────────────────────────── -->
+            <xpath expr="//field[@name='street2']" position="after">
+                <xpath expr="//field[@name='country_id']" position="move"/>
+            </xpath>
+            <xpath expr="//field[@name='country_id']" position="after">
+                <xpath expr="//field[@name='state_id']" position="move"/>
+            </xpath>
+            <xpath expr="//field[@name='state_id']" position="after">
+                <xpath expr="//field[@name='city_id']" position="move"/>
+            </xpath>
+            <!-- `city` (Char) viaja pegado a `city_id`: es su reemplazo
+                 cuando el pais no fuerza ciudades. En Peru va invisible. -->
+            <xpath expr="//field[@name='city_id']" position="after">
+                <xpath expr="//field[@name='city']" position="move"/>
+            </xpath>
+            <xpath expr="//field[@name='city']" position="after">
+                <xpath expr="//field[@name='l10n_pe_district']" position="move"/>
+            </xpath>
+            <xpath expr="//field[@name='l10n_pe_district']" position="after">
+                <xpath expr="//field[@name='zip']" position="move"/>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

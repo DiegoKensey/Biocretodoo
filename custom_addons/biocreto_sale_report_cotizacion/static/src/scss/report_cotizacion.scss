@@ -663,6 +663,35 @@ main.biocreto-cot {
     text-indent: -13pt;
     margin: 2pt 0;
 }
+// El <li> de forma de pago recibe el `note` del termino de pago, que es
+// un fields.Html con sanitize=True: el saneador envuelve el contenido en
+// <p> incluso cuando el usuario escribe texto plano. Ese <p> traia el
+// margen de bloque por defecto del motor (~1em arriba y abajo) y con el
+// la pagina 2 del reporte mayor pasaba de 2 a 3 hojas: la tarjeta crecia,
+// con ella su fila del grid 2x2, y `.pagina-2 { break-inside: avoid }`
+// no podia recolocar nada.
+//
+// Medido: con <span> en vez de <p> cabia; con <p> no cabia ni con UNA
+// linea, y con seis tampoco empeoraba. O sea, el problema era el margen,
+// no la longitud del texto.
+//
+// `margin: 0` NO basta. Medido: con el margen anulado el <p> sigue
+// siendo caja de BLOQUE, asi que abre renglon propio y el PDF salia
+//
+//     > Moneda y pago: Soles (S/) —
+//     Terminos de pago: pago inmediato
+//
+// con el guion colgando al final de la primera linea. `display: inline`
+// lo mete en el flujo de texto de la vineta y la frase queda entera.
+// Los <br/> y <b> que traiga el `note` siguen funcionando: un elemento
+// inline no impide saltos explicitos ni negritas.
+//
+// Nada mas se toca. padding, line-height y font-size quedan como
+// estaban, para que el interlineado entre <li> no cambie ni un punto.
+.biocreto-cot .info-card li p {
+    margin: 0;
+    display: inline;
+}
 .biocreto-cot .info-card li::before,
 .biocreto-cot .info-band ul.banda-list li::before {
     content: "▸";
@@ -791,5 +820,16 @@ main.biocreto-cot {
     }
     li {
         margin: 1.5pt 0;
+    }
+    // Mismo caso que en .info-card: el <p> que el saneador de fields.Html
+    // pone alrededor del `note` del termino de pago. Aqui el <li> del
+    // menor no lleva texto fijo delante, asi que el salto de linea no se
+    // notaria; se aplica igual para que el aire alrededor del item de
+    // pago sea el mismo que el de los otros cuatro y las dos listas se
+    // comporten identico. Ver el comentario largo junto a
+    // `.info-card li p`.
+    li p {
+        margin: 0;
+        display: inline;
     }
 }

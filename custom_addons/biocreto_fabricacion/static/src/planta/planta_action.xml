@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="biocreto_fabricacion.PlantaAction">
+    <div class="o_biocreto_planta" t-ref="root">
+
+        <!-- Onboarding (primera vez, sin flag en localStorage) -->
+        <PlantaOnboarding t-if="!state.activo" onActivate="() =&gt; this.activarCentro()"/>
+
+        <t t-else="">
+
+            <!-- Cabecera fija: burger, boton overview, search, boton operadores -->
+            <div class="o_biocreto_topbar">
+                <div class="o_biocreto_topbar_left">
+                    <button class="btn btn-link p-1 me-2" t-on-click="() =&gt; this.toggleBurger()"
+                            title="Menu">
+                        <i class="fa fa-bars fa-lg"/>
+                    </button>
+                    <button t-if="state.level !== 'list'"
+                            class="btn btn-secondary btn-sm me-2"
+                            t-on-click="() =&gt; this.back()">
+                        <i class="fa fa-chevron-left me-1"/> Volver
+                    </button>
+                    <button class="btn btn-primary btn-sm me-2">
+                        <i class="fa fa-th-list me-1"/> Informacion general
+                        <span class="badge bg-white text-primary ms-1"
+                              t-out="ordenesAgrupadas.length"/>
+                    </button>
+                </div>
+                <div class="o_biocreto_topbar_center">
+                    <input class="form-control form-control-sm o_biocreto_search"
+                           type="text" placeholder="Buscar OV, OF..."
+                           t-att-value="state.searchQuery"
+                           t-on-input="onSearchInput"/>
+                    <button class="btn btn-sm ms-2"
+                            t-att-class="state.filterHoy ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() =&gt; this.toggleHoy()">
+                        <i class="fa fa-calendar-day me-1"/> Hoy
+                    </button>
+                </div>
+                <div class="o_biocreto_topbar_right">
+                    <button class="btn btn-link p-1" t-on-click="() =&gt; this.toggleEmployees()"
+                            title="Operadores">
+                        <i class="fa fa-users fa-lg"/>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Burger menu desplegable -->
+            <div t-if="state.burgerOpen" class="o_biocreto_burger dropdown-menu show">
+                <button class="dropdown-item" t-on-click="() =&gt; this.onReloadClick()">
+                    <i class="fa fa-refresh me-2"/> Volver a cargar datos
+                </button>
+                <button class="dropdown-item" t-on-click="() =&gt; this.onCloseClick()">
+                    <i class="fa fa-times me-2"/> Cerrar
+                </button>
+            </div>
+
+            <!-- Body: layout con panel operadores lateral + zona principal -->
+            <div class="o_biocreto_body">
+
+                <PlantaEmployeesPanel t-if="state.employeesOpen"
+                                      onClose="() =&gt; this.toggleEmployees()"/>
+
+                <div class="o_biocreto_main">
+
+                    <!-- Breadcrumb interno -->
+                    <div class="o_biocreto_breadcrumb" t-if="state.level !== 'list'">
+                        <span class="o_biocreto_bc_item"
+                              t-on-click="() =&gt; this.back()"
+                              t-if="state.level === 'of'">
+                            <t t-out="ordenSeleccionada?.orden?.name || ordenSeleccionada?.key"/>
+                        </span>
+                        <t t-if="state.level === 'prod'">
+                            <span class="o_biocreto_bc_item" t-on-click="() =&gt; { state.level = 'list'; state.selectedOrdenKey = null; state.selectedGroupId = null; }">
+                                <t t-out="ordenSeleccionada?.orden?.name || ordenSeleccionada?.key"/>
+                            </span>
+                            <i class="fa fa-chevron-right mx-2"/>
+                            <span class="o_biocreto_bc_item" t-on-click="() =&gt; this.back()">
+                                <t t-out="cadenaSeleccionada?.base_name"/>
+                            </span>
+                        </t>
+                    </div>
+
+                    <!-- NIVEL 1: tarjetas por Orden de Venta -->
+                    <div t-if="state.level === 'list'" class="o_biocreto_grid">
+                        <t t-foreach="ordenesAgrupadas" t-as="orden" t-key="orden.key">
+                            <PlantaRecordOrden orden="orden"
+                                               onOpen="() =&gt; this.openOrden(orden.key)"
+                                               onNota="() =&gt; this.onOrdenNota(orden)"
+                                               onCancelar="() =&gt; this.onOrdenCancelar(orden)"/>
+                        </t>
+                        <div t-if="!ordenesAgrupadas.length" class="o_biocreto_empty">
+                            <i class="fa fa-industry fa-3x text-muted mb-3"/>
+                            <p>No hay ordenes de fabricacion en este momento.</p>
+                            <p class="text-muted small">Prueba desactivar el filtro "Hoy".</p>
+                        </div>
+                    </div>
+
+                    <!-- NIVEL 2: tarjetas por OF/cadena de la orden seleccionada -->
+                    <div t-if="state.level === 'of'" class="o_biocreto_grid">
+                        <t t-foreach="cadenasDeOrdenSeleccionada" t-as="cadena" t-key="cadena.group_id">
+                            <PlantaRecordOf cadena="cadena"
+                                            onOpen="() =&gt; this.openProduccion(cadena.group_id)"
+                                            onAbrirOF="() =&gt; this.onOfAbrir(cadena)"/>
+                        </t>
+                    </div>
+
+                    <!-- NIVEL 3: panel de produccion de la cadena -->
+                    <PlantaProduccion t-if="state.level === 'prod' &amp;&amp; cadenaSeleccionada"
+                                      cadena="cadenaSeleccionada"/>
+                </div>
+            </div>
+        </t>
+    </div>
+</t>
+
+</templates>

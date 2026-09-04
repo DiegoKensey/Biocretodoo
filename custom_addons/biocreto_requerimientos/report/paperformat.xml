@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!--
+            ============================================================
+            Paperformat  -  A4 BIOCRETO Constancia de entrega
+            ============================================================
+            Misma geometria que el de la cotizacion
+            (biocreto_sale_report_cotizacion/report/paperformat.xml:22-36):
+            A4 vertical, sangre lateral (margin_left/right = 0) para que
+            las bandas de cabecera y pie toquen ambos bordes.
+
+            Reserva vertical: la banda mide 100px de alto en un viewBox
+            de 794x100. A 96 dpi y ancho A4 (210mm = 794px), 100px son
+            26.46mm -> se redondea a 27mm arriba y abajo.
+
+            dpi=96 para que las medidas en pt del SCSS salgan calibradas.
+
+            A DIFERENCIA de la cotizacion, este paperformat SI se ata a
+            la accion del reporte (ver mas abajo, campo paperformat_id).
+            Con PlutoPrint la geometria real la manda el @page del QWeb,
+            pero si el motor cae al fallback de wkhtmltopdf, el
+            paperformat es lo unico que queda: dejarlo sin atar hace que
+            el PDF de emergencia salga con los margenes genericos.
+        -->
+        <record id="paperformat_biocreto_entrega_a4" model="report.paperformat">
+            <field name="name">A4 BIOCRETO Constancia de entrega</field>
+            <field name="default" eval="False"/>
+            <field name="format">custom</field>
+            <field name="page_height">297</field>
+            <field name="page_width">210</field>
+            <field name="orientation">Portrait</field>
+            <field name="margin_top">27</field>
+            <field name="margin_bottom">27</field>
+            <field name="margin_left">0</field>
+            <field name="margin_right">0</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">0</field>
+            <field name="dpi">96</field>
+        </record>
+
+        <!--
+            OJO con el id: la ACCION y la PLANTILLA no pueden compartir
+            XML id. Si ambas se llaman `report_constancia_entrega`, Odoo
+            aborta con "found record of different model ir.actions.report".
+            Convencion nativa: `action_report_<x>` para la accion y
+            `report_<x>` para el template (p.ej. sale.action_report_saleorder
+            vs sale.report_saleorder).
+
+            El `report_name` SI apunta al template, y es lo que resuelve
+            _get_report: busca primero por report_name
+            (odoo/addons/base/models/ir_actions_report.py:677) y solo
+            despues por xmlid. Por eso el codigo Python puede seguir
+            llamando a _render_qweb_pdf('biocreto_requerimientos.
+            report_constancia_entrega', ...) sin cambios.
+        -->
+        <record id="action_report_constancia_entrega" model="ir.actions.report">
+            <field name="name">Constancia de entrega</field>
+            <field name="model">biocreto.requerimiento.entrega</field>
+            <field name="report_type">qweb-pdf</field>
+            <!-- El report_name es la CLAVE que usa biocreto_pdf_engine
+                 para decidir si el render va por PlutoPrint
+                 (models/ir_actions_report.py de este modulo). Tiene que
+                 coincidir exactamente con el id del <template>. -->
+            <field name="report_name">biocreto_requerimientos.report_constancia_entrega</field>
+            <field name="report_file">biocreto_requerimientos.report_constancia_entrega</field>
+            <field name="paperformat_id" ref="paperformat_biocreto_entrega_a4"/>
+            <!-- v19.0.1.8.0: unificado con el nombre del adjunto del
+                 chatter, que lo compone _biocreto_adjuntar_constancia
+                 como '%s_ENTREGA.pdf' (models/biocreto_requerimiento_
+                 entrega.py:450-451). Antes la descarga directa daba
+                 'Constancia REQ-....pdf' y el chatter
+                 'REQ-..._ENTREGA.pdf': dos nombres para el mismo
+                 documento, incomodo de archivar.
+                 SIN extension: Odoo la anade segun report_type
+                 (odoo/addons/base/models/ir_actions_report.py). Ponerla
+                 aqui daria '..._ENTREGA.pdf.pdf'. -->
+            <field name="print_report_name">'%s_ENTREGA' % (object.name or object.id)</field>
+            <field name="binding_model_id" ref="model_biocreto_requerimiento_entrega"/>
+            <field name="binding_type">report</field>
+        </record>
+
+    </data>
+</odoo>

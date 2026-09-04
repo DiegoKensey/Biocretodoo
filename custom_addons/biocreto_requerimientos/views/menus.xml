@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem
+        id="requerimientos_menu_root"
+        name="Requerimientos"
+        web_icon="biocreto_requerimientos,static/description/icon.svg"
+        action="action_requerimiento_categoria_tablero"
+        groups="group_requerimiento_solicitante"
+        sequence="30"/>
+
+    <menuitem
+        id="requerimientos_menu_tablero"
+        parent="requerimientos_menu_root"
+        name="Tablero"
+        action="action_requerimiento_categoria_tablero"
+        sequence="1"/>
+
+    <menuitem
+        id="requerimientos_menu_mis_solicitudes"
+        parent="requerimientos_menu_root"
+        name="Mis solicitudes"
+        action="action_requerimiento_mis_solicitudes"
+        sequence="10"/>
+
+    <!-- A diferencia del nativo approvals (donde el menú "Manager" está abierto
+         a todos y solo se vacía por regla), aquí sí lleva groups. -->
+    <menuitem
+        id="requerimientos_menu_logistica"
+        parent="requerimientos_menu_root"
+        name="Logística"
+        groups="group_requerimiento_user"
+        sequence="20"/>
+
+    <menuitem
+        id="requerimientos_menu_por_revisar"
+        parent="requerimientos_menu_logistica"
+        name="Solicitudes por revisar"
+        action="action_requerimiento_por_revisar"
+        groups="group_requerimiento_user"
+        sequence="10"/>
+
+    <menuitem
+        id="requerimientos_menu_todas"
+        parent="requerimientos_menu_logistica"
+        name="Todas las solicitudes"
+        action="action_requerimiento_todas"
+        groups="group_requerimiento_user"
+        sequence="20"/>
+
+    <!-- === BIOCRETO CONSOLIDADO v1 — INICIO (bloque reversible) === -->
+    <menuitem
+        id="requerimientos_menu_consolidado"
+        parent="requerimientos_menu_logistica"
+        name="Consolidado"
+        action="action_abrir_consolidado"
+        groups="group_requerimiento_user"
+        sequence="30"/>
+    <!-- === BIOCRETO CONSOLIDADO v1 — FIN === -->
+
+    <menuitem
+        id="requerimientos_menu_config"
+        parent="requerimientos_menu_root"
+        name="Configuración"
+        groups="group_requerimiento_manager"
+        sequence="40"/>
+
+    <menuitem
+        id="requerimientos_menu_categorias"
+        parent="requerimientos_menu_config"
+        name="Categorías de solicitud"
+        action="action_requerimiento_categoria_config"
+        groups="group_requerimiento_manager"
+        sequence="10"/>
+
+    <menuitem
+        id="requerimientos_menu_productos"
+        parent="requerimientos_menu_config"
+        name="Productos"
+        action="product.product_template_action"
+        groups="group_requerimiento_manager"
+        sequence="30"/>
+
+</odoo>

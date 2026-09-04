@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+<!-- ─────────────────────────  Acciones  ─────────────────────────
+     Deben declararse ANTES del kanban: el %(xmlid)d se interpola al cargar
+     el XML (ir.model.data), no en runtime.
+-->
+
+    <record id="action_requerimiento_categoria_tablero" model="ir.actions.act_window">
+        <field name="name">Tablero</field>
+        <field name="path">requerimientos</field>
+        <field name="res_model">biocreto.requerimiento.categoria</field>
+        <field name="view_mode">kanban</field>
+    </record>
+
+    <record id="action_requerimiento_categoria_config" model="ir.actions.act_window">
+        <field name="name">Categorías de solicitud</field>
+        <field name="res_model">biocreto.requerimiento.categoria</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_requerimiento_por_categoria" model="ir.actions.act_window">
+        <field name="name">Solicitudes de la categoría</field>
+        <field name="res_model">biocreto.requerimiento</field>
+        <field name="view_mode">list,form,kanban</field>
+        <field name="domain">[('categoria_id', '=', active_id)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay solicitudes en esta categoría
+            </p>
+        </field>
+    </record>
+
+    <!-- Abre la configuración de la categoría en diálogo desde los tres
+         puntitos del tablero. Copiado de
+         approvals/views/approval_category_views.xml:113-127. -->
+    <record id="action_open_requerimiento_categoria" model="ir.actions.server">
+        <field name="name">Abrir categoría de requerimiento</field>
+        <field name="model_id" ref="model_biocreto_requerimiento_categoria"/>
+        <field name="state">code</field>
+        <field name="code">
+            action = {
+                "type": "ir.actions.act_window",
+                "res_model": "biocreto.requerimiento.categoria",
+                "views": [[False, "form"]],
+                "target": "new",
+                "res_id": records.id,
+                "name": "Configuración de la categoría",
+            }
+        </field>
+    </record>
+
+<!-- ─────────────────────────  Lista y búsqueda  ───────────────────────── -->
+
+    <record id="biocreto_requerimiento_categoria_view_list" model="ir.ui.view">
+        <field name="name">biocreto.requerimiento.categoria.view.list</field>
+        <field name="model">biocreto.requerimiento.categoria</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="sequence_code"/>
+                <field name="company_id" groups="base.group_multi_company" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="biocreto_requerimiento_categoria_view_search" model="ir.ui.view">
+        <field name="name">biocreto.requerimiento.categoria.search</field>
+        <field name="model">biocreto.requerimiento.categoria</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <separator/>
+                <filter name="archivadas" string="Archivadas" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+<!-- ─────────────────────────  Formulario  ───────────────────────── -->
+
+    <record id="biocreto_requerimiento_categoria_view_form" model="ir.ui.view">
+        <field name="name">biocreto.requerimiento.categoria.view.form</field>
+        <field name="model">biocreto.requerimiento.categoria</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <widget name="web_ribbon" title="Archivado"
+                        bg_color="text-bg-danger" invisible="active"/>
+                    <field name="image" widget="image" class="oe_avatar"
+                        options='{"preview_image": "image", "size": [80, 80]}'/>
+                    <div class="oe_title">
+                        <label for="name" string="Categoría de requerimiento"/>
+                        <h1>
+                            <field name="name" placeholder="ej. Aprovisionamiento"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <field name="description"/>
+                        <field name="automated_sequence"/>
+                        <field name="sequence_code" placeholder="ej. REQ"
+                            invisible="not automated_sequence"
+                            required="automated_sequence"
+                            help="El código final se arma como CÓDIGO-PLANTA-AÑO-0001, por ejemplo REQ-ECO-2026-0058. La planta y el año los agrega el sistema automáticamente."/>
+                        <field name="company_id" options="{'no_create': True}"
+                            groups="base.group_multi_company"/>
+                        <field name="active" invisible="1"/>
+                    </group>
+                    <notebook>
+                        <page string="Opciones" name="opciones">
+                            <group>
+                                <group string="Campos" name="campos">
+                                    <field name="requirer_document" string="Documento"
+                                        widget="radio" options="{'horizontal': true}"/>
+                                    <field name="has_partner" string="Contacto"
+                                        widget="radio" options="{'horizontal': true}"/>
+                                    <field name="has_date" string="Fecha"
+                                        widget="radio" options="{'horizontal': true}"/>
+                                    <field name="has_period" string="Periodo"
+                                        widget="radio" options="{'horizontal': true}"/>
+                                    <field name="has_product" string="Producto"
+                                        widget="radio" options="{'horizontal': true}"/>
+                                    <field name="has_quantity" string="Cantidad"
+                                        widget="radio" options="{'horizontal': true}"/>
+                                    <field name="has_amount" string="Importe"
+                                        widget="radio" options="{'horizontal': true}"/>
+                                    <field name="has_reference" string="Referencia"
+                                        widget="radio" options="{'horizontal': true}"/>
+                                    <field name="has_location" string="Ubicación"
+                                        widget="radio" options="{'horizontal': true}"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+<!-- ─────────────────────────  Tablero kanban  ───────────────────────── -->
+
+    <record id="biocreto_requerimiento_categoria_view_kanban" model="ir.ui.view">
+        <field name="name">biocreto.requerimiento.categoria.view.kanban</field>
+        <field name="model">biocreto.requerimiento.categoria</field>
+        <field name="arch" type="xml">
+            <kanban create="false" can_open="0" js_class="biocreto_requerimiento_categoria_kanban">
+                <field name="active"/>
+                <templates>
+                    <t t-name="menu" groups="biocreto_requerimientos.group_requerimiento_manager">
+                        <a t-if="widget.editable" role="menuitem" type="action"
+                           name="%(biocreto_requerimientos.action_open_requerimiento_categoria)d"
+                           class="dropdown-item">Editar</a>
+                        <a t-if="record.active.raw_value" role="menuitem" type="archive"
+                           class="dropdown-item">Archivar</a>
+                        <a t-if="!record.active.raw_value" role="menuitem" type="unarchive"
+                           class="dropdown-item">Desarchivar</a>
+                    </t>
+                    <t t-name="card" class="flex-row">
+                        <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger" invisible="active"/>
+                        <aside>
+                            <field name="image" widget="image" class="mt-2"/>
+                        </aside>
+                        <main class="ms-4">
+                            <field name="name" class="fw-bold fs-5"/>
+                            <field name="description" class="text-muted lh-1 mb-1 mt-1"/>
+                            <footer t-if="!selection_mode">
+                                <button type="object" class="btn btn-primary btn-sm"
+                                        name="create_solicitud">Nueva solicitud</button>
+                                <button type="action" class="btn btn-sm btn-secondary ms-auto"
+                                        name="%(biocreto_requerimientos.action_requerimiento_por_categoria)d"
+                                        groups="biocreto_requerimientos.group_requerimiento_user">Por revisar: <field name="solicitud_count"/></button>
+                            </footer>
+                        </main>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+</odoo>

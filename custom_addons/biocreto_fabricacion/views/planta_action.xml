@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Client action del Centro de control del plantero.
+        target="fullscreen" elimina navbar/breadcrumbs (recon A2/A8).
+        Dominio base: solo OFs abiertas de manufactura normal (recon A4).
+        Filtro por defecto "Hoy" removible.
+        Multi-compania: ir.rule nativa de mrp.production (recon E18).
+    -->
+    <record id="action_biocreto_planta" model="ir.actions.client">
+        <field name="name">Fabricacion</field>
+        <field name="tag">biocreto_planta</field>
+        <field name="target">fullscreen</field>
+        <field name="res_model">mrp.production</field>
+        <field name="context">{
+            'search_default_hoy': 1,
+            'search_view_ref': 'biocreto_fabricacion.view_biocreto_planta_search'
+        }</field>
+    </record>
+
+</odoo>

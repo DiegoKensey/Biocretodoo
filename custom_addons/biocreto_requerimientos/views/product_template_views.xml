@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        v19.0.1.6.0 — `biocreto_es_activo` se muda de product.category a
+        product.template. Aqui van las tres vistas: formulario, lista y
+        busqueda.
+
+        NO choca con biocreto_base.view_product_template_form_biocreto_fc
+        (prioridad 16), que ancla en //field[@name='categ_id'] dentro de la
+        pestana General. Esta ancla en la pestana Inventario: son ramas
+        distintas del arbol.
+    -->
+
+    <record id="product_template_form_view_biocreto_activo" model="ir.ui.view">
+        <field name="name">product.template.form.biocreto.activo</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <!--
+                Ancla REAL, verificada contra el arch combinado. Dos matices
+                que obligan a escribirla asi y no como //field[@name='volume']:
+
+                  · `volume` no es un <field> suelto dentro del <group>. Va
+                    envuelto en <div class="o_row" name="volume"> junto a
+                    volume_uom_name, precedido de su propio <label for>
+                    (product/views/product_views.xml:215-219). Anclar en el
+                    <field> meteria la casilla DENTRO de ese o_row, en la
+                    misma linea que "m³".
+
+                  · El <group> se llama `group_lots_and_weight`, no
+                    "logistics" (ese es el de product.category, que lo pone
+                    stock/views/product_views.xml:19). El string visible si
+                    es "Logistica".
+            -->
+            <xpath expr="//page[@name='inventory']//group[@name='group_lots_and_weight']/div[@name='volume']"
+                   position="after">
+                <field name="biocreto_es_activo"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="product_template_tree_view_biocreto_activo" model="ir.ui.view">
+        <field name="name">product.template.list.biocreto.activo</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view"/>
+        <field name="arch" type="xml">
+            <!-- Junto a Categoria a proposito: es el campo que la sustituye
+                 como fuente de verdad, y ayuda a la revision manual ver los
+                 dos a la vez. optional="hide" para no ensuciar la lista a
+                 quien no esta revisando. -->
+            <field name="categ_id" position="after">
+                <field name="biocreto_es_activo" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="product_template_search_view_biocreto_activo" model="ir.ui.view">
+        <field name="name">product.template.search.biocreto.activo</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            <filter name="filter_to_sell" position="after">
+                <separator/>
+                <filter string="Es activo" name="biocreto_es_activo"
+                        domain="[('biocreto_es_activo', '=', True)]"/>
+                <filter string="Es consumible" name="biocreto_es_consumible"
+                        domain="[('biocreto_es_activo', '=', False)]"/>
+            </filter>
+            <!-- El group by se cuelga del <group> nativo, sin crear uno
+                 nuevo: en v19 el <group> de agrupaciones no admite `expand`
+                 ni `string`, y dos <group> hermanos pintarian dos columnas
+                 separadas en el desplegable. -->
+            <filter name="group_by_categ_id" position="after">
+                <filter string="Es activo" name="group_by_biocreto_es_activo"
+                        context="{'group_by': 'biocreto_es_activo'}"/>
+            </filter>
+        </field>
+    </record>
+
+</odoo>
