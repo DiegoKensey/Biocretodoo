@@ -53,15 +53,15 @@
                                 <field name="biocreto_state_id"
                                        placeholder="Departamento"
                                        class="o_address_state"
-                                       options="{'no_open': True, 'no_create': True}"/>
+                                       options="{'no_open': True, 'no_create': True, 'no_create_edit': True}"/>
                                 <field name="biocreto_city_id"
                                        placeholder="Provincia"
                                        class="o_address_city"
-                                       options="{'no_open': True, 'no_create': True}"/>
+                                       options="{'no_open': True, 'no_create': True, 'no_create_edit': True}"/>
                                 <field name="biocreto_district_id"
                                        placeholder="Distrito"
                                        class="o_address_city"
-                                       options="{'no_open': True, 'no_create': True}"/>
+                                       options="{'no_open': True, 'no_create': True, 'no_create_edit': True}"/>
                             </div>
                             <!-- Geolocalización (obra): dos Float nativos
                                  (Lat: / Long:) + botón GPS via widget
@@ -278,7 +278,8 @@
                        invisible="biocreto_product_categ != 'Bombeo'">
                     <group>
                         <field name="biocreto_vehiculo_id"
-                               domain="biocreto_vehiculo_domain"/>
+                               domain="biocreto_vehiculo_domain"
+                               context="{'biocreto_vehiculo_label': 1}"/>
                         <field name="biocreto_tuberia_adicional"/>
                         <!-- v19.0.1.9.0: apunta a la linea de concreto de la
                              propia cotizacion. El dominio es computado (una
@@ -419,7 +420,8 @@
                        invisible="biocreto_product_categ != 'Bombeo'">
                     <group>
                         <field name="biocreto_vehiculo_id"
-                               domain="biocreto_vehiculo_domain"/>
+                               domain="biocreto_vehiculo_domain"
+                               context="{'biocreto_vehiculo_label': 1}"/>
                         <field name="biocreto_tuberia_adicional"/>
                         <!-- v19.0.1.9.0: apunta a la linea de concreto de la
                              propia cotizacion. El dominio es computado (una

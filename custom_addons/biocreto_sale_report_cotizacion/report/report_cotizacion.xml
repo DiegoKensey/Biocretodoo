@@ -573,8 +573,18 @@
                         <th style="width:10%;">Total S/</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <t t-foreach="o.biocreto_cot_lineas_concreto()" t-as="line">
+                <!-- v19.0.2.0.27: un <tbody> POR LINEA, no uno para toda la
+                     tabla. Dos razones, las dos verificadas:
+                       · `break-inside: avoid` sobre el tbody mantiene juntos
+                         el producto y su fila de detalle si la tabla llega a
+                         partirse entre paginas.
+                       · el zebrado pasa de `tr:nth-child(even)` a
+                         `tbody:nth-of-type(even)`, asi la fila de detalle
+                         comparte el tono de SU producto en vez de correr la
+                         alternancia. `thead` no cuenta: `nth-of-type` mira el
+                         tipo de elemento, y thead y tbody son tipos distintos.
+                     Varios <tbody> en una <table> es HTML valido. -->
+                <tbody t-foreach="o.biocreto_cot_lineas_concreto()" t-as="line">
                         <tr>
                             <td class="col-item"><span t-out="line_index + 1"/></td>
                             <td class="text-left"><span t-out="line.biocreto_estructura.name or ''"/></td>
@@ -588,7 +598,22 @@
                             <td class="text-right"><span t-out="'%.2f' % (line.price_unit or 0)"/></td>
                             <td class="text-right"><span t-out="o.biocreto_cot_money(line.price_subtotal)"/></td>
                         </tr>
-                    </t>
+                        <!-- Fila de detalle: solo si el vendedor escribio algo
+                             distinto del nombre del producto. Se compara contra
+                             `display_name` y NO contra `name` porque el `name` de
+                             la linea se autocompleta justo de ahi
+                             (product/models/product_product.py:893), corchetes de
+                             la referencia interna incluidos. Contra
+                             `product_id.name` se pintaria una fila espuria en todo
+                             producto con default_code. Se lee en el contexto del
+                             reporte, asi que idioma y `name` almacenado coinciden
+                             sin recomputar nada. -->
+                        <tr t-if="(line.name or '').strip() != (line.product_id.display_name or '').strip()" class="fila-detalle">
+                            <td class="col-item"/>
+                            <td colspan="6" class="text-left"><span t-out="line.name"/></td>
+                            <td class="text-right"/>
+                            <td class="text-right"/>
+                        </tr>
                 </tbody>
             </table>
             <div class="totals-section">
@@ -626,12 +651,12 @@
                         <th style="width:12%;">Total S/</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <t t-if="lineas_bombeo">
-                        <t t-foreach="lineas_bombeo" t-as="line">
+                <!-- Mismo criterio de <tbody> por linea que en la tabla A. -->
+                <t t-if="lineas_bombeo">
+                    <tbody t-foreach="lineas_bombeo" t-as="line">
                             <tr>
                                 <td class="col-item"><span t-out="line_index + 1"/></td>
-                                <td class="text-left"><span t-out="line.biocreto_vehiculo_id.display_name or line.product_id.display_name or ''"/></td>
+                                <td class="text-left"><span t-out="line.biocreto_vehiculo_id.with_context(biocreto_vehiculo_label_pdf=1).display_name or line.product_id.display_name or ''"/></td>
                                 <td>
                                     <t t-if="line.biocreto_tuberia_adicional"><span t-out="line.biocreto_tuberia_adicional"/></t>
                                     <t t-else="">—</t>
@@ -644,9 +669,18 @@
                                 <td class="text-right"><span t-out="'%.2f' % (line.price_unit or 0)"/></td>
                                 <td class="text-right"><span t-out="o.biocreto_cot_money(line.price_subtotal)"/></td>
                             </tr>
-                        </t>
-                    </t>
-                    <t t-else="">
+                            <!-- Fila de detalle. Misma comparacion que la tabla A;
+                                 aqui la columna descriptiva ya la ocupa el vehiculo,
+                                 asi que el `name` no tiene donde ir sin esta fila. -->
+                            <tr t-if="(line.name or '').strip() != (line.product_id.display_name or '').strip()" class="fila-detalle">
+                                <td class="col-item"/>
+                                <td colspan="4" class="text-left"><span t-out="line.name"/></td>
+                                <td class="text-right"/>
+                                <td class="text-right"/>
+                            </tr>
+                    </tbody>
+                </t>
+                <tbody t-else="">
                         <tr>
                             <td class="col-item">—</td>
                             <td class="text-left">—</td>
@@ -656,7 +690,6 @@
                             <td class="text-right">—</td>
                             <td class="text-right">—</td>
                         </tr>
-                    </t>
                 </tbody>
             </table>
             <div class="totals-section">
@@ -821,25 +854,51 @@
         -->
         <section class="pagina-2">
             <t t-call="biocreto_sale_report_cotizacion.cot_firmas_block"/>
+            <!-- ═══════════════════════════════════════════════════════
+                 Condiciones Generales (MENOR).
+
+                 Tres piezas, en este orden:
+                   1. Forma de pago  -> del termino de la orden
+                   2. Cuerpo         -> res.company, o el texto de siempre
+                   3. Vigencia       -> calculada de validity_date
+
+                 Las piezas 1 y 3 NO son editables: salen de la orden, no
+                 de la compania. Por eso viven aqui y no dentro del campo.
+                 El titulo tampoco: es hermano del <ul>, no lo contiene.
+
+                 `is_html_empty` cubre en una sola llamada el campo sin
+                 poblar y todas las formas de vacio que deja el editor
+                 (False, '', <p></p>, <p><br></p>, &amp;nbsp;) segun
+                 odoo/tools/mail.py:488. El motor de reportes la inyecta
+                 siempre en el contexto (ir_actions_report.py:1138).
+
+                 v19.0.2.0.24: el `t-else` de los SEIS bloques ya no
+                 lleva los <li> escritos. Llama a
+                 `res.company._biocreto_cot_texto_base(campo)`, que
+                 devuelve Markup con el mismo texto que alimenta el
+                 `default` del campo y el sembrado de las companias
+                 existentes. Fuente unica en
+                 biocreto_sale_extension/models/cot_textos.py; aqui no
+                 hay ninguna copia que se pueda desincronizar.
+
+                 El `t-else` se queda aunque los campos vengan poblados
+                 de fabrica: es la red de seguridad para el hueco entre
+                 crear el campo y sembrarlo, y para que alguien vacie el
+                 campo en produccion.
+                 ═══════════════════════════════════════════════════════ -->
             <div class="notas">
                 <div class="notas-title">Condiciones Generales</div>
                 <ul>
-                    <li>Esta cotización tiene una vigencia de <b><span t-out="o.biocreto_cot_vigencia_dias()"/> días calendario</b> a partir de la fecha de emisión.</li>
-                    <li>Los precios incluyen IGV (18%) y son válidos exclusivamente para el volumen y resistencia indicados.</li>
-                    <!-- Forma de pago: sale del `note` del termino de la
-                         orden. Sin termino, o con el note vacio, el <li>
-                         entero desaparece: sin texto por defecto y sin
-                         vineta huerfana. `is_html_empty` cubre en una sola
-                         llamada los dos casos y todas las formas de vacio
-                         del editor Html (False, '', <p></p>, <p><br></p>,
-                         &amp;nbsp;) segun odoo/tools/mail.py:488. El motor de
-                         reportes la inyecta siempre en el contexto QWeb
-                         (base/models/ir_actions_report.py:1138). -->
                     <li t-if="not is_html_empty(o.payment_term_id.note)">
                         <t t-call="biocreto_sale_report_cotizacion.cot_pago_texto"/>
                     </li>
-                    <li>La programación del despacho requiere confirmación con al menos <b>48 horas</b> de anticipación.</li>
-                    <li>Las condiciones de aceptación de probetas se rigen por la NTP 339.033, NTP 339.034 y NTP 339.036.</li>
+                    <t t-if="not is_html_empty(o.company_id.biocreto_cot_menor_condiciones)">
+                        <t t-out="o.company_id.biocreto_cot_menor_condiciones"/>
+                    </t>
+                    <t t-else="">
+                        <t t-out="o.company_id._biocreto_cot_texto_base('biocreto_cot_menor_condiciones')"/>
+                    </t>
+                    <li>Esta cotización tiene una vigencia de <b><span t-out="o.biocreto_cot_vigencia_dias()"/> días calendario</b> a partir de la fecha de emisión.</li>
                 </ul>
             </div>
         </section>
@@ -874,12 +933,16 @@
         <!-- Grid 2x2 (textos estaticos como en el HTML de referencia) -->
         <div class="info-grid">
             <div class="info-card">
+                <!-- Cuerpo editable + vigencia calculada al final. -->
                 <h3 class="info-card-title">Información Complementaria</h3>
                 <ul>
-                    <li>Tiempo de espera en obra: 10 a 20 minutos</li>
-                    <li>Volumen mínimo de suministro: 5 m³</li>
+                    <t t-if="not is_html_empty(o.company_id.biocreto_cot_mayor_info_complementaria)">
+                        <t t-out="o.company_id.biocreto_cot_mayor_info_complementaria"/>
+                    </t>
+                    <t t-else="">
+                        <t t-out="o.company_id._biocreto_cot_texto_base('biocreto_cot_mayor_info_complementaria')"/>
+                    </t>
                     <li>Vigencia de la cotización: <span t-out="o.biocreto_cot_vigencia_dias()"/> días calendario</li>
-                    <li>Atenciones bajo el volumen mínimo aplican flete de transporte por viaje</li>
                 </ul>
             </div>
             <div class="info-card">
@@ -904,30 +967,37 @@
                          Partir esta linea meteria saltos y sangrias dentro
                          de la frase. Por eso va en una sola linea larga. -->
                     <li>Moneda y pago: Soles (S/)<t t-if="not is_html_empty(o.payment_term_id.note)"> — <t t-call="biocreto_sale_report_cotizacion.cot_pago_texto"/></t></li>
-                    <li>Anticipación: 72 horas con pre-programación semanal</li>
-                    <li>Flete adicional: atenciones ≤ 5 m³ con cargo extra por viaje</li>
-                    <li>Disponibilidad: lunes a sábado · nocturno y feriados con recargo</li>
+                    <t t-if="not is_html_empty(o.company_id.biocreto_cot_mayor_terminos)">
+                        <t t-out="o.company_id.biocreto_cot_mayor_terminos"/>
+                    </t>
+                    <t t-else="">
+                        <t t-out="o.company_id._biocreto_cot_texto_base('biocreto_cot_mayor_terminos')"/>
+                    </t>
                 </ul>
             </div>
             <div class="info-card">
+                <!-- Bloque 100% editable: no lleva ninguna pieza calculada.
+                     Ojo al editarlo: cita normas tecnicas (ASTM, NTP, RNE)
+                     con valor contractual. -->
                 <h3 class="info-card-title">Especificaciones Técnicas</h3>
                 <ul>
-                    <li>Cemento: Portland ASTM C-150 Tipo I — Andino</li>
-                    <li>Agua: cumple ASTM C-1602 para concreto</li>
-                    <li>Arena gruesa: Río Mantaro (Matahuasi) y cantera Orcotuna</li>
-                    <li>Piedra chancada: Río Mantaro, Matahuasi</li>
-                    <li>Aditivos: Fluxcrete 1000, Fluxcrete 31RF, Plastcon RF20</li>
-                    <li>Norma: NTP 339.114 y RNE 0.60 Concreto Armado</li>
+                    <t t-if="not is_html_empty(o.company_id.biocreto_cot_mayor_especificaciones)">
+                        <t t-out="o.company_id.biocreto_cot_mayor_especificaciones"/>
+                    </t>
+                    <t t-else="">
+                        <t t-out="o.company_id._biocreto_cot_texto_base('biocreto_cot_mayor_especificaciones')"/>
+                    </t>
                 </ul>
             </div>
             <div class="info-card servicios">
                 <h3 class="info-card-title">Servicios Incluidos</h3>
                 <ul>
-                    <li>Máquina vibradora para compactado (opcional)</li>
-                    <li>Probetas NTP 339.114 — 3 testigos cada 40 m³</li>
-                    <li>Prueba de SLUMP en obra</li>
-                    <li>Rotura a 28 días + certificación de probetas</li>
-                    <li>Asesoría técnica en obra</li>
+                    <t t-if="not is_html_empty(o.company_id.biocreto_cot_mayor_servicios)">
+                        <t t-out="o.company_id.biocreto_cot_mayor_servicios"/>
+                    </t>
+                    <t t-else="">
+                        <t t-out="o.company_id._biocreto_cot_texto_base('biocreto_cot_mayor_servicios')"/>
+                    </t>
                 </ul>
             </div>
         </div>
@@ -995,15 +1065,21 @@
 
         <!-- Banda: Capacidad Operativa (texto estatico FR-10) -->
         <div class="info-band">
+            <!-- El <ul class="capacidad-list"> se queda AQUI, en el QWeb, y
+                 el campo aporta solo lo de dentro. Es el unico bloque cuyo
+                 SCSS cuelga de una clase propia (`columns: 2` en
+                 report_cotizacion.scss:773) en vez de heredar de
+                 `.info-band`: si el contenedor viniera del campo, el
+                 usuario no podria escribir esa clase y el bloque perderia
+                 las dos columnas. -->
             <h3 class="info-band-title">Capacidad Operativa</h3>
             <ul class="capacidad-list">
-                <li>03 plantas semiautomatizadas — Cajas, Concepción, Comuneros</li>
-                <li>03 plantas móviles para obra</li>
-                <li>12 camiones mixer de concreto</li>
-                <li>03 bombas telescópicas — 32 m, 38 m, 47 m</li>
-                <li>02 volquetes · 03 cargadores frontales · 01 retroexcavadora</li>
-                <li>50 m³/hora de capacidad (sede Cajas)</li>
-                <li>Laboratorio equipado · staff técnico especializado</li>
+                <t t-if="not is_html_empty(o.company_id.biocreto_cot_mayor_capacidad)">
+                    <t t-out="o.company_id.biocreto_cot_mayor_capacidad"/>
+                </t>
+                <t t-else="">
+                    <t t-out="o.company_id._biocreto_cot_texto_base('biocreto_cot_mayor_capacidad')"/>
+                </t>
             </ul>
         </div>
         </section>

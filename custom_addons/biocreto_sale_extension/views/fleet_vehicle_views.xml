@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        v19.0.1.13.0: tamano de brazo hidraulico en el formulario de
+        vehiculo, debajo de Color.
+
+        POR QUE EL XPATH VA ACOTADO A page_model
+        ========================================
+        `fleet/views/fleet_vehicle_views.xml` contiene otros cinco usos
+        de "color" (:86, :208, :278, :305, :574): cuatro son el
+        options="{'color_field': 'color'}" de los tags y el ultimo es el
+        widget color_picker del estado. Ninguno es este. En el arch
+        COMBINADO del form vivo solo queda uno, pero el xpath se acota
+        igual: si manana alguna herencia de account_fleet, hr_fleet o
+        documents_fleet mete otro, este xpath sigue apuntando al que es.
+
+        POR QUE biocreto_es_bomba VA invisible="1" Y NO SE COMPARA LA
+        CATEGORIA DIRECTAMENTE
+        ======================================================
+        Las categorias de flota no tienen xmlid: las creo el usuario por
+        interfaz. Un invisible="category_id != 1" ataria esta vista a los
+        ids de una base concreta. El booleano compara contra
+        `company_id.biocreto_bomba_categ_id`, que es el parametro que ya
+        gobierna el filtro del desplegable en la linea de venta.
+
+        Al ser compute NO almacenado, se recalcula en el onchange de
+        category_id: el campo aparece y desaparece sin guardar.
+    -->
+    <record id="fleet_vehicle_view_form_biocreto" model="ir.ui.view">
+        <field name="name">fleet.vehicle.form.biocreto.brazo</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='page_model']//field[@name='color']" position="after">
+                <field name="biocreto_es_bomba" invisible="1"/>
+                <field name="biocreto_brazo_m" invisible="not biocreto_es_bomba"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

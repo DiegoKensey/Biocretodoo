@@ -3,6 +3,7 @@ from . import biocreto_tipo_cemento
 from . import biocreto_huso_tmn
 from . import biocreto_slump_format
 from . import res_company
+from . import fleet_vehicle
 from . import mrp_bom
 from . import sale_order
 from . import sale_order_line

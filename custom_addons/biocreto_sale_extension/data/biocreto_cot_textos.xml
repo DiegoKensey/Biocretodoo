@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        v19.0.1.11.0: siembra de los seis textos de cotizacion en las
+        companias que YA existen.
+
+        Por que <function> y no un <record> por compania:
+        - Los <record> necesitan un xmlid por registro, y las companias
+          las crea el usuario; no hay xmlid que apuntar.
+        - El metodo lee `TEXTOS_COT` (models/cot_textos.py), el mismo
+          diccionario del que salen los `default` de los campos y el
+          `t-else` del QWeb. Un <record> obligaria a copiar los textos
+          aqui: cuarta copia.
+
+        Por que <function> y no solo el post_init_hook:
+        - `post_init_hook` corre en install, NO en upgrade
+          (odoo/modules/loading.py). El caso operativo real de este
+          modulo es el `-u`; sin esto, la compania existente nunca
+          recibiria los textos.
+        - Las <function> de data se reejecutan en cada `-i` y cada `-u`,
+          asi que la cobertura queda completa. Mismo patron que
+          data/biocreto_saleorder_print_name.xml.
+
+        Idempotente y no destructivo: el metodo solo escribe donde
+        `is_html_empty` dice que el campo esta vacio, asi que un texto
+        personalizado sobrevive a todos los `-u` que vengan.
+
+        SIN noupdate: con noupdate="1" la <function> se saltaria en modo
+        update (odoo/tools/convert.py, _tag_function) y perderiamos justo
+        el caso que queremos cubrir.
+    -->
+    <function model="res.company" name="_biocreto_cot_sembrar_textos"/>
+
+</odoo>

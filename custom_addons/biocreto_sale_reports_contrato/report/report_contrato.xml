@@ -460,22 +460,33 @@
                                 <th>Total S/</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <t t-if="lineas_concreto">
-                                <t t-foreach="lineas_concreto" t-as="line">
+                        <!-- v19.0.1.7.0: un <tbody> POR LINEA. El
+                             `break-inside: avoid` que este archivo ya tenia esta
+                             sobre `tr` (report_contrato.scss:157): mantiene entera
+                             una fila, pero no impediria que la fila de detalle se
+                             fuera a la pagina siguiente separada de su producto.
+                             Agrupando cada par en su propio <tbody> y poniendo el
+                             avoid tambien ahi, el par viaja junto. -->
+                        <t t-if="lineas_concreto">
+                            <tbody t-foreach="lineas_concreto" t-as="line">
                                     <tr>
                                         <td><t t-out="line_index + 1"/></td>
                                         <td><t t-out="line.biocreto_estructura.name or '—'"/></td>
-                                        <td><t t-out="line.product_id.biocreto_fc_resistencia or line.product_id.name or '—'"/></td>
+                                        <td><t t-out="line.product_id.biocreto_fc_resistencia or '—'"/></td>
                                         <td><t t-out="o.biocreto_cot_money(line.product_uom_qty)"/></td>
                                         <td><t t-out="o.biocreto_cot_money(line.price_unit)"/></td>
                                         <td><t t-out="o.biocreto_cot_money(line.price_subtotal)"/></td>
                                     </tr>
-                                </t>
-                            </t>
-                            <t t-else="">
+                                    <tr t-if="(line.name or '').strip() != (line.product_id.display_name or '').strip()" class="fila-detalle">
+                                        <td/>
+                                        <td colspan="3"><t t-out="line.name"/></td>
+                                        <td/>
+                                        <td/>
+                                    </tr>
+                            </tbody>
+                        </t>
+                        <tbody t-else="">
                                 <tr class="empty-row"><td colspan="6">Sin lineas de concreto</td></tr>
-                            </t>
                         </tbody>
                     </table>
 
@@ -501,22 +512,27 @@
                                 <th>Total S/</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <t t-if="lineas_bombeo">
-                                <t t-foreach="lineas_bombeo" t-as="line">
+                        <!-- Mismo criterio de <tbody> por linea que la tabla A. -->
+                        <t t-if="lineas_bombeo">
+                            <tbody t-foreach="lineas_bombeo" t-as="line">
                                     <tr>
                                         <td><t t-out="line_index + 1"/></td>
-                                        <td><t t-out="line.biocreto_vehiculo_id.display_name or line.product_id.display_name or '—'"/></td>
+                                        <td><t t-out="line.biocreto_vehiculo_id.with_context(biocreto_vehiculo_label_pdf=1).display_name or line.product_id.display_name or '—'"/></td>
                                         <td><t t-out="line.biocreto_slump_bombeable_line_id.biocreto_slump_rango or ''"/></td>
                                         <td><t t-out="o.biocreto_cot_money(line.product_uom_qty)"/></td>
                                         <td><t t-out="o.biocreto_cot_money(line.price_unit)"/></td>
                                         <td><t t-out="o.biocreto_cot_money(line.price_subtotal)"/></td>
                                     </tr>
-                                </t>
-                            </t>
-                            <t t-else="">
+                                    <tr t-if="(line.name or '').strip() != (line.product_id.display_name or '').strip()" class="fila-detalle">
+                                        <td/>
+                                        <td colspan="3"><t t-out="line.name"/></td>
+                                        <td/>
+                                        <td/>
+                                    </tr>
+                            </tbody>
+                        </t>
+                        <tbody t-else="">
                                 <tr class="empty-row"><td colspan="6">—</td></tr>
-                            </t>
                         </tbody>
                     </table>
 

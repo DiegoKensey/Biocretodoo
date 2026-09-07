@@ -400,8 +400,43 @@ main.biocreto-cot {
         background: #f5f5f5;
         color: #58595b;
     }
-    tbody tr:nth-child(even) td:not(.col-item) {
+    // v19.0.2.0.27: el zebrado cuenta <tbody>, no <tr>.
+    // El QWeb emite un <tbody> por linea de venta, asi que la fila de
+    // detalle comparte el tono de SU producto en lugar de correr la
+    // alternancia un puesto. `nth-of-type` mira el tipo de elemento y
+    // `thead` es otro tipo, asi que no desplaza la cuenta: el primer
+    // producto sigue saliendo en blanco, el segundo en gris, igual que
+    // antes de este cambio.
+    tbody:nth-of-type(even) td:not(.col-item) {
         background: #fafafa;
+    }
+
+    // Mantiene juntos el producto y su fila de detalle si la tabla
+    // llegara a partirse entre paginas. Hoy no se parte (la tabla cabe
+    // entera en la pagina 1), pero el par no debe poder separarse.
+    tbody {
+        break-inside: avoid;
+    }
+
+    // ---- Fila de detalle (el `name` de la linea de venta) ----
+    // MISMO grosor que la fila de producto: no se toca `font-size` (8.5pt
+    // heredado de la tabla), ni el `padding` VERTICAL (5pt), ni el borde.
+    // Solo cambia la horizontal: alineacion a la izquierda y un sangrado
+    // que la lee como continuacion de la linea de arriba.
+    //
+    // `white-space: pre-line` porque `sale.order.line.name` es un
+    // fields.Text (sale/models/sale_order_line.py:121) y admite saltos de
+    // linea. Sin esto el navegador los colapsaria a un espacio y el texto
+    // saldria corrido. `pre-line` honra el salto y ademas deja envolver,
+    // que es justo lo que hace falta en una celda estrecha; `pre` o
+    // `nowrap` desbordarian en horizontal y eso ya sabemos lo que provoca.
+    // Mismo recurso que ya usa `biocreto_compras_reporte` en su
+    // `.prod-desc`, verificado en el bundle compilado.
+    tbody tr.fila-detalle td {
+        text-align: left;
+        padding-left: 14pt;
+        white-space: pre-line;
+        color: #4a4a4a;
     }
 }
 
@@ -692,6 +727,23 @@ main.biocreto-cot {
     margin: 0;
     display: inline;
 }
+// v19.0.2.0.23: los seis bloques de texto de la cotizacion pasan a venir
+// de res.company (campos Html). El saneador de fields.Html envuelve en
+// <p> todo lo que el usuario escriba sin etiquetas, y ese <p> puede caer
+// FUERA de cualquier <li> -- la regla de arriba solo alcanza los de
+// dentro. Sin esto, cada parrafo del usuario abriria con el margen de
+// bloque por defecto del motor y separaria los bloques del resto.
+//
+// Aqui NO se pone `display: inline`: fuera de una vinieta un parrafo
+// SI debe abrir renglon propio. Solo se anula el margen.
+//
+// Menor especificidad que `.info-card li p` (2 clases + 1 elemento
+// contra 2 clases + 2), asi que no le pisa el `display: inline`
+// independientemente del orden en el archivo.
+.biocreto-cot .info-card p,
+.biocreto-cot .info-band p {
+    margin: 0;
+}
 .biocreto-cot .info-card li::before,
 .biocreto-cot .info-band ul.banda-list li::before {
     content: "▸";
@@ -769,6 +821,30 @@ main.biocreto-cot {
     }
 }
 
+// v19.0.2.0.24: el <ul> que el editor mete dentro del nuestro.
+//
+// El campo `biocreto_cot_mayor_capacidad` de res.company guarda lo que
+// produce el editor de texto enriquecido, que para una lista de vinetas
+// es `<ul><li>...</li></ul>`. Ese <ul> cae DENTRO del
+// `<ul class="capacidad-list">` que pone el QWeb, y el PDF salia con dos
+// vinetas por item: `◦ ▸CAP uno`.
+//
+// Por que aqui si y en las cuatro tarjetas del grid no: la regla de las
+// tarjetas (`.biocreto-cot .info-card ul`, :651) es DESCENDIENTE y
+// alcanza tanto al <ul> de fuera como al anidado. La de esta banda
+// cuelga de la clase concreta `.capacidad-list`, asi que al anidado no
+// le llegaba nada: conservaba su `list-style` nativo (circulo de segundo
+// nivel) y encima recibia el `▸` del ::before de los <li>.
+//
+// Se anula tambien margin y padding porque el <ul> anidado los traeria
+// del motor y desplazaria la columna. No se toca `columns: 2`: vive en
+// el <ul> de fuera, que es el que reparte, y sigue funcionando.
+.biocreto-cot .capacidad-list ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
 // Capacidad Operativa: 2 columnas para aprovechar el ancho
 .biocreto-cot .capacidad-list {
     margin: 0;
@@ -776,6 +852,35 @@ main.biocreto-cot {
     list-style: none;
     columns: 2;
     column-gap: 22pt;
+    // v19.0.2.0.25: RED DE SEGURIDAD contra la reduccion global del PDF.
+    //
+    // Este bloque multicolumna cabe en la pagina SOLO con las metricas de
+    // Century Gothic. Medido: con cualquier otra familia (Trebuchet MS,
+    // Verdana, DejaVu, URW Gothic, Times o el sans-serif generico) el
+    // contenedor se ensancha de 794 px a 1130,67 px -- 299 mm -- y
+    // PlutoPrint, que no recorta ni parte, REDUCE EL DOCUMENTO ENTERO al
+    // 70,2 % para encajarlo en los 210 mm de la hoja.
+    //
+    // El sintoma no se parece a su causa: sale mas pequenio todo el PDF,
+    // incluidos la cabecera, el codigo de formato y el grosor de los
+    // bordes (0,750 pt -> 0,527 pt). El `font-size` del CSS no cambia: la
+    // escala vive en la matriz `Tm` del PDF, asi que medir el tamanio
+    // declarado no la detecta. Costo dos recons encontrarla.
+    //
+    // `overflow: hidden` acota el bloque al ancho disponible y el factor
+    // vuelve a 1,00000 conservando `columns: 2` y las 2 paginas (medido).
+    // Convierte un fallo GLOBAL e INVISIBLE -- todo el documento al 70 % --
+    // en uno LOCAL y VISIBLE: como mucho se recorta una vinieta de este
+    // bloque, y eso se ve.
+    //
+    // NO sustituye a tener Century Gothic instalada en el servidor: es la
+    // red debajo. Y NO se cambia por `columns: auto`, que tambien elimina
+    // el desborde pero lleva el reporte a 3 paginas.
+    //
+    // biocreto_pdf_engine registra ahora el ancho del layout en cada
+    // render; si esto vuelve a pasar, sale en el log como DESBORDE
+    // HORIZONTAL en vez de costar otro recon.
+    overflow: hidden;
 
     li {
         font-size: 8.5pt;
@@ -818,6 +923,27 @@ main.biocreto-cot {
         margin: 0;
         padding-left: 14pt;
     }
+    // v19.0.2.0.24: el mismo <ul> anidado que obligo a la regla de
+    // `.capacidad-list`, aqui en el bloque de Condiciones Generales del
+    // menor. `biocreto_cot_menor_condiciones` guarda lo que produce el
+    // editor (`<ul><li>...</li></ul>`) y ese <ul> cae dentro del que pone
+    // el QWeb.
+    //
+    // Sin esto la regla de arriba se aplicaba DOS veces (14pt + 14pt de
+    // sangria) y, sobre todo, el navegador daba al <ul> anidado la vineta
+    // de segundo nivel: las tres condiciones del cuerpo salian con `◦`
+    // mientras la de pago y la de vigencia, que son <li> directos del
+    // QWeb, seguian con `•`. Tres vinetas de un tipo y dos de otro en la
+    // misma lista.
+    //
+    // Aqui no se puede copiar la solucion de las tarjetas
+    // (`list-style: none`): este bloque NO tiene ::before propio, la
+    // vineta es la nativa de la lista. Por eso se restaura `disc` en vez
+    // de quitarla.
+    ul ul {
+        padding-left: 0;
+        list-style: disc;
+    }
     li {
         margin: 1.5pt 0;
     }
@@ -831,5 +957,11 @@ main.biocreto-cot {
     li p {
         margin: 0;
         display: inline;
+    }
+    // Mismo caso que en .info-card: el <p> del campo Html de la compania
+    // cuando cae fuera de un <li>. Sin `display: inline`, ver el
+    // comentario junto a `.info-card p`.
+    p {
+        margin: 0;
     }
 }

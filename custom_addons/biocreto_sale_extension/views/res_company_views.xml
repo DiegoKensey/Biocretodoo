@@ -17,4 +17,70 @@
         </field>
     </record>
 
+    <!-- ══════════════════════════════════════════════════════════════
+         Pestana "Cotizacion": los seis bloques de texto de los reportes
+         FR-09 (menor) y FR-10 (mayor), editables por planta.
+
+         `position="inside"` sobre //notebook deja la pestana DESPUES de
+         "Sucursales", que son las dos unicas paginas del form nativo
+         (base/views/res_company_views.xml:28 y :56). Es el patron que
+         usa el core para lo mismo, p.ej.
+         account_inter_company_rules/views/res_company_views.xml:9.
+
+         SIN `groups=`, ni en la pagina ni en los campos. El ACL de
+         res.company ya deja la escritura solo a base.group_erp_manager
+         (unico grupo con perm_write, verificado en ir.model.access);
+         quien no lo tenga vera la pestana en solo lectura. Anadir
+         `groups=` unicamente RESTRINGE mas: no puede dar acceso a nadie.
+
+         SIN `widget=`. En v19 un fields.Html trae ya su editor de texto
+         enriquecido; el core lo pinta desnudo (account/views/
+         account_view.xml, campo `note` de account.payment.term) y no hay
+         ni una vista en toda la base que declare widget="html".
+         ══════════════════════════════════════════════════════════════ -->
+    <record id="view_res_company_form_biocreto_cotizacion" model="ir.ui.view">
+        <field name="name">res.company.form.biocreto.cotizacion</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Cotización" name="biocreto_cotizacion">
+
+                    <!-- Etiqueta encima y campo a todo el ancho, fuera de
+                         <group>: dentro de un grupo la etiqueta va a la
+                         izquierda y al editor le queda media columna, que
+                         para redactar una lista de vinetas es incomodo. -->
+                    <div class="o_horizontal_separator mt-4 mb-3 text-uppercase fw-bolder small">Menor envergadura</div>
+
+                    <label for="biocreto_cot_menor_condiciones" class="fw-bold"/>
+                    <field name="biocreto_cot_menor_condiciones" class="mb-4"
+                           placeholder="Condiciones Generales. Vacío = se imprime el texto por defecto del sistema."/>
+
+                    <div class="o_horizontal_separator mt-4 mb-3 text-uppercase fw-bolder small">Mayor envergadura</div>
+
+                    <label for="biocreto_cot_mayor_info_complementaria" class="fw-bold"/>
+                    <field name="biocreto_cot_mayor_info_complementaria" class="mb-4"
+                           placeholder="Información Complementaria. Vacío = se imprime el texto por defecto del sistema."/>
+
+                    <label for="biocreto_cot_mayor_terminos" class="fw-bold"/>
+                    <field name="biocreto_cot_mayor_terminos" class="mb-4"
+                           placeholder="Términos y Condiciones. Vacío = se imprime el texto por defecto del sistema."/>
+
+                    <label for="biocreto_cot_mayor_especificaciones" class="fw-bold"/>
+                    <field name="biocreto_cot_mayor_especificaciones" class="mb-4"
+                           placeholder="Especificaciones Técnicas. Vacío = se imprime el texto por defecto del sistema."/>
+
+                    <label for="biocreto_cot_mayor_servicios" class="fw-bold"/>
+                    <field name="biocreto_cot_mayor_servicios" class="mb-4"
+                           placeholder="Servicios Incluidos. Vacío = se imprime el texto por defecto del sistema."/>
+
+                    <label for="biocreto_cot_mayor_capacidad" class="fw-bold"/>
+                    <field name="biocreto_cot_mayor_capacidad" class="mb-4"
+                           placeholder="Capacidad Operativa. Vacío = se imprime el texto por defecto del sistema."/>
+
+                </page>
+            </xpath>
+        </field>
+    </record>
+
 </odoo>

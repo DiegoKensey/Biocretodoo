@@ -155,6 +155,11 @@ main.biocreto-contrato {
 .biocreto-contrato ol.clausula-list > li { break-inside: avoid; }
 .biocreto-contrato .firmas { break-inside: avoid; }
 .biocreto-contrato table.tabla-lineas tr { break-inside: avoid; }
+// v19.0.1.7.0: el avoid de arriba es POR FILA y no impide que la fila de
+// detalle acabe en la pagina siguiente, separada de su producto. El QWeb
+// agrupa cada par producto+detalle en su propio <tbody>; este avoid es el
+// que los mantiene juntos.
+.biocreto-contrato table.tabla-lineas tbody { break-inside: avoid; }
 
 // --------- Tipografia interna del cuerpo ---------
 .biocreto-contrato h1,
@@ -235,6 +240,18 @@ main.biocreto-contrato {
     text-align: right;
     font-weight: bold;
     white-space: nowrap;
+}
+// ---- Fila de detalle (el `name` de la linea de venta) ----
+// Especificidad 0,4,3: gana al `tbody td { text-align: center }` de
+// .cuentas-table (0,3,3), que si no centraria el texto.
+// Mismo `font-size` y mismo padding VERTICAL que la fila de producto; solo
+// cambia la horizontal. `pre-line` por lo mismo que en la cotizacion: el
+// campo es fields.Text y puede traer saltos de linea.
+.biocreto-contrato table.cuentas-table.tabla-lineas tr.fila-detalle td {
+    text-align: left;
+    padding-left: 14pt;
+    white-space: pre-line;
+    color: #4a4a4a;
 }
 .biocreto-contrato table.cuentas-table.tabla-lineas .empty-row td {
     color: #999;

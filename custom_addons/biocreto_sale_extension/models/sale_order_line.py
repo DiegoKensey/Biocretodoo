@@ -20,28 +20,51 @@ class SaleOrderLine(models.Model):
     )
 
     # ─────────────────────────────────────────────────────────────────
-    # Campos de CONCRETO — ahora Many2one a catálogos por empresa.
-    # check_company=True garantiza que el valor pertenezca a la misma
-    # empresa que el sale.order.line (vía order_id.company_id).
-    # El domain replica esa misma restricción en la UI.
+    # Campos de CONCRETO — Many2one a los catálogos maestros.
+    # v19.0.1.12.0: los tres maestros pasaron a ser GLOBALES y perdieron
+    # su `company_id`. Con ello se cae aquí `check_company=True` y el
+    # `domain` por compañía. No es una relajación opcional: es obligado.
+    #
+    # POR QUÉ `check_company` YA NO PUEDE QUEDARSE
+    # -------------------------------------------
+    # El ORM arma la comprobación con `_check_company_domain` del
+    # comodelo (odoo/orm/models.py):
+    #
+    #     return Domain('company_id', 'in', to_record_ids(companies) + [False])
+    #
+    # es decir, siempre consulta `company_id` EN EL COMODELO. Contra un
+    # modelo que ya no tiene ese campo, la evaluación revienta. Verificado
+    # en shell contra dos comodelos sin `company_id`:
+    #
+    #     uom.uom      -> ValueError: Invalid field uom.uom.company_id
+    #     res.country  -> ValueError: Invalid field res.country.company_id
+    #
+    # (El `+ [False]` de esa misma línea es lo que hace que un registro
+    # con `company_id = False` pase siempre la validación; por eso la
+    # comprobación es inofensiva mientras el campo EXISTE, y letal cuando
+    # no existe.)
+    #
+    # El `domain` se va por lo mismo: `[('company_id', '=', company_id)]`
+    # se evalúa contra el comodelo y dejaría el desplegable vacío o en
+    # error. Sin él, los tres desplegables muestran la lista completa,
+    # que es justo lo que se busca.
+    #
+    # Lo que NO cambia: la obligatoriedad condicional de la vista
+    # (`biocreto_product_categ == 'Concreto'`) ni la validación de
+    # `_biocreto_validate_before_confirm`. Los tres siguen siendo
+    # obligatorios para confirmar una línea de Concreto.
     # ─────────────────────────────────────────────────────────────────
     biocreto_estructura = fields.Many2one(
         comodel_name='biocreto.estructura',
         string="Estructura",
-        check_company=True,
-        domain="[('company_id', '=', company_id)]",
     )
     biocreto_tipo_cemento = fields.Many2one(
         comodel_name='biocreto.tipo.cemento',
         string="Tipo de cemento",
-        check_company=True,
-        domain="[('company_id', '=', company_id)]",
     )
     biocreto_huso_tmn = fields.Many2one(
         comodel_name='biocreto.huso.tmn',
         string="Huso TMN",
-        check_company=True,
-        domain="[('company_id', '=', company_id)]",
     )
     # ─────────────────────────────────────────────────────────────────
     # v19.0.1.8.0: el slump del CONCRETO pasa de valor único a RANGO.

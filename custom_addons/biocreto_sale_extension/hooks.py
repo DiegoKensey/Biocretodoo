@@ -91,6 +91,26 @@ def _biocreto_set_saleorder_print_name(env):
     )
 
 
+# ──────────────────────────────────────────────────────────────────────
+# Siembra de los textos de cotizacion en res.company (v19.0.1.11.0).
+#
+# Mismo patron de doble cobertura que el bloque de arriba, y por la misma
+# razon: `post_init_hook` solo corre en install
+# (odoo/modules/loading.py:240-243), asi que el `-u` lo cubre un
+# <function> en data/biocreto_cot_textos.xml. Los dos caminos llaman al
+# MISMO metodo de res.company, que a su vez lee del MISMO diccionario que
+# alimenta los `default` de los campos y el `t-else` del QWeb
+# (models/cot_textos.py).
+#
+# Idempotente y no destructivo: solo escribe donde `is_html_empty` dice
+# que el campo esta vacio.
+# ──────────────────────────────────────────────────────────────────────
+def _biocreto_sembrar_textos_cotizacion(env):
+    """Puebla los seis campos de cotizacion de todas las companias."""
+    env['res.company']._biocreto_cot_sembrar_textos()
+
+
 def post_init_hook(env):
     """Hook que corre cuando el modulo se INSTALA (no en upgrades)."""
     _biocreto_set_saleorder_print_name(env)
+    _biocreto_sembrar_textos_cotizacion(env)

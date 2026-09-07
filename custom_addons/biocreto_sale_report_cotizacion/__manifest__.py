@@ -1,6 +1,6 @@
 {
     'name': 'BIOCRETO - Reporte Cotizacion FR-09/FR-10',
-    'version': '19.0.2.0.22',
+    'version': '19.0.2.0.27',
     'category': 'Sales/Reports',
     'summary': 'Reporte QWeb de cotizacion BC-GC-FR-09/FR-10 con render PlutoPrint (running header/footer) suscrito a biocreto_pdf_engine; sobrescribe sale.report_saleorder_document via Opcion A para cubrir Imprimir/Correo/Portal.',
     'author': 'BIOCRETO',

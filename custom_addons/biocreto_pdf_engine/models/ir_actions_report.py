@@ -165,6 +165,69 @@ class IrActionsReport(models.Model):
             book = plutoprint.Book(page_size)
         book.load_html(html_result, base_url + '/')
 
+        # 5 bis) Diagnostico de desbordamiento horizontal.
+        #
+        # POR QUE ESTA ESTO AQUI
+        # ----------------------
+        # Cuando el layout resuelto es MAS ANCHO que el viewport, PlutoPrint
+        # no recorta ni parte: reduce el documento ENTERO para que quepa en
+        # la hoja. El sintoma es desconcertante -- todo el PDF sale mas
+        # pequenio, incluidos titulos, codigos de formato y el GROSOR DE LOS
+        # BORDES -- y no deja ni un warning. Diagnosticarlo costo dos recons
+        # completos: el font-size declarado en el CSS no cambia (el reporte
+        # sigue diciendo 8.5pt), la escala vive en la matriz `Tm` del PDF.
+        #
+        # Caso real: `.capacidad-list { columns: 2 }` del reporte de
+        # cotizacion solo cabe con las metricas de Century Gothic. Si la
+        # fuente no resuelve y cae al fallback del sistema, el contenedor
+        # multicolumna pasa de 794 px a 1130.67 px y todo el documento sale
+        # al 70,2 %.
+        #
+        # API usada (verificada en plutoprint 0.20.0): get_document_width /
+        # get_viewport_width / get_page_size / get_page_count son publicas y
+        # devuelven CSS px las dos primeras y pt el page_size. El factor se
+        # calcula en px, comparando document contra viewport: mezclar px con
+        # los pt del page_size da un numero sin sentido.
+        #
+        # Tolerante a fallos: si una version futura quita o renombra algun
+        # metodo, el render NO se interrumpe. Un diagnostico jamas debe
+        # tumbar la generacion de un documento.
+        try:
+            ancho_doc = book.get_document_width()
+            ancho_vp = book.get_viewport_width()
+            tam_pag = book.get_page_size()
+            factor = (ancho_vp / ancho_doc) if ancho_doc > 0 else 1.0
+            datos = (
+                "pagina=%.2fx%.2f pt, viewport=%.2f px, layout=%.2f px, "
+                "paginas=%d, factor=%.5f" % (
+                    tam_pag.width, tam_pag.height, ancho_vp, ancho_doc,
+                    book.get_page_count(), factor,
+                )
+            )
+            # 0.5 px de holgura: el layout normal da 794.00 contra un
+            # viewport de 793.70 y eso NO es un desbordamiento real.
+            if ancho_doc > ancho_vp + 0.5:
+                _logger.warning(
+                    "biocreto_pdf_engine: DESBORDE HORIZONTAL en %s "
+                    "res_id=%s -- el layout es %.1f%% mas ancho que la "
+                    "pagina y PlutoPrint reducira TODO el documento al "
+                    "%.1f%%. Suele ser una fuente que no resuelve o un "
+                    "bloque multicolumna sin holgura. %s",
+                    report.report_name, res_id,
+                    (ancho_doc / ancho_vp - 1) * 100 if ancho_vp else 0,
+                    factor * 100, datos,
+                )
+            else:
+                _logger.info(
+                    "biocreto_pdf_engine: layout OK %s res_id=%s (%s)",
+                    report.report_name, res_id, datos,
+                )
+        except Exception as exc:
+            _logger.info(
+                "biocreto_pdf_engine: no se pudo medir el layout de %s "
+                "(%s); el render continua.", report.report_name, exc,
+            )
+
         # 6) write_to_pdf via tempfile (NO BytesIO; PlutoPrint 0.20.0
         # exige str/PathLike).
         with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:

@@ -44,11 +44,20 @@
         <field name="inherit_id" ref="l10n_pe.pe_partner_address_form"/>
         <field name="arch" type="xml">
 
+            <!-- Pais: `l10n_pe` ya lo trae con `no_create`
+                 (data/res_country_data.xml:36), pero sin
+                 `no_create_edit`. Se anade por simetria con los otros
+                 tres: los cuatro campos de la cascada declaran lo mismo
+                 y ninguno depende de que otro modulo lo mantenga. -->
+            <field name="country_id" position="attributes">
+                <attribute name="options">{'no_open': True, 'no_create': True, 'no_create_edit': True}</attribute>
+            </field>
+
             <!-- Departamento: filtrado por pais. Sin pais, el desplegable
                  sale vacio; el campo sigue clicable. -->
             <field name="state_id" position="attributes">
                 <attribute name="domain">[('country_id', '=', country_id)]</attribute>
-                <attribute name="options">{'no_open': True, 'no_create': True}</attribute>
+                <attribute name="options">{'no_open': True, 'no_create': True, 'no_create_edit': True}</attribute>
                 <attribute name="placeholder">Departamento</attribute>
             </field>
 
@@ -59,7 +68,7 @@
                  Se conserva `invisible="not country_enforce_cities"`. -->
             <field name="city_id" position="attributes">
                 <attribute name="domain">[('state_id', '=', state_id)]</attribute>
-                <attribute name="options">{'no_open': True, 'no_create': True}</attribute>
+                <attribute name="options">{'no_open': True, 'no_create': True, 'no_create_edit': True}</attribute>
                 <attribute name="placeholder">Provincia</attribute>
             </field>
 
@@ -67,7 +76,7 @@
                  XML. Causa directa de que salieran los 1874. -->
             <field name="l10n_pe_district" position="attributes">
                 <attribute name="domain">[('city_id', '=', city_id)]</attribute>
-                <attribute name="options">{'no_open': True, 'no_create': True}</attribute>
+                <attribute name="options">{'no_open': True, 'no_create': True, 'no_create_edit': True}</attribute>
                 <attribute name="placeholder">Distrito</attribute>
             </field>
 
