@@ -5,6 +5,9 @@ from odoo.exceptions import ValidationError
 # que no pueda existir una segunda forma de imprimir un slump en el sistema.
 from .biocreto_slump_format import biocreto_format_slump
 
+# Los tres nombres de categoría vendible, en un solo sitio.
+from .product_category import BIOCRETO_CATEGORIAS_VENTA
+
 
 class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
@@ -18,6 +21,53 @@ class SaleOrderLine(models.Model):
         string="Categoría del producto",
         store=False,
     )
+
+    # ─────────────────────────────────────────────────────────────────
+    # Filtro del producto de la línea: solo las tres categorías que
+    # BIOCRETO vende (Concreto, Bombeo, Servicios adicionales).
+    #
+    # POR QUÉ AQUÍ Y NO EN LA VISTA
+    # -----------------------------
+    # `sale` deja el punto de extensión abierto: el campo nativo se
+    # declara con `domain=lambda self: self._domain_product_id()`
+    # (odoo/addons/sale/models/sale_order_line.py:83-88) y el método
+    # devuelve `[('sale_ok', '=', True)]` (:360-361). Extenderlo con
+    # `super()` es aditivo y respeta a quien ya lo hubiera extendido
+    # antes — `sale_renting` lo hace (:46-49).
+    #
+    # Viviendo en el campo, el filtro cubre TODAS las vistas de
+    # sale.order.line (la lista de la orden, la vista de variante, la
+    # tarjeta móvil) sin repetir el dominio en cada xpath. En la vista
+    # nativa el campo NO trae `domain` propio, solo `context`
+    # (odoo/addons/sale/views/sale_order_views.xml:522-528).
+    #
+    # POR QUÉ NO EL PATRÓN `fields.Binary` DE `biocreto_vehiculo_domain`
+    # -----------------------------------------------------------------
+    # Aquel dominio depende de un dato de CADA línea — la categoría de
+    # flota configurada en SU compañía — y por eso necesita un compute
+    # (`_compute_biocreto_vehiculo_domain`, más abajo en este archivo).
+    # Este es una lista fija de tres nombres, idéntica para todas las
+    # líneas: un compute solo añadiría trabajo por línea y un campo más
+    # al modelo, sin ganar nada.
+    #
+    # ALCANCE: `sale.order.line` y nada más. `purchase.order.line` es
+    # otro modelo, no hereda de éste y no tiene este método.
+    #
+    # Las líneas YA GUARDADAS con un producto de otra categoría no se
+    # rompen: un `domain` solo restringe el desplegable del cliente web,
+    # no valida lo que hay escrito.
+    # ─────────────────────────────────────────────────────────────────
+    def _domain_product_id(self):
+        dominio = super()._domain_product_id()
+        hoja = ('categ_id.name', 'in', list(BIOCRETO_CATEGORIAS_VENTA))
+        if isinstance(dominio, str):
+            # `sale_renting` devuelve el dominio como CADENA porque el
+            # suyo referencia un campo del registro (:46-49). Hoy está
+            # desinstalado, pero si se instalara, concatenar listas
+            # reventaría. Se reconstruye en notación prefija quitando
+            # los corchetes exteriores de la cadena de super().
+            return "['&', %r, %s]" % (hoja, dominio.strip()[1:-1])
+        return dominio + [hoja]
 
     # ─────────────────────────────────────────────────────────────────
     # Campos de CONCRETO — Many2one a los catálogos maestros.

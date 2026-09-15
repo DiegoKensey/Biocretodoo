@@ -374,6 +374,10 @@
         <t t-set="totales" t-value="o.biocreto_cot_totales()"/>
         <t t-set="lineas_concreto" t-value="o.biocreto_cot_lineas_concreto()"/>
         <t t-set="lineas_bombeo" t-value="o.biocreto_cot_lineas_bombeo()"/>
+        <!-- v19.0.1.8.0: seccion C. El helper vive en
+             biocreto_sale_report_cotizacion, del que este modulo depende
+             (__manifest__.py:9); aqui no hay Python que tocar. -->
+        <t t-set="lineas_adicionales" t-value="o.biocreto_cot_lineas_adicionales()"/>
         <t t-set="adelanto" t-value="o.biocreto_monto_adelanto or 0.0"/>
         <t t-set="saldo" t-value="o.biocreto_contrato_saldo()"/>
         <!--
@@ -442,10 +446,25 @@
                     mediante previas coordinaciones.
                 </span>
             </li>
-            <li>
-                <span class="num">1.2.</span>
-                <span class="text">
-                    El concreto solicitado por el <b>CLIENTE</b>, junto con los servicios complementarios contratados, se detalla en las siguientes tablas:
+            <!-- v19.0.1.9.0: `clausula-tablas` acota el `break-inside: avoid`
+                 que `ol.clausula-list > li` aplica a TODAS las clausulas. Sin
+                 esta clase, las tres tablas viajan siempre en bloque y B y C
+                 no pueden saltar por separado. Solo esta clausula lo lleva:
+                 las otras 16 conservan su avoid intacto. -->
+            <li class="clausula-tablas">
+                <!-- v19.0.1.9.0: la cabeza (numero + parrafo) conserva el flex
+                     de dos columnas de las otras 16 clausulas; el cuerpo pasa a
+                     ser un bloque normal. Motivo, medido con un A/B: el <li> es
+                     `display: flex` y PlutoPrint IGNORA `break-inside` en los
+                     descendientes de un contenedor flex, asi que el contenedor
+                     de seccion no surtia efecto. Fuera del flex, si lo hace. -->
+                <div class="clausula-cabeza">
+                    <span class="num">1.2.</span>
+                    <span class="text">
+                        El concreto solicitado por el <b>CLIENTE</b>, junto con los servicios complementarios contratados, se detalla en las siguientes tablas:
+                    </span>
+                </div>
+                <div class="clausula-cuerpo">
 
                     <!-- ========= Tabla CONCRETO ========= -->
                     <div class="tabla-section-title">A. CONCRETO</div>
@@ -478,10 +497,8 @@
                                         <td><t t-out="o.biocreto_cot_money(line.price_subtotal)"/></td>
                                     </tr>
                                     <tr t-if="(line.name or '').strip() != (line.product_id.display_name or '').strip()" class="fila-detalle">
-                                        <td/>
-                                        <td colspan="3"><t t-out="line.name"/></td>
-                                        <td/>
-                                        <td/>
+                                        <td class="celda-vacia"/>
+                                        <td colspan="5"><t t-out="' '.join((line.name or '').split())"/></td>
                                     </tr>
                             </tbody>
                         </t>
@@ -499,8 +516,12 @@
                         </table>
                     </div>
 
-                    <!-- ========= Tabla SERVICIOS ========= -->
-                    <div class="tabla-section-title">B. SERVICIOS</div>
+                    <!-- ========= Tabla SERVICIO DE BOMBEO ========= -->
+                    <!-- v19.0.1.9.0: contenedor de seccion, para que B salte
+                         ENTERA de pagina. La A no lo lleva a proposito: va
+                         pegada al parrafo introductorio de la clausula. -->
+                    <div class="seccion-bloque">
+                    <div class="tabla-section-title">B. SERVICIO DE BOMBEO</div>
                     <table class="cuentas-table tabla-lineas">
                         <thead>
                             <tr>
@@ -524,10 +545,8 @@
                                         <td><t t-out="o.biocreto_cot_money(line.price_subtotal)"/></td>
                                     </tr>
                                     <tr t-if="(line.name or '').strip() != (line.product_id.display_name or '').strip()" class="fila-detalle">
-                                        <td/>
-                                        <td colspan="3"><t t-out="line.name"/></td>
-                                        <td/>
-                                        <td/>
+                                        <td class="celda-vacia"/>
+                                        <td colspan="5"><t t-out="' '.join((line.name or '').split())"/></td>
                                     </tr>
                             </tbody>
                         </t>
@@ -551,7 +570,56 @@
                             </t>
                         </table>
                     </div>
-                </span>
+                    </div>
+
+                    <!-- ========= Tabla SERVICIOS ADICIONALES ========= -->
+                    <!-- v19.0.1.8.0: al reves que A y B, esta seccion NO se
+                         pinta vacia. Titulo, tabla y subtotales van dentro
+                         del mismo t-if, sin t-else. -->
+                    <t t-if="lineas_adicionales">
+                        <!-- Mismo contenedor de seccion que la B. -->
+                        <div class="seccion-bloque">
+                        <div class="tabla-section-title">C. SERVICIOS ADICIONALES</div>
+                        <table class="cuentas-table tabla-lineas">
+                            <thead>
+                                <tr>
+                                    <th>Ítem</th>
+                                    <th>Servicio</th>
+                                    <th>Cantidad</th>
+                                    <th>Unidad</th>
+                                    <th>P.Unit S/</th>
+                                    <th>Total S/</th>
+                                </tr>
+                            </thead>
+                            <!-- Mismo criterio de <tbody> por linea que A y B. -->
+                            <tbody t-foreach="lineas_adicionales" t-as="line">
+                                    <tr>
+                                        <td><t t-out="line_index + 1"/></td>
+                                        <td><t t-out="line.product_id.display_name or '—'"/></td>
+                                        <td><t t-out="o.biocreto_cot_money(line.product_uom_qty)"/></td>
+                                        <!-- v19: product_uom_id, NO product_uom. -->
+                                        <td><t t-out="line.product_uom_id.name or '—'"/></td>
+                                        <td><t t-out="o.biocreto_cot_money(line.price_unit)"/></td>
+                                        <td><t t-out="o.biocreto_cot_money(line.price_subtotal)"/></td>
+                                    </tr>
+                                    <tr t-if="(line.name or '').strip() != (line.product_id.display_name or '').strip()" class="fila-detalle">
+                                        <td class="celda-vacia"/>
+                                        <td colspan="5"><t t-out="' '.join((line.name or '').split())"/></td>
+                                    </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Subtotales (C): Servicios adicionales -->
+                        <div class="subtot-wrap">
+                            <table class="subtot-box">
+                                <tr><td class="s-label">Subtotal S/</td><td class="s-value"><t t-out="o.biocreto_cot_money(totales.get('adic_subtotal', 0))"/></td></tr>
+                                <tr><td class="s-label">IGV (18%) S/</td><td class="s-value"><t t-out="o.biocreto_cot_money(totales.get('adic_igv', 0))"/></td></tr>
+                                <tr class="subtotal-total"><td class="s-label">(C) Total S/</td><td class="s-value"><t t-out="o.biocreto_cot_money(totales.get('adic_total', 0))"/></td></tr>
+                            </table>
+                        </div>
+                        </div>
+                    </t>
+                </div>
             </li>
             <li>
                 <span class="num">1.3.</span>

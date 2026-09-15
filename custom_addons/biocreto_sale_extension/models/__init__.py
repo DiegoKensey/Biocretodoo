@@ -2,6 +2,7 @@ from . import biocreto_estructura
 from . import biocreto_tipo_cemento
 from . import biocreto_huso_tmn
 from . import biocreto_slump_format
+from . import product_category
 from . import res_company
 from . import fleet_vehicle
 from . import mrp_bom

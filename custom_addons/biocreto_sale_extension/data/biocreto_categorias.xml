@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        v19.0.1.15.0: asegura la categoria de producto
+        `Servicios adicionales`, que alimenta la seccion C de los
+        reportes de cotizacion y contrato.
+
+        Por que <function> y no un <record>:
+        - Un <record> necesita xmlid, y la decision del usuario es que
+          esta categoria NO lleve xmlid. Ademas, en produccion la
+          categoria puede existir ya con otro id; un <record> con xmlid
+          crearia una segunda.
+        - El metodo busca por NOMBRE y solo crea si no encuentra nada,
+          asi que respeta la que ya haya.
+
+        Por que <function> y no solo el post_init_hook:
+        - `post_init_hook` corre en install, NO en upgrade
+          (odoo/modules/loading.py). El caso operativo real de este
+          modulo es el `-u`. Las <function> de data se reejecutan en
+          cada `-i` y cada `-u`, asi que la cobertura queda completa.
+        - Mismo patron y misma razon que data/biocreto_cot_textos.xml y
+          data/biocreto_saleorder_print_name.xml.
+
+        SIN noupdate: con noupdate="1" la <function> se saltaria en modo
+        update (odoo/tools/convert.py, _tag_function) y perderiamos justo
+        el caso que queremos cubrir.
+    -->
+    <function model="product.category"
+              name="_biocreto_asegurar_servicios_adicionales"/>
+
+</odoo>

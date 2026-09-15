@@ -161,6 +161,39 @@ main.biocreto-contrato {
 // que los mantiene juntos.
 .biocreto-contrato table.tabla-lineas tbody { break-inside: avoid; }
 
+// v19.0.1.9.0: la clausula que lleva las tablas se EXCLUYE del avoid de
+// arriba. Con el avoid puesto, las tres secciones viajan siempre juntas y
+// ninguna puede saltar por separado: al no caber una, se mueve el bloque
+// entero y la pagina anterior queda corta. Solo esta clausula se libera;
+// las otras 16 conservan el suyo.
+.biocreto-contrato ol.clausula-list > li.clausula-tablas {
+    break-inside: auto;
+    // `display: block` NO es cosmetico: es lo que hace que el contenedor de
+    // seccion funcione. Con el `display: flex` que heredan las otras 16
+    // clausulas, PlutoPrint ignora `break-inside` en todo lo que cuelga del
+    // contenedor flex. Comprobado con un A/B sobre el mismo escenario:
+    //   flex  -> B se parte entre la pagina 1 y la 2
+    //   block -> B salta entera a la pagina 2
+    display: block;
+}
+// La cabeza replica el flex de dos columnas de las demas clausulas, para que
+// el numero y el parrafo introductorio se vean EXACTAMENTE igual que antes.
+.biocreto-contrato li.clausula-tablas > .clausula-cabeza {
+    display: flex;
+    text-align: justify;
+}
+.biocreto-contrato li.clausula-tablas > .clausula-cabeza > .num { flex: 0 0 38px; }
+.biocreto-contrato li.clausula-tablas > .clausula-cabeza > .text { flex: 1; }
+// El cuerpo recupera la sangria de 38px que le daba la columna del flex.
+.biocreto-contrato li.clausula-tablas > .clausula-cuerpo { margin-left: 38px; }
+
+// Cada seccion (titulo + tabla + subtotales) salta entera. La A NO lleva
+// contenedor: va pegada al parrafo introductorio de la clausula y
+// separarla de el seria peor que partirla.
+.biocreto-contrato .seccion-bloque {
+    break-inside: avoid;
+}
+
 // --------- Tipografia interna del cuerpo ---------
 .biocreto-contrato h1,
 .biocreto-contrato h2,
@@ -252,6 +285,34 @@ main.biocreto-contrato {
     padding-left: 14pt;
     white-space: pre-line;
     color: #4a4a4a;
+    // v19.0.1.9.1: peso normal, como en la cotizacion.
+    //
+    // La negrita venia de `td:last-child` (:272-276), la regla de las celdas
+    // de dinero. No estaba mal escrita: desde que la fila de detalle pasó a
+    // dos celdas (`celda-vacia` + el colspan=5), la celda del texto ES la
+    // ultima de su fila y entraba en ese selector. `text-align` y
+    // `white-space` ya los recuperaba este bloque —misma especificidad
+    // (0,4,2) y va despues—, pero `font-weight` no estaba declarado aqui y
+    // el de alla se aplicaba sin oposicion.
+    //
+    // Se arregla desde ESTE bloque y no con un selector nuevo: uno del tipo
+    // `.biocreto-contrato .fila-detalle td` seria (0,2,1) y perderia contra
+    // `td:last-child`, que es (0,4,2), pusieramoslo donde lo pusieramos.
+    //
+    // Las celdas de dinero de las filas de PRODUCTO no se tocan: siguen en
+    // negrita por :272-276.
+    font-weight: normal;
+}
+// La celda de Item de la fila de detalle no debe verse: sin fondo y sin
+// borde arriba, a la izquierda ni abajo. El `border-right` se conserva
+// (hereda el 1px de `tbody td`): es el que cierra la celda de descripcion
+// por su lado izquierdo.
+.biocreto-contrato table.cuentas-table.tabla-lineas tr.fila-detalle td.celda-vacia {
+    background: transparent;
+    border-top: none;
+    border-left: none;
+    border-bottom: none;
+    padding-left: 0;
 }
 .biocreto-contrato table.cuentas-table.tabla-lineas .empty-row td {
     color: #999;

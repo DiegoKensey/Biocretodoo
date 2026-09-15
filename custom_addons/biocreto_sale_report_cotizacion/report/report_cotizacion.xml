@@ -609,10 +609,8 @@
                              reporte, asi que idioma y `name` almacenado coinciden
                              sin recomputar nada. -->
                         <tr t-if="(line.name or '').strip() != (line.product_id.display_name or '').strip()" class="fila-detalle">
-                            <td class="col-item"/>
-                            <td colspan="6" class="text-left"><span t-out="line.name"/></td>
-                            <td class="text-right"/>
-                            <td class="text-right"/>
+                            <td class="celda-vacia"/>
+                            <td colspan="8" class="text-left"><span t-out="' '.join((line.name or '').split())"/></td>
                         </tr>
                 </tbody>
             </table>
@@ -638,6 +636,12 @@
             <!-- '—' en las 7 columnas + subtotales B en '—' (lo pide la   -->
             <!-- spec; evita imprimir 0,00 que confunde al cliente).       -->
             <t t-set="lineas_bombeo" t-value="o.biocreto_cot_lineas_bombeo()"/>
+            <!-- v19.0.2.2.0: contenedor de seccion. Envuelve titulo, tabla y
+                 subtotales para que la seccion B salte ENTERA de pagina en vez
+                 de dejar una cabecera huerfana. La A no lo lleva a proposito:
+                 va pegada a la cinta superior del wrapper y partirla es
+                 preferible a separarla de su titulo de bloque. -->
+            <div class="seccion-bloque">
             <h2 class="section-title">B. Servicio de Bombeo</h2>
             <table class="cot-table">
                 <thead>
@@ -673,10 +677,8 @@
                                  aqui la columna descriptiva ya la ocupa el vehiculo,
                                  asi que el `name` no tiene donde ir sin esta fila. -->
                             <tr t-if="(line.name or '').strip() != (line.product_id.display_name or '').strip()" class="fila-detalle">
-                                <td class="col-item"/>
-                                <td colspan="4" class="text-left"><span t-out="line.name"/></td>
-                                <td class="text-right"/>
-                                <td class="text-right"/>
+                                <td class="celda-vacia"/>
+                                <td colspan="6" class="text-left"><span t-out="' '.join((line.name or '').split())"/></td>
                             </tr>
                     </tbody>
                 </t>
@@ -717,12 +719,81 @@
                     </tr>
                 </table>
             </div>
+            </div>
+
+            <!-- C. Servicios Adicionales -->
+            <!-- v19.0.2.1.0: al reves que la B, esta seccion NO se pinta   -->
+            <!-- vacia. Titulo, tabla y subtotales van dentro del mismo     -->
+            <!-- t-if, sin t-else: sin lineas adicionales, el PDF sale      -->
+            <!-- exactamente igual que antes de existir esta seccion.       -->
+            <t t-set="lineas_adicionales" t-value="o.biocreto_cot_lineas_adicionales()"/>
+            <t t-if="lineas_adicionales">
+                <!-- Mismo contenedor de seccion que la B. -->
+                <div class="seccion-bloque">
+                <h2 class="section-title">C. Servicios Adicionales</h2>
+                <table class="cot-table">
+                    <thead>
+                        <tr>
+                            <th style="width:5%;">Ítem</th>
+                            <th style="width:43%;">Servicio</th>
+                            <th style="width:12%;">Cantidad</th>
+                            <th style="width:12%;">Unidad</th>
+                            <th style="width:14%;">P. Unit. S/</th>
+                            <th style="width:14%;">Total S/</th>
+                        </tr>
+                    </thead>
+                    <!-- Mismo criterio de <tbody> por linea que en A y B. -->
+                    <tbody t-foreach="lineas_adicionales" t-as="line">
+                            <tr>
+                                <td class="col-item"><span t-out="line_index + 1"/></td>
+                                <td class="text-left"><span t-out="line.product_id.display_name or ''"/></td>
+                                <td><span t-out="'%.2f' % (line.product_uom_qty or 0)"/></td>
+                                <!-- v19: el campo es product_uom_id, NO product_uom
+                                     (sale/models/sale_order_line.py:132-137). -->
+                                <td><span t-out="line.product_uom_id.name or ''"/></td>
+                                <td class="text-right"><span t-out="'%.2f' % (line.price_unit or 0)"/></td>
+                                <td class="text-right"><span t-out="o.biocreto_cot_money(line.price_subtotal)"/></td>
+                            </tr>
+                            <!-- Fila de detalle. Misma comparacion que A y B; aqui
+                                 la columna Servicio ya imprime el display_name, asi
+                                 que la fila solo aparece cuando el vendedor escribio
+                                 algo distinto. -->
+                            <tr t-if="(line.name or '').strip() != (line.product_id.display_name or '').strip()" class="fila-detalle">
+                                <td class="celda-vacia"/>
+                                <td colspan="5" class="text-left"><span t-out="' '.join((line.name or '').split())"/></td>
+                            </tr>
+                    </tbody>
+                </table>
+                <div class="totals-section">
+                    <table class="subtotals-table">
+                        <tr>
+                            <td class="s-label">Subtotal S/</td>
+                            <td class="s-value"><span t-out="o.biocreto_cot_money(totales.get('adic_subtotal', 0))"/></td>
+                        </tr>
+                        <tr>
+                            <td class="s-label">IGV (18%) S/</td>
+                            <td class="s-value"><span t-out="o.biocreto_cot_money(totales.get('adic_igv', 0))"/></td>
+                        </tr>
+                        <tr class="subtotal-total">
+                            <td class="s-label">(C) Total S/</td>
+                            <td class="s-value"><span t-out="o.biocreto_cot_money(totales.get('adic_total', 0))"/></td>
+                        </tr>
+                    </table>
+                </div>
+                </div>
+            </t>
 
             <!-- Gran total -->
-            <!-- v19.0.2.0.0: usar el nativo o.amount_total (incluye A+B    -->
-            <!-- y respeta multi-moneda). Si no hay bombeo, equivale a (A). -->
+            <!-- v19.0.2.1.0: sigue siendo el nativo o.amount_total, que    -->
+            <!-- incluye TODAS las lineas y respeta multi-moneda. La        -->
+            <!-- etiqueta pasa a (A + B + C) porque desde esta version las  -->
+            <!-- tres secciones son las que se imprimen. Ojo: si una linea  -->
+            <!-- llevara una categoria distinta de las tres, seguiria       -->
+            <!-- sumando aqui sin salir en ninguna tabla; el filtro de      -->
+            <!-- producto de biocreto_sale_extension es lo que impide que   -->
+            <!-- eso vuelva a ocurrir de ahora en adelante.                 -->
             <div class="grand-total">
-                <span class="grand-total-label">Total Cotización (A + B)</span>
+                <span class="grand-total-label">Total Cotización (A + B + C)</span>
                 <span class="grand-total-value">S/ <span t-out="o.biocreto_cot_money(o.amount_total)"/></span>
             </div>
         </div>

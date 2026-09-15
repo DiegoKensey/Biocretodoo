@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Renombra las dos categorias, crea las cinco que faltan y siembra
+        los prefijos.
+
+        Por que <function> y no <record>:
+        - Las categorias existentes NO tienen xmlid (siete de las once de
+          la base). Un <record> con xmlid crearia una SEGUNDA categoria
+          en vez de renombrar la que ya hay.
+        - El metodo busca por nombre, renombra solo si el nombre nuevo no
+          existe, crea solo si falta y escribe el prefijo solo si esta
+          vacio. Idempotente de principio a fin.
+
+        Por que <function> y no solo el post_init_hook:
+        - `post_init_hook` corre en install, NO en upgrade
+          (odoo/modules/loading.py). Las <function> de data se reejecutan
+          en cada `-i` y cada `-u`, asi que la cobertura queda completa.
+        - Mismo patron y misma razon que
+          biocreto_sale_extension/data/biocreto_cot_textos.xml.
+
+        SIN noupdate: con noupdate="1" la <function> se saltaria en modo
+        update (odoo/tools/convert.py, _tag_function).
+    -->
+    <function model="product.category" name="_biocreto_sembrar_categorias"/>
+
+</odoo>

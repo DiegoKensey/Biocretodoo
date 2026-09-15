@@ -358,8 +358,24 @@ main.biocreto-cot {
 // ribbons son <div>, asi que el primer elemento de tipo h2 es
 // "A. Suministro". "B. Servicio" es el SEGUNDO h2 y conserva
 // su margin-top: 14pt (no matchea :first-of-type).
-.biocreto-cot .tables-wrapper .section-title:first-of-type {
+// v19.0.2.2.0: el combinador de hijo directo es obligatorio desde que B y
+// C viven dentro de `.seccion-bloque`. Con el selector de descendencia,
+// el <h2> de B pasaba a ser el PRIMER h2 de su div y heredaba este
+// `margin-top: 0`, pegandose a los subtotales de A. Con `>`, la regla solo
+// alcanza al h2 de A, que sigue siendo hijo directo del wrapper.
+.biocreto-cot .tables-wrapper > .section-title:first-of-type {
     margin-top: 0;
+}
+
+// v19.0.2.2.0: cada seccion (titulo + tabla + subtotales) salta entera.
+// La A NO lleva contenedor: es la primera del wrapper y saltarla dejaria
+// hueco bajo la cinta superior.
+//
+// El <div> es un bloque normal, sin `position` ni `transform`, asi que NO
+// crea un bloque contenedor nuevo: los tres ribbons siguen anclados al
+// `.tables-wrapper`, que es quien tiene el `position: relative`.
+.biocreto-cot .seccion-bloque {
+    break-inside: avoid;
 }
 
 // =========== TABLA DE LINEAS ===========
@@ -407,7 +423,9 @@ main.biocreto-cot {
     // `thead` es otro tipo, asi que no desplaza la cuenta: el primer
     // producto sigue saliendo en blanco, el segundo en gris, igual que
     // antes de este cambio.
-    tbody:nth-of-type(even) td:not(.col-item) {
+    // La celda de Item de la fila de detalle queda fuera del zebrado:
+    // debe verse transparente en TODAS las filas, pares e impares.
+    tbody:nth-of-type(even) td:not(.col-item):not(.celda-vacia) {
         background: #fafafa;
     }
 
@@ -437,6 +455,22 @@ main.biocreto-cot {
         padding-left: 14pt;
         white-space: pre-line;
         color: #4a4a4a;
+    }
+
+    // ---- La celda de Item de la fila de detalle no debe verse ----
+    // Sin fondo y sin borde arriba, a la izquierda ni abajo, para que la
+    // fila arranque visualmente en la segunda columna.
+    //
+    // El `border-right` NO se toca: hereda el 1px de `tbody td` y es el que
+    // cierra la celda de descripcion por su lado izquierdo. Con
+    // `border-collapse: collapse` esa arista la negocian las dos celdas y
+    // gana la de la izquierda, asi que la linea la pinta esta.
+    tbody tr.fila-detalle td.celda-vacia {
+        background: transparent;
+        border-top: none;
+        border-left: none;
+        border-bottom: none;
+        padding-left: 0;
     }
 }
 

@@ -110,7 +110,22 @@ def _biocreto_sembrar_textos_cotizacion(env):
     env['res.company']._biocreto_cot_sembrar_textos()
 
 
+# ──────────────────────────────────────────────────────────────────────
+# Categoria de producto `Servicios adicionales` (v19.0.1.15.0).
+#
+# Tercer bloque con el mismo patron de doble cobertura que los dos de
+# arriba, y por la misma razon: `post_init_hook` solo corre en install,
+# asi que el `-u` lo cubre la <function> de data/biocreto_categorias.xml.
+# Los dos caminos llaman al MISMO metodo de product.category, que busca
+# por nombre y solo crea si no encuentra nada.
+# ──────────────────────────────────────────────────────────────────────
+def _biocreto_asegurar_categoria_servicios(env):
+    """Crea la categoria `Servicios adicionales` si no existiera."""
+    env['product.category']._biocreto_asegurar_servicios_adicionales()
+
+
 def post_init_hook(env):
     """Hook que corre cuando el modulo se INSTALA (no en upgrades)."""
     _biocreto_set_saleorder_print_name(env)
     _biocreto_sembrar_textos_cotizacion(env)
+    _biocreto_asegurar_categoria_servicios(env)

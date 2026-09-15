@@ -4,6 +4,10 @@ import pytz
 
 from odoo import models
 
+from odoo.addons.biocreto_sale_extension.models.product_category import (
+    BIOCRETO_CATEG_SERVICIOS,
+)
+
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
@@ -26,6 +30,18 @@ class SaleOrder(models.Model):
             lambda l: not l.display_type and l.biocreto_product_categ == 'Bombeo'
         )
 
+    # v19.0.2.1.0: seccion C. Mismo criterio que los dos de arriba, con
+    # el nombre de categoria importado de biocreto_sale_extension en vez
+    # de escrito a mano: ese modulo es el que crea la categoria por hook
+    # y el que filtra el desplegable de producto, asi que las tres cosas
+    # tienen que hablar del mismo literal o dejan de casar.
+    def biocreto_cot_lineas_adicionales(self):
+        self.ensure_one()
+        return self.order_line.filtered(
+            lambda l: not l.display_type
+            and l.biocreto_product_categ == BIOCRETO_CATEG_SERVICIOS
+        )
+
     # -----------------------------------------------------------------
     # Subtotales por seccion (A. Concreto / B. Bombeo) + Gran total.
     # price_subtotal y price_tax son campos nativos de sale.order.line
@@ -35,12 +51,16 @@ class SaleOrder(models.Model):
         self.ensure_one()
         conc = self.biocreto_cot_lineas_concreto()
         bomb = self.biocreto_cot_lineas_bombeo()
+        adic = self.biocreto_cot_lineas_adicionales()
         conc_subtotal = sum(conc.mapped('price_subtotal'))
         conc_igv = sum(conc.mapped('price_tax'))
         bomb_subtotal = sum(bomb.mapped('price_subtotal'))
         bomb_igv = sum(bomb.mapped('price_tax'))
+        adic_subtotal = sum(adic.mapped('price_subtotal'))
+        adic_igv = sum(adic.mapped('price_tax'))
         conc_total = conc_subtotal + conc_igv
         bomb_total = bomb_subtotal + bomb_igv
+        adic_total = adic_subtotal + adic_igv
         return {
             'conc_subtotal': conc_subtotal,
             'conc_igv': conc_igv,
@@ -48,7 +68,14 @@ class SaleOrder(models.Model):
             'bomb_subtotal': bomb_subtotal,
             'bomb_igv': bomb_igv,
             'bomb_total': bomb_total,
-            'gran_total': conc_total + bomb_total,
+            'adic_subtotal': adic_subtotal,
+            'adic_igv': adic_igv,
+            'adic_total': adic_total,
+            # Sigue sin usarlo nadie -- el cuadro amarillo imprime
+            # `o.amount_total` (report_cotizacion.xml:717-723) y esa es
+            # la decision del usuario. Se actualiza igualmente: dejarlo
+            # sumando solo A+B seria una trampa esperando a quien lo use.
+            'gran_total': conc_total + bomb_total + adic_total,
         }
 
     # -----------------------------------------------------------------

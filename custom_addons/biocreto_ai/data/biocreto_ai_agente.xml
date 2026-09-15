@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Repunta el agente «Ask AI» al modelo vigente.
+
+        Por que <function> y no un <record>:
+        - Un <record id="ai.ai_agent_natural_language_search"> escribiria
+          el modelo SIEMPRE, pisando la eleccion manual del usuario en
+          cada `-u`. El metodo, en cambio, solo actua si el agente sigue
+          exactamente en `gemini-2.5-flash`.
+
+        Por que <function> y no solo el post_init_hook:
+        - `post_init_hook` corre en install, NO en upgrade
+          (odoo/modules/loading.py). Y aqui el `-u` no es un caso
+          marginal: es EL caso. `ai/data/ai_agent_data.xml` no lleva
+          `noupdate`, asi que un `-u ai` devuelve el agente a
+          `gemini-2.5-flash`; esta <function> es la que lo vuelve a
+          arreglar en el siguiente `-u biocreto_ai`.
+        - Mismo patron y misma razon que
+          biocreto_sale_extension/data/biocreto_cot_textos.xml.
+
+        SIN noupdate: con noupdate="1" la <function> se saltaria en modo
+        update (odoo/tools/convert.py, _tag_function) y perderiamos justo
+        el caso que queremos cubrir.
+    -->
+    <function model="ai.agent" name="_biocreto_repuntar_agente_ask_ai"/>
+
+</odoo>
