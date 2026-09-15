@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         FORMULARIO: pestaña "Recepción".
+
+         Pestaña propia y no un grupo dentro de "Información adicional":
+         esa pestaña nativa tiene un unico <group name="other_infos"> con
+         tres campos, y una tabla One2many dentro de un <group> se
+         renderiza estrecha. Ademas, una pestaña se acota por tipo de
+         operacion con una sola condicion.
+
+         `picking_type_code` YA viene en el form nativo
+         (stock/views/stock_picking_views.xml:231-232), no hay que
+         declararlo.
+
+         NINGUN campo lleva `readonly` por estado, a proposito: la factura
+         del proveedor llega semanas despues y se agrega a la recepcion ya
+         validada.
+         ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_picking_form_biocreto_recepcion" model="ir.ui.view">
+        <field name="name">stock.picking.form.biocreto.recepcion</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook/page[@name='extra']" position="before">
+                <page string="Recepción" name="biocreto_recepcion"
+                      invisible="picking_type_code != 'incoming'">
+
+                    <!-- ── Documentos de sustento ── -->
+                    <separator string="Documentos de sustento"/>
+                    <field name="biocreto_documento_ids" nolabel="1">
+                        <list editable="bottom">
+                            <field name="tipo"/>
+                            <field name="numero" placeholder="001-0004521"/>
+                            <!-- El control de subida es el Binary no
+                                 almacenado; el almacenamiento real sigue
+                                 siendo `attachment_id`. En v19 no hay
+                                 widget de subida para un Many2one a
+                                 ir.attachment. -->
+                            <field name="biocreto_archivo"
+                                   filename="biocreto_archivo_filename"
+                                   string="Archivo"/>
+                            <field name="biocreto_archivo_filename"
+                                   column_invisible="True"/>
+                            <field name="attachment_id" string="Guardado como"
+                                   readonly="1" optional="show"/>
+                            <field name="company_id" column_invisible="True"/>
+                        </list>
+                    </field>
+
+                    <group>
+                        <!-- ── Ingreso ── -->
+                        <group string="Ingreso" name="biocreto_ingreso">
+                            <field name="biocreto_nro_control_ingreso"/>
+                            <field name="biocreto_fecha_ingreso"/>
+                            <field name="biocreto_evidencia_ingreso"
+                                   filename="biocreto_evidencia_ingreso_filename"/>
+                            <field name="biocreto_evidencia_ingreso_filename"
+                                   invisible="1"/>
+                            <field name="biocreto_sin_comprobante"/>
+                        </group>
+
+                        <!-- ── Transporte ── -->
+                        <group string="Transporte" name="biocreto_transporte">
+                            <field name="biocreto_placa"/>
+                            <!-- `no_quick_create`, NO `no_create`: las dos
+                                 opciones cuelgan de `canCreate`
+                                 (many2one_field.js:76-80), asi que
+                                 `no_create` apagaria tambien el "Crear y
+                                 editar", que es justo lo que se quiere
+                                 conservar.
+
+                                 El `context` con `default_parent_id` NO es
+                                 opcional: el dialogo de "Crear y editar" no
+                                 rellena el padre solo, y sin el el conductor
+                                 nace huerfano y deja de cumplir su propio
+                                 dominio.
+
+                                 `=?` y no `=`: con la recepcion sin
+                                 proveedor, `=?` descarta la condicion en vez
+                                 de filtrar por parent_id = False. -->
+                            <field name="biocreto_conductor_id"
+                                   domain="[('parent_id', '=?', partner_id), ('type', '=', 'contact')]"
+                                   context="{'default_parent_id': partner_id, 'default_type': 'contact'}"
+                                   options="{'no_quick_create': True}"/>
+                            <field name="biocreto_cantera"/>
+                            <field name="biocreto_currency_id" invisible="1"/>
+                            <field name="biocreto_flete"/>
+                            <field name="biocreto_flete_responsable"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         LISTA: la fecha real de ingreso, como columna opcional.
+
+         `optional="hide"` y no "show": la lista nativa ya trae 12
+         columnas, seis de ellas opcionales, y `date_done` —el campo mas
+         parecido— tambien esta en "hide"
+         (stock/views/stock_picking_views.xml:92). Quien la quiera la
+         activa y la eleccion le queda guardada.
+         ═══════════════════════════════════════════════════════════════ -->
+    <record id="vpicktree_biocreto_recepcion" model="ir.ui.view">
+        <field name="name">stock.picking.list.biocreto.recepcion</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.vpicktree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list/field[@name='scheduled_date']" position="after">
+                <field name="biocreto_fecha_ingreso" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         BÚSQUEDA: filtro de "sin comprobante".
+
+         Ancla: el filtro nativo `backorder`, verificado en el arch de
+         `stock.view_picking_internal_search`. Se le pone un <separator>
+         delante para que el filtro nuevo no se mezcle visualmente con el
+         grupo de estados.
+         ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_picking_internal_search_biocreto" model="ir.ui.view">
+        <field name="name">stock.picking.search.biocreto.recepcion</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_internal_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='backorder']" position="after">
+                <separator/>
+                <filter string="Sin comprobante"
+                        name="biocreto_sin_comprobante"
+                        domain="[('biocreto_sin_comprobante', '=', True)]"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

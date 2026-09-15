@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_biocreto_recepcion_documento_user,biocreto.recepcion.documento.user,model_biocreto_recepcion_documento,stock.group_stock_user,1,1,1,1
+access_biocreto_recepcion_documento_manager,biocreto.recepcion.documento.manager,model_biocreto_recepcion_documento,stock.group_stock_manager,1,1,1,1

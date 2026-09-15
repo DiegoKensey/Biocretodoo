@@ -1,8 +1,11 @@
 import re
-import unicodedata
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+
+from odoo.addons.biocreto_base.models.biocreto_identificador import (
+    biocreto_identificador_partner,
+)
 
 
 class PurchaseOrder(models.Model):
@@ -329,22 +332,15 @@ class PurchaseOrder(models.Model):
     def _biocreto_nombre_cotizacion(self, extension):
         """Construye {name}_{ident}_{partner_ref}.{extension}."""
         self.ensure_one()
-        # commercial_partner_id: si el proveedor es un contacto de una empresa,
-        # el vat esta en la empresa padre (_synced_commercial_fields incluye
-        # 'vat' en base/models/res_partner.py:695). Si es persona suelta,
-        # commercial_partner_id == partner_id.
-        partner = self.partner_id.commercial_partner_id
-
-        # Identificador: preferir vat (solo-digitos por validacion de biocreto_base).
-        # Si esta vacio o tiene caracteres no-digitos (CE, pasaporte, etc.),
-        # limpiar dejando solo digitos; si aun asi queda vacio, caer al nombre.
-        ident = (partner.vat or '').strip()
-        if ident and not ident.isdigit():
-            ident = re.sub(r'\D', '', ident)
-        if not ident:
-            nombre = partner.name or 'sin_ident'
-            nombre = unicodedata.normalize('NFKD', nombre).encode('ascii', 'ignore').decode()
-            ident = re.sub(r'[^A-Za-z0-9]+', '_', nombre).strip('_')[:40] or 'sin_ident'
+        # v19.0.7.0.0: la identificacion del partner se mudo a
+        # `biocreto_base.biocreto_identificador_partner` como funcion suelta,
+        # porque la necesita tambien `biocreto_inventario` para el nombre de
+        # los documentos de recepcion y no tiene por que depender de compras.
+        # La logica es la MISMA, portada 1:1: vat del commercial_partner_id,
+        # limpiado a solo digitos si trae letras; si no, nombre saneado a
+        # ASCII y cortado a 40; si no, 'sin_ident'. Los nombres que genera
+        # este metodo no cambian.
+        ident = biocreto_identificador_partner(self.partner_id)
 
         # partner_ref saneado (mantener guion, resto solo alfanumerico)
         ref = (self.partner_ref or '').strip()
