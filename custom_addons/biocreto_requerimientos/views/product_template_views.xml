@@ -37,6 +37,29 @@
                    position="after">
                 <field name="biocreto_es_activo"/>
             </xpath>
+
+            <!--
+                v19.0.2.0.0 — CARACTERISTICAS FISICAS (BC-GL-FR-15).
+
+                Se anclan en el PROPIO `biocreto_es_activo`, no en el
+                `div[@name='volume']` nativo, y a proposito: asi los cinco
+                quedan pegados debajo de la casilla con la que forman
+                bloque, y si manana Odoo mueve o renombra el `div` de
+                volumen basta con arreglar el xpath de arriba. Un solo
+                punto de contacto con el arch nativo en vez de dos.
+
+                Van SIN `groups`: cualquiera que pueda editar la ficha de
+                un producto puede rellenar su marca. La casilla de la que
+                cuelgan tampoco lleva grupo.
+            -->
+            <xpath expr="//field[@name='biocreto_es_activo']" position="after">
+                <field name="biocreto_marca"/>
+                <field name="biocreto_modelo"/>
+                <field name="biocreto_serie"/>
+                <field name="biocreto_color"/>
+                <field name="biocreto_dimensiones"
+                       placeholder="4,00 × 2,40 × 3,00"/>
+            </xpath>
         </field>
     </record>
 
@@ -51,6 +74,15 @@
                  quien no esta revisando. -->
             <field name="categ_id" position="after">
                 <field name="biocreto_es_activo" optional="hide"/>
+                <!-- v19.0.2.0.0: las cinco caracteristicas, todas
+                     `optional="hide"`. Se activan desde el selector de
+                     columnas cuando alguien esta revisando el maestro de
+                     activos; el resto del tiempo no estorban. -->
+                <field name="biocreto_marca" optional="hide"/>
+                <field name="biocreto_modelo" optional="hide"/>
+                <field name="biocreto_serie" optional="hide"/>
+                <field name="biocreto_color" optional="hide"/>
+                <field name="biocreto_dimensiones" optional="hide"/>
             </field>
         </field>
     </record>

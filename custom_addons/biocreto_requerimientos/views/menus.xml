@@ -58,6 +58,50 @@
         sequence="30"/>
     <!-- === BIOCRETO CONSOLIDADO v1 — FIN === -->
 
+    <!--
+        v19.0.2.0.0 — ACTIVOS.
+
+        sequence=30: los hermanos existentes son Tablero (1), Mis
+        solicitudes (10), Logistica (20) y Configuracion (40). 30 deja
+        "Activos" entre la operativa de logistica y la configuracion, que
+        es donde encaja: es trabajo de logistica, pero no forma parte del
+        circuito de una solicitud.
+
+        UN SOLO SITIO, como pide el encargo: el registro y la consulta
+        son la misma pantalla y la impresion sale de un boton del
+        formulario. No se separa en Operaciones / Reportes.
+
+        groups: `group_requerimiento_user` — el mismo que Logistica.
+        Inventariar activos es trabajo del encargado, no del solicitante;
+        y no se reserva al administrador, que aqui solo configura
+        categorias.
+    -->
+    <menuitem
+        id="requerimientos_menu_activos"
+        parent="requerimientos_menu_root"
+        name="Activos"
+        groups="group_requerimiento_user"
+        sequence="30"/>
+
+    <menuitem
+        id="requerimientos_menu_inventario_activos"
+        parent="requerimientos_menu_activos"
+        name="Inventario de activos"
+        action="action_biocreto_inventario_conteo"
+        groups="group_requerimiento_user"
+        sequence="10"/>
+
+    <!-- v19.0.3.0.0. `groups` = el validador, el mismo que ve los
+         botones Validar y Rechazar. Un solicitante no tiene nada que
+         hacer en esta lista. -->
+    <menuitem
+        id="requerimientos_menu_bajas_por_validar"
+        parent="requerimientos_menu_activos"
+        name="Bajas por validar"
+        action="action_biocreto_inventario_bajas"
+        groups="group_inventario_validador"
+        sequence="20"/>
+
     <menuitem
         id="requerimientos_menu_config"
         parent="requerimientos_menu_root"

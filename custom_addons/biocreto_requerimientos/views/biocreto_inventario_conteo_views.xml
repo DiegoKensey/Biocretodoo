@@ -1,0 +1,372 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        ============================================================
+        Inventario de activos por área  —  BC-GL-FR-15
+        ============================================================
+        v19.0.3.0.0: el documento pasa a tener flujo
+        borrador -> enviado -> validado, con rechazado como vuelta
+        atrás. Desaparecen los botones «Cargar activos» y «Verificar»:
+        las líneas se cargan solas (compute + store) y las tres
+        validaciones viven ahora en Enviar e Imprimir.
+    -->
+
+    <record id="biocreto_inventario_conteo_view_form" model="ir.ui.view">
+        <field name="name">biocreto.inventario.conteo.form</field>
+        <field name="model">biocreto.inventario.conteo</field>
+        <field name="arch" type="xml">
+            <form string="Inventario de activos">
+                <header>
+                    <button name="action_enviar" type="object"
+                            string="Enviar" class="btn-primary"
+                            invisible="state not in ('borrador', 'rechazado')"/>
+                    <!-- Validar y Rechazar llevan `groups`, pero el
+                         permiso REAL lo comprueba el método con
+                         `_biocreto_exigir_validador`: un `groups` de
+                         vista solo esconde el botón, no detiene una
+                         llamada por API. -->
+                    <button name="action_validar" type="object"
+                            string="Validar" class="btn-primary"
+                            invisible="state != 'enviado'"
+                            groups="biocreto_requerimientos.group_inventario_validador"
+                            confirm="Al validar se darán de baja del inventario las unidades marcadas como Malogrado. Una baja no se revierte: se corrige con un ajuste."/>
+                    <button name="action_rechazar" type="object"
+                            string="Rechazar"
+                            invisible="state != 'enviado'"
+                            groups="biocreto_requerimientos.group_inventario_validador"/>
+                    <button name="action_imprimir" type="object"
+                            string="Imprimir reporte"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="borrador,enviado,validado"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_ver_desechos" type="object"
+                                class="oe_stat_button" icon="fa-trash-o"
+                                invisible="biocreto_scrap_count == 0">
+                            <field name="biocreto_scrap_count" widget="statinfo"
+                                   string="Desechos"/>
+                        </button>
+                    </div>
+
+                    <!-- El motivo del rechazo, arriba del todo y en rojo.
+                         Es lo primero que tiene que ver el jefe de área
+                         al reabrir el documento. El historial completo
+                         está en el chatter; este campo solo guarda el
+                         último. -->
+                    <div class="alert alert-danger" role="alert"
+                         invisible="state != 'rechazado'">
+                        <strong>Conteo rechazado.</strong>
+                        <field name="biocreto_motivo_rechazo" readonly="1"
+                               nolabel="1" class="mb-0"/>
+                    </div>
+
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="department_id"
+                                   options="{'no_quick_create': True}"/>
+                            <!-- Se muestra porque es la respuesta a «¿de
+                                 dónde salieron estos números?», y porque
+                                 un área sin ubicación se ve de un vistazo. -->
+                            <field name="ubicacion_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="fecha"/>
+                            <field name="tipo" widget="radio"
+                                   options="{'horizontal': True}"/>
+                            <field name="responsable_id"
+                                   options="{'no_quick_create': True}"/>
+                            <field name="responsable2_id"
+                                   options="{'no_quick_create': True}"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Activos" name="lineas">
+                            <!-- El readonly por estado es de INTERFAZ. El
+                                 candado de verdad está en
+                                 `BiocretoInventarioConteo.write`, que es
+                                 lo único que detiene un write por código
+                                 o una importación. -->
+                            <field name="linea_ids" nolabel="1"
+                                   readonly="state in ('enviado', 'validado')">
+                                <list editable="bottom"
+                                      decoration-warning="cant_regular &gt; 0"
+                                      decoration-danger="cant_malogrado &gt; 0">
+                                    <field name="producto_id"
+                                           options="{'no_quick_create': True}"/>
+                                    <field name="codigo"/>
+                                    <field name="marca"/>
+                                    <field name="modelo"/>
+                                    <field name="serie" optional="hide"/>
+                                    <field name="color" optional="hide"/>
+                                    <field name="dimensiones" optional="hide"/>
+                                    <field name="uom_name" string="Und."/>
+                                    <field name="total" sum="Total"/>
+                                    <!--
+                                        Las tres de estado llevan una clase
+                                        propia que el SCSS del backend pinta
+                                        con un fondo suave PERMANENTE (verde,
+                                        ámbar, rojo claros). No es una
+                                        decoración condicional: el color
+                                        identifica la COLUMNA, para poder
+                                        teclear sin releer el encabezado.
+                                        El `class` de un <field> de lista
+                                        llega al <td> por
+                                        list_renderer.js:971 (getCellClass
+                                        empuja column.attrs.class).
+                                    -->
+                                    <field name="cant_bueno"
+                                           class="bio-inv-bueno" sum="Bueno"/>
+                                    <field name="cant_regular"
+                                           class="bio-inv-regular" sum="Regular"/>
+                                    <field name="cant_malogrado"
+                                           class="bio-inv-malo" sum="Malogrado"/>
+                                    <field name="motivo"/>
+                                    <!-- Los dos `optional="hide"`: se activan
+                                         desde el selector de columnas cuando
+                                         hay que entender por qué una línea no
+                                         se recarga o no se compara con el
+                                         stock. -->
+                                    <field name="biocreto_manual" optional="hide"/>
+                                    <field name="biocreto_tiene_datos"
+                                           optional="hide" readonly="1"/>
+                                    <field name="company_id" column_invisible="1"/>
+                                </list>
+                            </field>
+
+                            <group class="oe_subtotal_footer">
+                                <field name="biocreto_total_productos"/>
+                                <field name="biocreto_total_unidades"/>
+                                <field name="biocreto_fuera_productos"/>
+                                <field name="biocreto_fuera_unidades"/>
+                                <field name="biocreto_baja_productos"/>
+                                <field name="biocreto_baja_unidades"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="biocreto_inventario_conteo_view_list" model="ir.ui.view">
+        <field name="name">biocreto.inventario.conteo.list</field>
+        <field name="model">biocreto.inventario.conteo</field>
+        <field name="arch" type="xml">
+            <list string="Inventarios de activos"
+                  decoration-muted="state == 'validado'"
+                  decoration-danger="state == 'rechazado'"
+                  decoration-bf="state == 'enviado'">
+                <field name="name"/>
+                <field name="fecha"/>
+                <field name="department_id"/>
+                <field name="ubicacion_id" optional="hide"/>
+                <field name="tipo"/>
+                <field name="responsable_id"/>
+                <field name="biocreto_total_productos"/>
+                <field name="biocreto_baja_productos" optional="hide"/>
+                <field name="biocreto_baja_unidades" optional="hide"/>
+                <field name="biocreto_fuera_unidades" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'enviado'"
+                       decoration-success="state == 'validado'"
+                       decoration-danger="state == 'rechazado'"/>
+                <field name="company_id" groups="base.group_multi_company"
+                       optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="biocreto_inventario_conteo_view_search" model="ir.ui.view">
+        <field name="name">biocreto.inventario.conteo.search</field>
+        <field name="model">biocreto.inventario.conteo</field>
+        <field name="arch" type="xml">
+            <search string="Inventarios de activos">
+                <field name="name"/>
+                <field name="department_id"/>
+                <field name="responsable_id"/>
+                <field name="linea_ids" string="Material"
+                       filter_domain="[('linea_ids.producto_id', 'ilike', self)]"/>
+                <separator/>
+                <filter string="Borrador" name="borrador"
+                        domain="[('state', '=', 'borrador')]"/>
+                <filter string="Enviado" name="enviado"
+                        domain="[('state', '=', 'enviado')]"/>
+                <filter string="Validado" name="validado"
+                        domain="[('state', '=', 'validado')]"/>
+                <filter string="Rechazado" name="rechazado"
+                        domain="[('state', '=', 'rechazado')]"/>
+                <separator/>
+                <filter string="Con unidades a dar de baja" name="con_bajas"
+                        domain="[('linea_ids.cant_malogrado', '&gt;', 0)]"/>
+                <filter string="Con unidades fuera de Bueno" name="fuera"
+                        domain="['|', ('linea_ids.cant_regular', '&gt;', 0),
+                                      ('linea_ids.cant_malogrado', '&gt;', 0)]"/>
+                <separator/>
+                <filter string="Este año" name="este_anio"
+                        domain="[('fecha', '&gt;=', (context_today().replace(month=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                <!-- Sin `expand` ni `string`: en v19 el <group> de
+                     agrupaciones de una vista de busqueda no los admite
+                     y el validador RelaxNG rechaza la vista entera
+                     (RELAXNG_ERR_INVALIDATTR). -->
+                <group>
+                    <filter string="Estado" name="group_state"
+                            context="{'group_by': 'state'}"/>
+                    <filter string="Área" name="group_area"
+                            context="{'group_by': 'department_id'}"/>
+                    <filter string="Tipo" name="group_tipo"
+                            context="{'group_by': 'tipo'}"/>
+                    <filter string="Fecha" name="group_fecha"
+                            context="{'group_by': 'fecha:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_biocreto_inventario_conteo" model="ir.actions.act_window">
+        <field name="name">Inventario de activos</field>
+        <field name="res_model">biocreto.inventario.conteo</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="biocreto_inventario_conteo_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Registre el primer inventario de activos
+            </p>
+            <p>
+                Elija el área y las líneas aparecen solas con los activos que
+                hay hoy allí. Reparta cada total entre Bueno, Regular y
+                Malogrado y pulse <b>Enviar</b>. El formato impreso es el
+                BC-GL-FR-15.
+            </p>
+        </field>
+    </record>
+
+
+    <!--
+        ============================================================
+        Bajas por validar
+        ============================================================
+        Calca `action_requerimiento_por_revisar`
+        (biocreto_requerimiento_views.xml:21-31): un `domain` duro sobre
+        el estado y un `help` que dice que no hay nada pendiente.
+
+        El dominio anade `linea_ids.cant_malogrado > 0`: un conteo
+        enviado SIN malogrados tambien hay que validarlo, pero no es una
+        BAJA — aparece en «Inventario de activos» con el filtro
+        «Enviado», no en esta lista.
+    -->
+    <record id="biocreto_inventario_bajas_view_list" model="ir.ui.view">
+        <field name="name">biocreto.inventario.conteo.bajas.list</field>
+        <field name="model">biocreto.inventario.conteo</field>
+        <field name="arch" type="xml">
+            <list string="Bajas por validar" create="false">
+                <field name="name"/>
+                <field name="department_id"/>
+                <field name="fecha"/>
+                <field name="responsable_id"/>
+                <field name="biocreto_baja_productos" string="Productos a dar de baja"/>
+                <field name="biocreto_baja_unidades" string="Unidades a dar de baja"/>
+                <field name="company_id" groups="base.group_multi_company"
+                       optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_biocreto_inventario_bajas" model="ir.actions.act_window">
+        <field name="name">Bajas por validar</field>
+        <field name="res_model">biocreto.inventario.conteo</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'enviado'), ('linea_ids.cant_malogrado', '&gt;', 0)]</field>
+        <field name="search_view_id" ref="biocreto_inventario_conteo_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No hay bajas por validar
+            </p>
+            <p>
+                Aquí aparecen los conteos enviados que tienen activos marcados
+                como Malogrado. Al validarlos se dan de baja del inventario.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_biocreto_inventario_bajas_view_list" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="biocreto_inventario_bajas_view_list"/>
+        <field name="act_window_id" ref="action_biocreto_inventario_bajas"/>
+    </record>
+
+
+    <!--
+        ============================================================
+        Diálogo de rechazo
+        ============================================================
+    -->
+    <record id="biocreto_inventario_rechazo_wizard_view_form" model="ir.ui.view">
+        <field name="name">biocreto.inventario.rechazo.wizard.form</field>
+        <field name="model">biocreto.inventario.rechazo.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Rechazar el conteo">
+                <group>
+                    <field name="conteo_id" invisible="1"/>
+                    <field name="motivo" nolabel="1"
+                           placeholder="Explique qué hay que corregir. El jefe de área lo verá en la parte alta de su conteo."/>
+                </group>
+                <footer>
+                    <button name="action_rechazar" type="object"
+                            string="Rechazar" class="btn-danger"/>
+                    <button string="Cancelar" class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+
+    <!--
+        ============================================================
+        Diálogo de impresión
+        ============================================================
+    -->
+    <record id="biocreto_inventario_reporte_wizard_view_form" model="ir.ui.view">
+        <field name="name">biocreto.inventario.reporte.wizard.form</field>
+        <field name="model">biocreto.inventario.reporte.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Imprimir inventario de activos">
+                <group>
+                    <field name="department_id"
+                           placeholder="Todas las áreas"
+                           options="{'no_quick_create': True, 'no_create_edit': True}"/>
+                    <field name="estado"/>
+                    <field name="fecha_corte"/>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                </group>
+                <p class="text-muted">
+                    De cada área se imprime su último conteo <b>validado</b> con
+                    fecha igual o anterior a la de corte.
+                </p>
+                <footer>
+                    <button name="action_imprimir" type="object"
+                            string="Imprimir" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_biocreto_inventario_reporte_wizard" model="ir.actions.act_window">
+        <field name="name">Imprimir inventario de activos</field>
+        <field name="res_model">biocreto.inventario.reporte.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,335 @@
+// ══════════════════════════════════════════════════════════════════════
+//  BIOCRETO — Inventario de activos por area (BC-GL-FR-15)
+//  Motor: PlutoPrint (biocreto_pdf_engine).  Hoja: A4 APAISADO.
+// ══════════════════════════════════════════════════════════════════════
+//
+//  RESTRICCIONES DEL MOTOR — respetadas en todo el archivo:
+//    · NO se usa CSS Grid.
+//    · NO se usa calc().
+//    · El bloque @page NO vive aqui: va como <style> literal en el QWeb
+//      (report_inventario_activos.xml, template inv_layout). El bundle
+//      minificado llega a PlutoPrint con el @page intacto pero el motor
+//      NO lo aplica cuando viene inlineado dentro del bundle CSS.
+//    · NO se usa `display: flex` en ningun contenedor cuyos hijos lleven
+//      `break-inside: avoid`: el motor ignora la regla en los
+//      descendientes de un flex. Por eso el bloque de firmas y la barra
+//      de resumen son <table>, no dos columnas flex.
+//
+//  Todo va scopeado bajo .biocreto-inv para no contaminar los otros
+//  cuatro reportes que comparten web.report_assets_common.
+//
+//  ESTE REPORTE NO TIENE running header/footer. Es deliberado: la banda
+//  SVG corporativa tiene un viewBox de 794x100 calculado para el ancho
+//  del A4 VERTICAL, y estirarla a 841,89 pt la deformaria. La cabecera
+//  va en el flujo, el numero de pagina lo pone el @page en @bottom-right
+//  con `counter(page)`. Extraer la banda a un SVG apaisado es trabajo
+//  aparte; no se improvisa aqui.
+// ══════════════════════════════════════════════════════════════════════
+
+$inv-azul:     #1ea8e0;
+$inv-amarillo: #f9bc09;
+$inv-gris:     #58595b;
+$inv-tinta:    #1d1d1b;
+$inv-suave:    #6b6d70;
+$inv-borde:    #c9ccce;
+
+// Los tres tonos de estado. IDENTICOS a los del backend
+// (inventario_activos.scss): quien rellena la tabla en Odoo tiene que
+// reconocer las columnas al ver el PDF. Verificado en el PDF: los tres
+// salen como operadores `rg` del flujo de contenido, sin necesidad de
+// `-webkit-print-color-adjust`.
+$inv-bueno:    #e8f5e9;
+$inv-regular:  #fff8e1;
+$inv-malo:     #ffebee;
+
+.biocreto-inv {
+    box-sizing: border-box;
+    // Century Gothic esta instalada a nivel sistema. NO usar @font-face
+    // con src: local() — registra una familia VACIA que gana la cascada
+    // y rompe el render en Linux. 'URW Gothic' es el equivalente metrico
+    // libre y la red de seguridad real en el servidor.
+    //
+    // OJO: que la fuente resuelva importa mas aqui que en los demas
+    // reportes. Si cae a un fallback mas ancho, la tabla de 14 columnas
+    // desborda el viewport y PlutoPrint reduce el DOCUMENTO ENTERO —
+    // bordes incluidos — sin avisar.
+    font-family: 'Century Gothic', 'URW Gothic', sans-serif;
+    color: $inv-tinta;
+    font-size: 8pt;
+    line-height: 1.25;
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    .inv-page { width: 100%; }
+
+    // Salto de hoja ENTRE areas. Un div vacio con `page-break-after` en
+    // vez de ponerselo a .inv-page: asi el ultimo conteo no arrastra una
+    // hoja en blanco al final del PDF.
+    .inv-salto {
+        page-break-after: always;
+        break-after: page;
+        height: 0;
+    }
+
+    // ── Todas las tablas comparten geometria ──
+    // `table-layout: fixed` es OBLIGATORIO en la de detalle: sin el, el
+    // motor redistribuye los anchos segun el contenido y el reparto
+    // medido columna a columna deja de significar nada.
+    table {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+    }
+
+    // ═══════════════ CABECERA ═══════════════
+    .inv-cab {
+        margin-bottom: 4pt;
+
+        td {
+            vertical-align: top;
+            padding: 0;
+        }
+
+        .cab-emisor {
+            .emisor-nombre {
+                font-size: 10pt;
+                font-weight: bold;
+                color: $inv-gris;
+                text-transform: uppercase;
+            }
+            .emisor-dato {
+                font-size: 7pt;
+                color: $inv-suave;
+            }
+        }
+
+        .cab-titulo {
+            text-align: center;
+            h1 {
+                margin: 0;
+                padding-top: 2pt;
+                font-size: 12pt;
+                font-weight: bold;
+                letter-spacing: 0.3pt;
+                color: $inv-tinta;
+            }
+            // Rotulo de documento no validado. Recuadro rojo en el flujo,
+            // no marca de agua girada: sin `transform`, sin posicion
+            // absoluta y sin nada que el motor tenga que interpretar.
+            // Se lee igual en una fotocopia en blanco y negro.
+            .cab-borrador {
+                display: inline-block;
+                margin-top: 2pt;
+                padding: 1pt 6pt;
+                border: 1pt solid #c0392b;
+                color: #c0392b;
+                font-size: 7.5pt;
+                font-weight: bold;
+                letter-spacing: 1pt;
+                text-transform: uppercase;
+            }
+        }
+
+        // Recuadro SIG, arriba a la derecha. Misma idea que el
+        // .header-code de la constancia de entrega, pero suelto en el
+        // flujo porque aqui no hay banda SVG sobre la que encajarlo.
+        .cab-sig {
+            border: 0.75pt solid $inv-tinta;
+            padding: 2pt 3pt;
+            font-size: 6.5pt;
+            text-align: right;
+            line-height: 1.35;
+            .sig-fila { display: block; white-space: nowrap; }
+        }
+    }
+
+    // ═══════════════ DATOS DEL CONTEO ═══════════════
+    .inv-meta {
+        margin-bottom: 4pt;
+        font-size: 7.5pt;
+
+        th, td {
+            border: 0.5pt solid $inv-borde;
+            padding: 2.5pt 3pt;
+            vertical-align: middle;
+            // Sin esto un nombre de ubicacion largo
+            // (WH/Areas/Administracion) ensancha su columna y descuadra
+            // el reparto de la fila.
+            overflow: hidden;
+        }
+        th {
+            background: #f2f3f4;
+            color: $inv-gris;
+            font-weight: bold;
+            text-align: left;
+            text-transform: uppercase;
+            font-size: 6.5pt;
+        }
+        .meta-cargo { color: $inv-suave; }
+    }
+
+    // ═══════════════ INTERPRETACION DEL ESTADO ═══════════════
+    .inv-leyenda {
+        margin-bottom: 5pt;
+        font-size: 6.5pt;
+
+        th, td {
+            border: 0.5pt solid $inv-borde;
+            padding: 2.5pt 3pt;
+            vertical-align: middle;
+        }
+        th {
+            text-align: center;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        td { color: $inv-suave; }
+    }
+
+    // ═══════════════ DETALLE ═══════════════
+    .inv-detalle {
+        font-size: 7pt;
+
+        th {
+            background: $inv-gris;
+            color: #fff;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 6pt;
+            padding: 3pt 2pt;
+            text-align: center;
+            border: 0.5pt solid #d4d4d4;
+            // Un encabezado partido en dos renglones no rompe nada, pero
+            // «Especificaciones de baja» ocupa dos y «Dimensiones» una:
+            // el vertical-align los alinea por abajo y la fila queda
+            // pareja.
+            vertical-align: bottom;
+        }
+        // Las tres cabeceras de estado conservan su color de fondo y
+        // pasan a tinta oscura: sobre #e8f5e9 el blanco no se lee.
+        th.est-bueno, th.est-regular, th.est-malo { color: $inv-tinta; }
+        th.th-izq { text-align: left; }
+        th.th-total { background: $inv-tinta; }
+
+        td {
+            border: 0.5pt solid $inv-borde;
+            padding: 2.5pt 2pt;
+            vertical-align: middle;
+            text-align: center;
+            // La guarda real contra el descuadre: una serie o unas
+            // dimensiones sin espacios no pueden ensanchar su columna.
+            // `word-wrap` (no `overflow: hidden`) porque el dato tiene
+            // que verse entero aunque ocupe dos renglones — es un
+            // documento de inventario, no un tablero.
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        td.c-izq { text-align: left; }
+        td.c-num { text-align: center; }
+        td.c-cod { text-align: center; font-size: 6.5pt; }
+        td.c-motivo { font-size: 6.5pt; color: $inv-suave; }
+
+        // La columna Total, destacada.
+        td.c-total {
+            font-weight: bold;
+            background: #f2f3f4;
+        }
+
+        // El FONDO va siempre — identifica la columna, tambien cuando la
+        // celda vale cero.
+        td.est-bueno   { background: $inv-bueno; }
+        td.est-regular { background: $inv-regular; }
+        td.est-malo    { background: $inv-malo; }
+
+        // Lo que cambia con el valor es el NUMERO.
+        .n-si { font-weight: bold; color: $inv-tinta; }
+        .n-no { color: #b8bbbd; }
+
+        // Una fila no se parte entre dos hojas. Funciona porque aqui no
+        // hay ningun ancestro `display: flex` (ver la nota de cabecera).
+        tr { page-break-inside: avoid; break-inside: avoid; }
+        // El <thead> se repite solo en cada hoja: es comportamiento de
+        // tabla en medios paginados, no hace falta declararlo.
+
+        td.c-vacio {
+            text-align: center;
+            color: $inv-suave;
+            padding: 8pt;
+            font-style: italic;
+        }
+    }
+
+    // ═══════════════ BARRA DE RESUMEN ═══════════════
+    .inv-resumen {
+        margin-top: 4pt;
+        font-size: 7.5pt;
+        page-break-inside: avoid;
+        break-inside: avoid;
+
+        td {
+            border: 0.5pt solid $inv-borde;
+            background: #f7f8f9;
+            padding: 3pt 5pt;
+            vertical-align: middle;
+        }
+        td.res-fuera { text-align: right; }
+
+        .res-etq { color: $inv-suave; text-transform: uppercase; font-size: 6.5pt; }
+        .res-val { font-weight: bold; }
+        .res-sep { color: $inv-borde; padding: 0 2pt; }
+    }
+
+    // ═══════════════ FIRMAS ═══════════════
+    .inv-firmas {
+        margin-top: 16pt;
+        page-break-inside: avoid;
+        break-inside: avoid;
+
+        td {
+            padding: 0 14pt;
+            vertical-align: top;
+            text-align: center;
+        }
+
+        .firma-linea {
+            border-top: 0.75pt solid $inv-tinta;
+            height: 0;
+            margin-bottom: 3pt;
+        }
+        .firma-rol {
+            font-weight: bold;
+            font-size: 7.5pt;
+            text-transform: uppercase;
+            // Reserva del hueco del cargo: el recuadro del Jefe
+            // Corporativo no lleva `.firma-cargo` (rol y cargo coinciden)
+            // y el del responsable puede no llevarlo tampoco si la
+            // persona no tiene `job_title`. Sin este margen los dos
+            // recuadros quedarian a distinta altura.
+            margin-bottom: 4pt;
+        }
+        // Va pegado al rol, comiendose el margen que este reserva: con
+        // cargo o sin el, el bloque mide lo mismo.
+        .firma-cargo {
+            font-size: 7pt;
+            color: $inv-suave;
+            margin-top: -3pt;
+        }
+        .firma-dato {
+            font-size: 7pt;
+            color: $inv-suave;
+            text-align: left;
+            margin-top: 3pt;
+        }
+    }
+
+    // ═══════════════ TEXTO LEGAL ═══════════════
+    .inv-legal {
+        margin: 10pt 0 0 0;
+        font-size: 6pt;
+        line-height: 1.3;
+        color: $inv-suave;
+        text-align: justify;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+}

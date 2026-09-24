@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        La «Ubicación de desecho» se cuelga del grupo BIOCRETO que ya
+        crea `biocreto_base` en la pestaña «Información general»
+        (biocreto_base/views/res_company_views.xml:8-13), junto a
+        `plant_code` y `manager_id`. Así todos los ajustes BIOCRETO de la
+        compañía quedan en un mismo sitio en vez de repartidos por el
+        formulario nativo.
+
+        `biocreto_requerimientos` ya depende de `biocreto_base`, así que
+        el grupo existe seguro cuando se carga esta vista.
+
+        SIN `groups=`: el ACL de `res.company` ya reserva la escritura a
+        `base.group_erp_manager`. Añadir `groups=` solo RESTRINGIRÍA más;
+        no puede dar acceso a nadie.
+    -->
+    <record id="view_company_form_biocreto_desecho" model="ir.ui.view">
+        <field name="name">res.company.form.biocreto.desecho</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='biocreto_plant_info']" position="inside">
+                <field name="biocreto_ubicacion_desecho"
+                       options="{'no_quick_create': True}"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

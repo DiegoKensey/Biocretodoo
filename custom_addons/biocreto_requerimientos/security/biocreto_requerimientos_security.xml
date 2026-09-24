@@ -38,6 +38,38 @@
         <field name="comment">Configura las categorías de requerimiento.</field>
     </record>
 
+    <!--
+        v19.0.3.0.0 — VALIDADOR DE BAJAS DE INVENTARIO.
+
+        Grupo PROPIO y no uno de los tres existentes: «jefe de area» no
+        es un rol funcional del modulo (quien pide / quien atiende /
+        quien configura) sino una relacion con UN departamento concreto,
+        y eso un grupo no lo sabe.
+
+        Nace VACIO y lo implica `group_requerimiento_manager`, asi que
+        HOY validan los administradores —lo que pide el encargo— y el dia
+        que exista la figura real basta con meter gente en este grupo:
+        el codigo pregunta SOLO por el (`_biocreto_exigir_validador`) y
+        NO cambia.
+
+        Implica a su vez a `group_requerimiento_user` porque un validador
+        tiene que poder abrir los conteos que valida.
+
+        Si algun dia cada jefe debe validar SOLO su area, eso es una
+        ir.rule sobre `department_id`, no otro grupo.
+    -->
+    <record id="group_inventario_validador" model="res.groups">
+        <field name="name">Validador de inventario de activos</field>
+        <field name="sequence">25</field>
+        <field name="privilege_id" ref="res_groups_privilege_requerimientos"/>
+        <field name="implied_ids" eval="[(4, ref('group_requerimiento_user'))]"/>
+        <field name="comment">Valida o rechaza los conteos de activos y sus bajas de inventario.</field>
+    </record>
+
+    <record id="group_requerimiento_manager" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_inventario_validador'))]"/>
+    </record>
+
     <data noupdate="1">
 
         <!-- ── Solicitante: solo lo suyo ────────────────────────────── -->
@@ -169,6 +201,46 @@
             <field name="perm_create" eval="0"/>
             <field name="perm_unlink" eval="1"/>
             <field name="domain_force">[('entrega_id.state', '=', 'borrador')]</field>
+        </record>
+
+        <!-- ══ v19.0.2.0.0 — INVENTARIO DE ACTIVOS ═══════════════════ -->
+        <!-- Globales, sin `groups`: una regla con grupo se une por OR a
+             las demas del mismo grupo y el administrador acabaria
+             esquivandola. Mismo criterio que las de entrega. -->
+        <record id="inventario_conteo_rule_multicompany" model="ir.rule">
+            <field name="name">biocreto_inventario_conteo multiempresa</field>
+            <field name="model_id" ref="model_biocreto_inventario_conteo"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="inventario_conteo_linea_rule_multicompany" model="ir.rule">
+            <field name="name">biocreto_inventario_conteo_linea multiempresa</field>
+            <field name="model_id" ref="model_biocreto_inventario_conteo_linea"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <!--
+            Un conteo CERRADO es inmutable. Se implementa como regla de
+            perm_write SIN `groups` —o sea global—, porque una regla con
+            grupo se une por OR a las demas del mismo grupo y el
+            administrador acabaria esquivandola. Mismo criterio que la de
+            las entregas confirmadas.
+
+            El candado de verdad esta en `BiocretoInventarioConteo.write`:
+            las reglas de registro NO cubren las escrituras hechas con
+            sudo(), y el flujo del propio modulo escribe `state` con los
+            permisos del usuario. Por eso la regla deja pasar los cuatro
+            estados y quien discrimina es el metodo; esta regla protege
+            de escrituras genericas (importacion, acciones masivas).
+        -->
+        <record id="inventario_conteo_linea_rule_cerrado" model="ir.rule">
+            <field name="name">Línea de conteo: cerrada no se modifica</field>
+            <field name="model_id" ref="model_biocreto_inventario_conteo_linea"/>
+            <field name="perm_read" eval="0"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+            <field name="domain_force">[('state', 'not in', ('enviado', 'validado'))]</field>
         </record>
 
         <!-- Categoría compartida: company_id vacío la hace visible desde

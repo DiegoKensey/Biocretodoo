@@ -1,6 +1,6 @@
 {
     'name': 'BIOCRETO Requerimientos',
-    'version': '19.0.1.9.0',
+    'version': '19.0.3.0.0',
     'category': 'Supply Chain',
     'summary': 'Requerimientos internos de EPP, herramientas, limpieza y oficina '
                'con flujo Borrador -> Enviado -> En proceso -> Entregado.',
@@ -89,6 +89,14 @@
         'report/paperformat.xml',
         'report/report_constancia_entrega.xml',
         # === ENTREGA DE MATERIALES v19.0.1.2.0 — FIN ===
+        # === INVENTARIO DE ACTIVOS v19.0.2.0.0 — INICIO ===
+        # Va ANTES de menus.xml porque este referencia
+        # action_biocreto_inventario_conteo, y el cargador de Odoo
+        # resuelve los `ref` en el orden de esta lista.
+        'views/res_company_views.xml',
+        'views/biocreto_inventario_conteo_views.xml',
+        'report/report_inventario_activos.xml',
+        # === INVENTARIO DE ACTIVOS v19.0.2.0.0 — FIN ===
         'views/menus.xml',
 
         'data/biocreto_requerimiento_categoria_data.xml',
@@ -101,12 +109,17 @@
             # vive report_constancia_entrega.scss, que pertenece al bundle
             # del reporte y no debe colarse en el backend.
             'biocreto_requerimientos/static/src/scss/entrega_firma.scss',
+            # v19.0.2.0.0: fondo permanente de las tres columnas de
+            # estado en la lista de lineas del conteo. Ruta explicita
+            # por el mismo motivo que la de arriba.
+            'biocreto_requerimientos/static/src/scss/inventario_activos.scss',
         ],
         # Bundle del reporte. Va en web.report_assets_common porque es
         # el que biocreto_pdf_engine inlinea en el HTML que entrega a
         # PlutoPrint (_biocreto_pick_bundle, ir_actions_report.py:314-335).
         'web.report_assets_common': [
             'biocreto_requerimientos/static/src/scss/report_constancia_entrega.scss',
+            'biocreto_requerimientos/static/src/scss/report_inventario_activos.scss',
         ],
     },
     'post_init_hook': 'post_init_hook',

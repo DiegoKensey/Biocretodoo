@@ -1,0 +1,465 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        ════════════════════════════════════════════════════════════
+        BC-GL-FR-15  —  Inventario de activos por área
+        A4 APAISADO
+        ════════════════════════════════════════════════════════════
+
+        POR QUE APAISADO, Y POR QUE SE PUEDE
+        ____________________________________
+        La tabla tiene 14 columnas. En A4 vertical (usable ~554 pt) la
+        columna del número quedaría en 16 pt y las de estado en 27; en
+        apaisado (usable 796,5 pt) la más estrecha son 27,9 pt.
+
+        El apaisado NO era obvio: un experimento previo dio factor de
+        escala 0,69 y pareció que el motor no lo soportaba. La causa real
+        era DESBORDAMIENTO HORIZONTAL — PlutoPrint, cuando el layout es
+        más ancho que el viewport, reduce el documento ENTERO, bordes
+        incluidos, sin dejar un aviso (biocreto_pdf_engine/models/
+        ir_actions_report.py:168-176). Con el ancho bien resuelto, las
+        cuatro variantes de apaisado medidas dieron factor 1,00000.
+
+        Hacen falta LAS DOS COSAS a la vez:
+          1. el paperformat con orientation=Landscape, que es lo que lee
+             `_biocreto_plutoprint_page_size` (ir_actions_report.py:271-281)
+             para llamar a `PAGE_SIZE_A4.landscape()`;
+          2. el `@page { size: A4 landscape }` de aquí abajo.
+        Con solo una de las dos, la hoja sale vertical.
+
+        RESTRICCIONES DEL MOTOR respetadas en todo el archivo:
+          · `@page` va como <style> LITERAL aquí, nunca en el SCSS: el
+            bundle minificado llega con la regla intacta pero el motor NO
+            la aplica cuando viene inlineada.
+          · Sin calc().
+          · Sin CSS Grid.
+          · Sin contenedores `display: flex` alrededor de nada que lleve
+            `break-inside: avoid` — PlutoPrint lo ignora en los
+            descendientes de un flex (probado con A/B en el contrato).
+    -->
+    <template id="inv_layout">
+        <style>
+            @page {
+                size: A4 landscape;
+                margin: 9mm 8mm 11mm 8mm;
+                @bottom-right {
+                    content: "Página " counter(page) " de " counter(pages);
+                    font-family: 'Century Gothic', 'URW Gothic', sans-serif;
+                    font-size: 6.5pt;
+                    color: #6b6d70;
+                }
+            }
+            body.container, body.o_body_html {
+                max-width: none !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            #wrapwrap, #wrapwrap &gt; main {
+                max-width: none !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                display: block !important;
+            }
+        </style>
+
+        <main class="biocreto-inv"
+              t-att-data-oe-model="doc and doc._name"
+              t-att-data-oe-id="doc and doc.id">
+            <t t-out="0"/>
+        </main>
+    </template>
+
+
+    <!--
+        ============================================================
+        Cuerpo  -  inv_body
+        ============================================================
+    -->
+    <template id="inv_body">
+        <!--
+            La consulta SIG vive AQUI y no en `inv_layout`, aunque el
+            recuadro se pinte en la cabecera. Motivo, comprobado con un
+            KeyError en el primer render: el cuerpo entra en el layout por
+            `<t t-out="0"/>`, y ese contenido se compila en el ambito de
+            QUIEN LLAMA, no en el del layout. Una variable puesta con
+            `t-set` dentro de `inv_layout` NO es visible desde el cuerpo.
+
+            La constancia de entrega no tropieza con esto porque su
+            `ctrl` se usa dentro del propio `ent_layout` (la banda SVG
+            lleva el recuadro); aqui el recuadro forma parte del cuerpo.
+
+            El literal [POR CONFIRMAR] se conserva: el data va con
+            noupdate="1", asi que si alguien archiva el registro el PDF
+            lo canta en vez de imprimir un recuadro en blanco.
+        -->
+        <t t-set="ctrl"
+           t-value="doc.env['biocreto.documento.control'].sudo().get_control_for_qweb('inventario_activos')"/>
+
+        <!-- El filtro del diálogo. `estado` lo pone
+             ReportInventarioActivos._get_report_values; vale 'todos'
+             cuando se imprime sin pasar por el diálogo. -->
+        <t t-set="lineas"
+           t-value="doc.linea_ids if estado == 'todos' else doc.linea_ids.filtered(lambda l: (l.cant_regular + l.cant_malogrado) &gt; 0)"/>
+
+        <!-- La barra de resumen se calcula sobre lo que SE IMPRIME, no
+             sobre el conteo entero: si el usuario pidió solo lo que está
+             fuera de Bueno, un resumen del total no cuadraría con la
+             tabla que tiene delante. -->
+        <t t-set="fuera"
+           t-value="lineas.filtered(lambda l: (l.cant_regular + l.cant_malogrado) &gt; 0)"/>
+        <t t-set="comp" t-value="doc.company_id"/>
+
+        <section class="inv-page">
+
+            <!-- ═══════════ CABECERA ═══════════ -->
+            <table class="inv-cab">
+                <colgroup>
+                    <col style="width:34%"/>
+                    <col style="width:44%"/>
+                    <col style="width:22%"/>
+                </colgroup>
+                <tr>
+                    <td class="cab-emisor">
+                        <!-- Sede, RUC y dirección SIEMPRE de la compañía
+                             del documento. Nunca literales: hay dos
+                             compañías en la base y habrá más plantas. -->
+                        <div class="emisor-nombre"><t t-out="comp.name or ''"/></div>
+                        <div class="emisor-dato" t-if="comp.vat">RUC <t t-out="comp.vat"/></div>
+                        <div class="emisor-dato">
+                            <t t-out="comp.street or ''"/><t t-if="comp.street2">, <t t-out="comp.street2"/></t><t t-if="comp.city">, <t t-out="comp.city"/></t>
+                        </div>
+                    </td>
+                    <td class="cab-titulo">
+                        <h1>INVENTARIO DE ACTIVOS POR ÁREA</h1>
+                        <!--
+                            ROTULO DE BORRADOR.
+
+                            Va en el FLUJO, bajo el titulo, y NO como
+                            marca de agua girada sobre la tabla. Dos
+                            motivos: una marca de agua necesita
+                            `transform: rotate()` sobre un elemento
+                            absoluto, que es justo el tipo de layout con
+                            el que este motor ya dio problemas; y un
+                            rotulo en la cabecera se ve igual de bien en
+                            una fotocopia en blanco y negro, que es como
+                            va a circular esta hoja.
+
+                            Se imprime cuando el conteo NO esta validado.
+                            La hoja en borrador existe para salir a
+                            contar con ella en la mano, asi que tiene que
+                            poder imprimirse — y tiene que quedar claro
+                            que no es el documento oficial del periodo.
+                        -->
+                        <div class="cab-borrador" t-if="doc.state != 'validado'">
+                            BORRADOR — <t t-out="dict(doc._fields['state'].selection).get(doc.state) or ''"/>
+                        </div>
+                    </td>
+                    <td class="cab-sig">
+                        <div class="sig-fila"><t t-out="ctrl.get('codigo') or '[POR CONFIRMAR]'"/></div>
+                        <div class="sig-fila">VERSIÓN: <t t-out="ctrl.get('version') or '[POR CONFIRMAR]'"/></div>
+                        <div class="sig-fila">FECHA: <t t-out="ctrl.get('fecha_version') and ctrl.get('fecha_version').strftime('%d/%m/%y') or '[POR CONFIRMAR]'"/></div>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- ═══════════ DATOS DEL CONTEO ═══════════ -->
+            <table class="inv-meta">
+                <colgroup>
+                    <col style="width:9%"/><col style="width:24%"/>
+                    <col style="width:9%"/><col style="width:24%"/>
+                    <col style="width:9%"/><col style="width:25%"/>
+                </colgroup>
+                <tr>
+                    <th>N°</th>
+                    <td><t t-out="doc.name or ''"/></td>
+                    <th>Área</th>
+                    <td><t t-out="doc.department_id.name or ''"/></td>
+                    <th>Fecha</th>
+                    <td><t t-out="doc.fecha" t-options="{'widget': 'date'}"/></td>
+                </tr>
+                <tr>
+                    <th>Tipo</th>
+                    <td><t t-out="dict(doc._fields['tipo'].selection).get(doc.tipo) or ''"/></td>
+                    <th>Ubicación</th>
+                    <td><t t-out="doc.ubicacion_id.complete_name or ''"/></td>
+                    <th>Responsable</th>
+                    <td>
+                        <t t-out="doc.responsable_id.name or ''"/>
+                        <!-- Si el cargo está vacío NO se imprime NADA:
+                             ni el paréntesis, ni un guion, ni un hueco.
+                             `job_title` y no `job_id`: los dos son
+                             related no almacenados a `version_id`, pero
+                             job_id es el puesto del catálogo (compartido
+                             entre personas) y job_title es el cargo de
+                             ESTA persona, que es lo que va en una firma. -->
+                        <span class="meta-cargo" t-if="doc.responsable_id.job_title">
+                            · <t t-out="doc.responsable_id.job_title"/>
+                        </span>
+                    </td>
+                </tr>
+                <!-- La fila entera desaparece sin segundo responsable: no
+                     se deja un renglón vacío en un documento que se firma. -->
+                <tr t-if="doc.responsable2_id">
+                    <th>2.° responsable</th>
+                    <td colspan="5">
+                        <t t-out="doc.responsable2_id.name or ''"/>
+                        <span class="meta-cargo" t-if="doc.responsable2_id.job_title">
+                            · <t t-out="doc.responsable2_id.job_title"/>
+                        </span>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- ═══════════ INTERPRETACIÓN DEL ESTADO ═══════════ -->
+            <table class="inv-leyenda">
+                <colgroup>
+                    <col style="width:11%"/><col style="width:22.33%"/>
+                    <col style="width:11%"/><col style="width:22.33%"/>
+                    <col style="width:11%"/><col style="width:22.34%"/>
+                </colgroup>
+                <tr>
+                    <th class="est-bueno">BUENO</th>
+                    <td>Producto disponible, en buen estado y con cantidad suficiente</td>
+                    <th class="est-regular">REGULAR</th>
+                    <td>Producto apto, con cantidad limitada o desgaste moderado; requiere control</td>
+                    <th class="est-malo">MALOGRADO</th>
+                    <td>Producto agotado, fuera de uso o dado de baja</td>
+                </tr>
+            </table>
+
+            <!-- ═══════════ DETALLE ═══════════ -->
+            <!--
+                LOS ANCHOS. Usable = 841,89 pt (A4 apaisado) menos 2 × 8 mm
+                de margen = 796,54 pt. En puntos, columna a columna:
+
+                  N°            3,5%   27,9    Serie          7,5%   59,7
+                  Código        7,0%   55,8    Color          5,0%   39,8
+                  Material     19,0%  151,3    Dimensiones    8,0%   63,7
+                  Marca         7,5%   59,7    Und.           4,0%   31,9
+                  Modelo        7,5%   59,7    Total          4,0%   31,9
+                  Bueno         4,5%   35,8    Regular        4,5%   35,8
+                  Malogrado     4,5%   35,8    Especif. baja 13,5%  107,5
+
+                La más estrecha son los 27,9 pt del N°, por encima del
+                umbral de 25 pt bajo el cual `JUEGO DE TAMICES 1 1/2", 1",
+                3/4"` empezaría a partirse. El reparto inicial daba 3% =
+                23,0 pt al N° y no pasaba; el 0,5% que le falta salió de
+                Material (que baja de 20% a 19% y sigue holgadísimo) y el
+                resto del ajuste de las columnas de estado.
+
+                `table-layout: fixed` en el SCSS: sin él el motor
+                redistribuye los anchos según el contenido y este reparto
+                medido no significa nada.
+            -->
+            <table class="inv-detalle">
+                <colgroup>
+                    <col style="width:3.5%"/>
+                    <col style="width:7%"/>
+                    <col style="width:19%"/>
+                    <col style="width:7.5%"/>
+                    <col style="width:7.5%"/>
+                    <col style="width:7.5%"/>
+                    <col style="width:5%"/>
+                    <col style="width:8%"/>
+                    <col style="width:4%"/>
+                    <col style="width:4%"/>
+                    <col style="width:4.5%"/>
+                    <col style="width:4.5%"/>
+                    <col style="width:4.5%"/>
+                    <col style="width:13.5%"/>
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>Código</th>
+                        <th class="th-izq">Material</th>
+                        <th>Marca</th>
+                        <th>Modelo</th>
+                        <th>Serie</th>
+                        <th>Color</th>
+                        <th>Dimensiones</th>
+                        <th>Und.</th>
+                        <th class="th-total">Total</th>
+                        <th class="est-bueno">Bueno</th>
+                        <th class="est-regular">Regular</th>
+                        <th class="est-malo">Malo</th>
+                        <th class="th-izq">Especificaciones de baja</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- El ítem es correlativo DEL REPORTE, desde 1: con
+                         el filtro "solo fuera de Bueno" activo, numerar
+                         por la posición en el conteo dejaría huecos. -->
+                    <t t-foreach="lineas" t-as="linea">
+                        <tr>
+                            <td class="c-num"><t t-out="linea_index + 1"/></td>
+                            <td class="c-cod"><t t-out="linea.codigo or ''"/></td>
+                            <td class="c-izq"><t t-out="linea.producto_id.name or ''"/></td>
+                            <td class="c-izq"><t t-out="linea.marca or ''"/></td>
+                            <td class="c-izq"><t t-out="linea.modelo or ''"/></td>
+                            <td class="c-izq"><t t-out="linea.serie or ''"/></td>
+                            <td class="c-izq"><t t-out="linea.color or ''"/></td>
+                            <td class="c-izq"><t t-out="linea.dimensiones or ''"/></td>
+                            <td class="c-num"><t t-out="linea.uom_name or ''"/></td>
+                            <td class="c-total"><t t-out="doc._biocreto_fmt(linea.total)"/></td>
+                            <!-- El fondo va SIEMPRE (identifica la columna);
+                                 lo que cambia con el valor es el número:
+                                 `n-si` en negrita y tinta plena cuando hay
+                                 unidades, `n-no` en gris claro cuando es
+                                 cero. Así la vista salta a lo que importa
+                                 sin tener que leer 40 ceros. -->
+                            <td class="est-bueno c-num">
+                                <span t-att-class="'n-si' if linea.cant_bueno else 'n-no'"><t t-out="doc._biocreto_fmt(linea.cant_bueno)"/></span>
+                            </td>
+                            <td class="est-regular c-num">
+                                <span t-att-class="'n-si' if linea.cant_regular else 'n-no'"><t t-out="doc._biocreto_fmt(linea.cant_regular)"/></span>
+                            </td>
+                            <td class="est-malo c-num">
+                                <span t-att-class="'n-si' if linea.cant_malogrado else 'n-no'"><t t-out="doc._biocreto_fmt(linea.cant_malogrado)"/></span>
+                            </td>
+                            <td class="c-izq c-motivo"><t t-out="linea.motivo or ''"/></td>
+                        </tr>
+                    </t>
+                    <tr t-if="not lineas">
+                        <td colspan="14" class="c-vacio">
+                            Sin activos que mostrar con los filtros aplicados.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- ═══════════ BARRA DE RESUMEN ═══════════ -->
+            <table class="inv-resumen">
+                <colgroup><col style="width:50%"/><col style="width:50%"/></colgroup>
+                <tr>
+                    <td>
+                        <span class="res-etq">Ítems contados:</span>
+                        <span class="res-val"><t t-out="len(lineas)"/> productos</span>
+                        <span class="res-sep">·</span>
+                        <span class="res-val"><t t-out="doc._biocreto_fmt(sum(lineas.mapped('total')))"/> unidades</span>
+                    </td>
+                    <td class="res-fuera">
+                        <span class="res-etq">Fuera de estado bueno:</span>
+                        <span class="res-val"><t t-out="doc._biocreto_fmt(sum(fuera.mapped('cant_regular')) + sum(fuera.mapped('cant_malogrado')))"/> unidades</span>
+                        <span class="res-sep">·</span>
+                        <span class="res-val"><t t-out="len(fuera)"/> productos</span>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- ═══════════ FIRMAS ═══════════ -->
+            <!-- <table> y no dos <div> flotados ni flex: el motor ignora
+                 `break-inside: avoid` en los descendientes de un flex, y
+                 este bloque no se puede partir entre dos hojas. -->
+            <table class="inv-firmas">
+                <colgroup><col style="width:50%"/><col style="width:50%"/></colgroup>
+                <tr>
+                    <td>
+                        <div class="firma-linea"></div>
+                        <div class="firma-rol">Responsable del inventario</div>
+                        <div class="firma-cargo" t-if="doc.responsable_id.job_title">
+                            <t t-out="doc.responsable_id.job_title"/>
+                        </div>
+                        <div class="firma-dato">Datos: ______________________________</div>
+                        <div class="firma-dato">Fecha: ______________________________</div>
+                    </td>
+                    <td>
+                        <div class="firma-linea"></div>
+                        <!-- Estático por decisión del encargo: el formato
+                             lo firma siempre el mismo cargo, y no hay un
+                             campo en el documento que lo elija. -->
+                        <div class="firma-rol">Jefe Corporativo de Logística</div>
+                        <!-- Sin `firma-cargo`: en este recuadro el rol y
+                             el cargo son la misma cosa, y repetirlo dos
+                             veces seguidas se lee como un error de
+                             plantilla. El hueco lo compensa el
+                             `margin-bottom` que el SCSS le pone al rol
+                             cuando no hay cargo debajo. -->
+                        <div class="firma-dato">Datos: ______________________________</div>
+                        <div class="firma-dato">Fecha: ______________________________</div>
+                    </td>
+                </tr>
+            </table>
+
+            <p class="inv-legal">
+                Documento controlado del Sistema Integrado de Gestión. Su
+                reproducción total o parcial sin autorización del área SIG
+                convierte esta copia en documento NO CONTROLADO. Verifique
+                que la versión impresa coincide con la vigente antes de usarla.
+            </p>
+
+        </section>
+
+        <!-- Cada área en su propia hoja. No se usa
+             `.inv-page { page-break-after: always }` porque eso deja una
+             hoja en blanco al final del PDF. -->
+        <div class="inv-salto" t-if="not doc_last"></div>
+    </template>
+
+
+    <template id="report_inventario_activos">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="biocreto_requerimientos.inv_layout">
+                    <t t-call="biocreto_requerimientos.inv_body"/>
+                </t>
+            </t>
+        </t>
+    </template>
+
+
+    <data noupdate="0">
+
+        <!--
+            El paperformat es LA MITAD del apaisado: el motor lee
+            `orientation` y llama a `PAGE_SIZE_A4.landscape()`
+            (biocreto_pdf_engine/models/ir_actions_report.py:271-281). La
+            otra mitad es el `@page { size: A4 landscape }` del <style>
+            literal de arriba. Sin las dos, la hoja sale vertical.
+
+            `format` A4 y no custom: el helper del motor solo mira
+            `orientation` y parte siempre de `PAGE_SIZE_A4`; page_width y
+            page_height no se leen. Se dejan los valores A4 verticales a
+            propósito, porque son los que usaría el fallback de
+            wkhtmltopdf, que sí rota según `orientation`.
+
+            dpi=96, igual que el resto de formatos BIOCRETO, para que las
+            medidas en pt del SCSS salgan calibradas.
+        -->
+        <record id="paperformat_biocreto_inventario_activos" model="report.paperformat">
+            <field name="name">A4 apaisado BIOCRETO Inventario de activos</field>
+            <field name="default" eval="False"/>
+            <field name="format">A4</field>
+            <field name="orientation">Landscape</field>
+            <field name="margin_top">9</field>
+            <field name="margin_bottom">11</field>
+            <field name="margin_left">8</field>
+            <field name="margin_right">8</field>
+            <field name="header_line" eval="False"/>
+            <field name="header_spacing">0</field>
+            <field name="dpi">96</field>
+        </record>
+
+        <record id="action_report_inventario_activos" model="ir.actions.report">
+            <field name="name">Inventario de activos</field>
+            <field name="model">biocreto.inventario.conteo</field>
+            <field name="report_type">qweb-pdf</field>
+            <!-- Tiene que coincidir con el id del <template> Y con el
+                 sufijo del AbstractModel de render
+                 (report.biocreto_requerimientos.report_inventario_activos),
+                 que es lo que hace llegar `data` a la plantilla. -->
+            <field name="report_name">biocreto_requerimientos.report_inventario_activos</field>
+            <field name="report_file">biocreto_requerimientos.report_inventario_activos</field>
+            <field name="paperformat_id" ref="paperformat_biocreto_inventario_activos"/>
+            <!-- Sin extension: la anade Odoo segun report_type. -->
+            <field name="print_report_name">'BC-GL-FR-15_%s' % (object.name or object.id)</field>
+            <field name="binding_model_id" ref="model_biocreto_inventario_conteo"/>
+            <field name="binding_type">report</field>
+        </record>
+
+    </data>
+
+</odoo>

@@ -10,3 +10,10 @@ from . import ir_actions_report
 # === BIOCRETO CONSOLIDADO v1 — INICIO (bloque reversible) ===
 from . import consolidado
 # === BIOCRETO CONSOLIDADO v1 — FIN ===
+# === INVENTARIO DE ACTIVOS v19.0.2.0.0 — INICIO ===
+from . import res_company
+from . import stock_scrap
+from . import biocreto_inventario_conteo
+from . import biocreto_inventario_rechazo_wizard
+from . import biocreto_inventario_reporte_wizard
+# === INVENTARIO DE ACTIVOS v19.0.2.0.0 — FIN ===

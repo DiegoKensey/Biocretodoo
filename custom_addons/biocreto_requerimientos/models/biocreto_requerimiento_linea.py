@@ -131,12 +131,68 @@ class BiocretoRequerimientoLinea(models.Model):
     def _compute_stock_disponible(self):
         """qty_available por ALMACEN, no por ubicacion.
 
-        Se usa `warehouse_id` en el contexto y NO `location_id`: el
-        almacen agrega todas sus ubicaciones internas hijas
+        Se usa `warehouse_id` en el contexto y NO `location`: el almacen
+        agrega todas sus ubicaciones internas hijas
         (stock/models/product.py, _get_domain_locations), asi que el dato
         no se rompe cuando el material esta repartido. Tampoco se toca
         `allowed_company_ids`: eso alteraria las reglas multicompania de
         toda la transaccion.
+
+        ─── 22/09/2026 — LEER ANTES DE TOCAR ESTE METODO ───
+
+        Este calculo ESTUVO MAL y se arreglo SIN tocar este codigo.
+
+        Que pasaba: las areas vivian en `WH/Areas`, HERMANA de
+        `WH/Existencias` bajo `WH`. `warehouse_id` no resuelve a la
+        ubicacion de existencias sino a `warehouse.view_location_id`
+        (product.py:361), o sea `WH`, y el dominio va por
+        `parent_path LIKE '4/%'` (product.py:393-395). Resultado: el
+        stock del almacen SUMABA lo ya entregado a las areas. Una
+        impresora entregada a Administracion seguia contando como
+        disponible, el consolidado decia "A comprar: 0" y al entregar no
+        habia nada que dar.
+
+        Que se hizo: el 22/09/2026 se movieron las areas FUERA de `WH`,
+        a una familia propia `Activo/Areas/...`, sin almacen, igual que
+        `Consumo`. Sus `parent_path` pasaron de `4/64/...` a `99/64/...`,
+        asi que `warehouse_id` dejo de alcanzarlas y este metodo empezo a
+        dar el numero correcto. Los ids no cambiaron: se movieron los
+        registros existentes, y `hr.department.biocreto_ubicacion_activos`
+        sigue apuntando a los mismos.
+
+        POR QUE ESTO NO ES LA CORRECCION DEFINITIVA:
+
+        El calculo sigue apoyado en la ESTRUCTURA del arbol, no en el
+        codigo. `warehouse_id` sigue sin significar "existencias": bajo
+        `WH` cuelgan hoy SEIS ubicaciones internas mas, archivadas pero
+        presentes -- Entrada, Control de calidad, Salida, Zona de
+        empaquetado, Preproduccion y Posproduccion. El dia que alguien
+        active Control de calidad desde la configuracion del almacen, un
+        clic, el material en control de calidad volvera a contar como
+        disponible para entregar. Mismo fallo, otro disfraz, y sin que
+        nadie haya tocado las areas.
+
+        La correccion DEFINITIVA es leer de la ubicacion de existencias:
+
+            almacen.lot_stock_id  ->  with_context(location=<id>)
+
+        `lot_stock_id` es por definicion la ubicacion desde la que ese
+        almacen despacha, que es justo de donde sale el material en
+        `biocreto_requerimiento_entrega._biocreto_generar_movimientos`
+        (:376-398). Calcular sobre la misma ubicacion de la que se
+        despacha es lo que cierra el circulo.
+
+        OJO con la clave: el ORM lee `location`, NO `location_id`
+        (product.py:354). Un `location_id` en el contexto no lo mira
+        nadie y se ignora en silencio.
+
+        Se POSPUSO a proposito, por decision del usuario, para separar el
+        cambio de datos del cambio de codigo. Cuando se retome, el mismo
+        arreglo hace falta en `consolidado._biocreto_stock` (:260-281) --
+        son los dos UNICOS sitios del modulo que calculan stock; los
+        otros cinco (validacion de entrega, autollenado, bloqueo de
+        linea, la columna del wizard y la del requerimiento) derivan de
+        estos dos por `related`/`depends`.
         """
         for linea in self:
             if not linea.product_id or not linea.product_id.is_storable:

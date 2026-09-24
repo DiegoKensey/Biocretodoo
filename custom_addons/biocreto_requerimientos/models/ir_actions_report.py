@@ -30,4 +30,9 @@ class IrActionsReport(models.Model):
     def _biocreto_usa_plutoprint(self):
         res = super()._biocreto_usa_plutoprint()
         res.add('biocreto_requerimientos.report_constancia_entrega')
+        # v19.0.2.0.0 — BC-GL-FR-15. Es el PRIMER reporte apaisado del
+        # proyecto: el motor lo resuelve leyendo `orientation` del
+        # paperformat (ir_actions_report.py:271-281 del motor), asi que
+        # basta con suscribirlo aqui como cualquier otro.
+        res.add('biocreto_requerimientos.report_inventario_activos')
         return res

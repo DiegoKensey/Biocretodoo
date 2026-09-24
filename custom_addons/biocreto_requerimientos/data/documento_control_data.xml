@@ -43,5 +43,35 @@
             <field name="fecha_version" eval="'2024-06-01'"/>
         </record>
 
+
+        <!--
+            Registro SIG del Inventario de Activos por Area.
+
+            Consultado desde report_inventario_activos.xml via
+              get_control_for_qweb('inventario_activos')
+
+            Mismo criterio que el de arriba: noupdate="1", asi que si el
+            area SIG sube la version a 02 desde Ajustes > SIG, un -u
+            posterior NO se la pisa; y cambiar los valores de este
+            archivo NO tiene efecto sobre una base donde el registro ya
+            existe.
+
+            El literal [POR CONFIRMAR] de la plantilla se conserva por lo
+            mismo: si alguien archiva el registro, el PDF lo canta en vez
+            de imprimir un recuadro en blanco.
+
+            La fecha se alinea con los otros dos codigos BC-GL-FR del
+            sistema (08/07/2026, biocreto_compras_reporte) y NO con la de
+            BC-GL-FR-11 (01/06/2024), que quedo marcada como pendiente de
+            confirmar con el area SIG.
+        -->
+        <record id="documento_inventario_activos" model="biocreto.documento.control">
+            <field name="name">Inventario de Activos por Área</field>
+            <field name="codigo">BC-GL-FR-15</field>
+            <field name="codigo_documento">inventario_activos</field>
+            <field name="version">01</field>
+            <field name="fecha_version" eval="'2026-07-08'"/>
+        </record>
+
     </data>
 </odoo>

@@ -1,0 +1,41 @@
+// ══════════════════════════════════════════════════════════════════════
+//  BIOCRETO — Inventario de activos por area (BC-GL-FR-15)
+//  Bundle: web.assets_backend.  NO es el SCSS del reporte.
+// ══════════════════════════════════════════════════════════════════════
+//
+//  Fondo suave PERMANENTE de las tres columnas de estado en la lista de
+//  lineas del conteo. No es una decoracion condicional (`decoration-*`):
+//  el color identifica la COLUMNA, no la fila, y tiene que estar tambien
+//  cuando la celda vale cero.
+//
+//  Los tres tonos son los mismos del reporte impreso
+//  (report_inventario_activos.scss): #e8f5e9 / #fff8e1 / #ffebee. Que la
+//  pantalla y el papel coincidan es el punto — quien rellena la tabla en
+//  Odoo reconoce las columnas al ver el PDF.
+//
+//  El selector va anclado a `.o_field_cell`: la clase del <field> de la
+//  lista llega tanto a la celda <td> (list_renderer.js:971, getCellClass
+//  empuja column.attrs.class) como a la celda de cabecera. Se pinta la
+//  cabecera tambien, con el mismo tono, para que la columna se lea como
+//  una banda continua.
+//
+//  `!important` NO se usa: las reglas nativas de la celda de lista no
+//  declaran background-color, asi que basta con la especificidad de dos
+//  clases. Si algun dia una fila con `decoration-danger` tuviera que
+//  ganar, ganaria — y es lo correcto: una fila en rojo avisa de algo mas
+//  grave que la columna en la que estas.
+
+$bio-inv-bueno:   #e8f5e9;
+$bio-inv-regular: #fff8e1;
+$bio-inv-malo:    #ffebee;
+
+.o_list_renderer {
+    td.o_field_cell.bio-inv-bueno,
+    th.bio-inv-bueno    { background-color: $bio-inv-bueno; }
+
+    td.o_field_cell.bio-inv-regular,
+    th.bio-inv-regular  { background-color: $bio-inv-regular; }
+
+    td.o_field_cell.bio-inv-malo,
+    th.bio-inv-malo     { background-color: $bio-inv-malo; }
+}
