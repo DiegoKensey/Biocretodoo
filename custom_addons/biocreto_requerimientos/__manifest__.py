@@ -1,6 +1,6 @@
 {
     'name': 'BIOCRETO Requerimientos',
-    'version': '19.0.3.0.0',
+    'version': '19.0.3.1.0',
     'category': 'Supply Chain',
     'summary': 'Requerimientos internos de EPP, herramientas, limpieza y oficina '
                'con flujo Borrador -> Enviado -> En proceso -> Entregado.',

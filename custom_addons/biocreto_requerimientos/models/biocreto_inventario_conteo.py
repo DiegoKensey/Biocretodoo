@@ -53,7 +53,7 @@
 #    falta.
 # ═══════════════════════════════════════════════════════════════════════
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import RedirectWarning, UserError
 from odoo.tools import float_compare
 
 
@@ -411,32 +411,72 @@ class BiocretoInventarioConteo(models.Model):
     # ═════════════════════════════════════════════════════════════════
     # VALIDACIONES  (en métodos de acción, NUNCA en @api.constrains)
     # ═════════════════════════════════════════════════════════════════
-    def _biocreto_exigir_area_libre(self):
+    def _biocreto_exigir_area_libre(self, accion='crear'):
         """Un área no puede tener dos conteos abiertos a la vez.
 
         Abierto = `borrador` o `enviado`. Dos documentos vivos de la
         misma área compiten por el mismo stock y el segundo en validarse
         desecharía unidades que el primero ya dio de baja.
+
+        v19.0.3.1.0 — `RedirectWarning` en vez de `UserError`: el aviso
+        lleva un botón «Ir al conteo abierto» que abre ESE registro. Antes
+        el usuario leía el número y tenía que salir a buscarlo a la lista.
+
+        v19 acepta un DICCIONARIO de acción, no solo un id:
+          · `odoo/exceptions.py:35` — `__init__(self, message, action,
+            button_text, additional_context=None)`;
+          · `web/static/src/core/errors/error_dialogs.js:195` — el botón
+            hace `actionService.doAction(this.actionId, …)`, y `doAction`
+            acepta el diccionario tal cual (`:192` incluso prevé un `help`
+            dentro de él);
+          · precedente nativo: `account/models/account_move_line.py:3064`.
+
+        `accion` solo cambia el final del mensaje. La regla es la misma
+        venga de donde venga: `create`, `write` al cambiar de área, o
+        `action_enviar`.
+
+        Si hay MÁS de un conteo abierto de la misma área —datos anteriores
+        a esta regla—, se enlaza el más reciente y se dice cuántos hay.
         """
+        estados = dict(self._fields['state'].selection)
         for conteo in self:
             if conteo.state in ('validado', 'rechazado'):
                 continue
-            otro = self.search([
+            abiertos = self.search([
                 ('id', '!=', conteo.id),
                 ('department_id', '=', conteo.department_id.id),
                 ('company_id', '=', conteo.company_id.id),
                 ('state', 'in', ('borrador', 'enviado')),
-            ], limit=1)
-            if otro:
-                raise UserError(_(
-                    "El área «%(area)s» ya tiene un conteo abierto: "
-                    "%(otro)s, en estado «%(estado)s».\n\n"
-                    "Ciérrelo —validándolo o rechazándolo— antes de empezar "
-                    "otro. Dos conteos vivos de la misma área cuentan el "
-                    "mismo stock y el segundo daría de baja unidades que el "
-                    "primero ya dio.",
-                    area=conteo.department_id.name, otro=otro.name,
-                    estado=dict(self._fields['state'].selection)[otro.state]))
+            ], order='fecha desc, id desc')
+            if not abiertos:
+                continue
+            otro = abiertos[0]
+            if accion == 'enviar':
+                cierre = _("Termínelo o envíelo antes de enviar este.")
+            else:
+                cierre = _("Termínelo o envíelo antes de crear otro.")
+            mensaje = _(
+                "El área %(area)s ya tiene un conteo abierto: %(otro)s "
+                "(%(estado)s). %(cierre)s",
+                area=conteo.department_id.name, otro=otro.name,
+                estado=estados[otro.state], cierre=cierre)
+            if len(abiertos) > 1:
+                mensaje += "\n\n" + _(
+                    "Hay %(n)s conteos abiertos de esta área; el botón abre "
+                    "el más reciente.", n=len(abiertos))
+            raise RedirectWarning(mensaje, {
+                'type': 'ir.actions.act_window',
+                'name': otro.name,
+                'res_model': self._name,
+                'res_id': otro.id,
+                'view_mode': 'form',
+                # La MISMA vista de formulario que fijan las dos acciones
+                # del menú, no la que Odoo elija por defecto.
+                'views': [[self.env.ref(
+                    'biocreto_requerimientos.'
+                    'biocreto_inventario_conteo_view_form').id, 'form']],
+                'target': 'current',
+            }, _("Ir al conteo abierto"))
 
     def _biocreto_exigir_ubicacion(self):
         """El área tiene que tener su ubicación de activos configurada.
@@ -538,7 +578,7 @@ class BiocretoInventarioConteo(models.Model):
                 nombre=self.name,
                 estado=dict(self._fields['state'].selection)[self.state]))
         self._biocreto_exigir_ubicacion()
-        self._biocreto_exigir_area_libre()
+        self._biocreto_exigir_area_libre(accion='enviar')
         if not self.linea_ids:
             raise UserError(_(
                 "El conteo %s no tiene ninguna línea que enviar.", self.name))
@@ -800,7 +840,24 @@ class BiocretoInventarioConteo(models.Model):
                     nombre=cerrados[0].name,
                     estado=dict(self._fields['state'].selection)[
                         cerrados[0].state]))
-        return super().write(vals)
+
+        # v19.0.3.1.0 — la regla del área también al CAMBIAR de área.
+        # Solo los registros cuyo valor cambia DE VERDAD: reescribir el
+        # mismo departamento (el cliente web lo reenvía a menudo junto con
+        # otros campos) no debe disparar el aviso. Se calcula ANTES del
+        # `super()`, que es cuando todavía se ve el valor viejo.
+        cambian_area = self.browse()
+        if 'department_id' in vals:
+            cambian_area = self.filtered(
+                lambda c: c.department_id.id != vals['department_id'])
+        resultado = super().write(vals)
+        # Y se comprueba DESPUÉS, con el área nueva ya escrita: la regla
+        # mira `conteo.department_id`. Si salta, la transacción entera se
+        # deshace, incluidas las líneas que el compute recargó para el
+        # área nueva.
+        if cambian_area:
+            cambian_area._biocreto_exigir_area_libre()
+        return resultado
 
     # ═════════════════════════════════════════════════════════════════
     # HELPER DE LA PLANTILLA

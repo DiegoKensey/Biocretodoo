@@ -230,20 +230,40 @@
         </field>
     </record>
 
+    <!--
+        VISTAS FIJADAS (v19.0.3.1.0).
+
+        Dos listas del mismo modelo. Sin view_ids, el menú abría la de
+        bajas (sin botón Nuevo).
+
+        El detalle: `biocreto.inventario.conteo` tiene DOS vistas de
+        lista, esta y la de «Bajas por validar». Con `view_mode` a secas
+        la acción pide `(False, 'list')` y Odoo elige la primaria de menor
+        `priority, name, id` (ir_ui_view.py:142, default_view :685-694).
+        Con las dos a prioridad 16 desempató el nombre, y
+        `…conteo.bajas.list` va antes que `…conteo.list`. El menú pintaba
+        la lista de bajas, que lleva create="false": no había «Nuevo».
+
+        `Command.clear()` primero: cada `-u` rehace las dos filas de
+        `ir.actions.act_window.view` en vez de acumularlas.
+    -->
     <record id="action_biocreto_inventario_conteo" model="ir.actions.act_window">
         <field name="name">Inventario de activos</field>
         <field name="res_model">biocreto.inventario.conteo</field>
         <field name="view_mode">list,form</field>
+        <field name="view_ids" eval="[Command.clear(),
+            Command.create({'sequence': 1, 'view_mode': 'list', 'view_id': ref('biocreto_inventario_conteo_view_list')}),
+            Command.create({'sequence': 2, 'view_mode': 'form', 'view_id': ref('biocreto_inventario_conteo_view_form')})]"/>
         <field name="search_view_id" ref="biocreto_inventario_conteo_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Registre el primer inventario de activos
             </p>
             <p>
-                Elija el área y las líneas aparecen solas con los activos que
-                hay hoy allí. Reparta cada total entre Bueno, Regular y
-                Malogrado y pulse <b>Enviar</b>. El formato impreso es el
-                BC-GL-FR-15.
+                Pulse <b>Nuevo</b> y elija el área: las líneas aparecen solas
+                con los activos que hay hoy allí. Reparta cada total entre
+                Bueno, Regular y Malogrado y pulse Enviar. El formato impreso
+                es el BC-GL-FR-15.
             </p>
         </field>
     </record>
@@ -265,6 +285,13 @@
     <record id="biocreto_inventario_bajas_view_list" model="ir.ui.view">
         <field name="name">biocreto.inventario.conteo.bajas.list</field>
         <field name="model">biocreto.inventario.conteo</field>
+        <!-- Prioridad 20 (la principal queda en 16, el valor por
+             defecto): SEGURO, no solución. La solución es que cada
+             acción fije sus vistas. Esto solo impide que la lista de
+             bajas vuelva a colarse como lista POR DEFECTO del modelo en
+             cualquier acción que no fije la suya — un botón inteligente,
+             un `act_window` generado por código. -->
+        <field name="priority">20</field>
         <field name="arch" type="xml">
             <list string="Bajas por validar" create="false">
                 <field name="name"/>
@@ -279,10 +306,28 @@
         </field>
     </record>
 
+    <!--
+        VISTAS FIJADAS (v19.0.3.1.0).
+
+        Dos listas del mismo modelo. Sin view_ids, el menú abría la de
+        bajas (sin botón Nuevo). Esta acción SÍ debe abrir la de bajas, y
+        la fija igual que la principal fija la suya.
+
+        Hasta la 19.0.3.0.0 la lista se ataba con un registro
+        `ir.actions.act_window.view` aparte
+        (action_biocreto_inventario_bajas_view_list). Se sustituye por
+        este `view_ids`, que fija también el FORMULARIO: hoy solo hay
+        uno, pero el día que haya otro (uno reducido para el validador,
+        por ejemplo) volvería a pasar lo mismo con el formulario. El `-u`
+        borra el registro viejo por huérfano.
+    -->
     <record id="action_biocreto_inventario_bajas" model="ir.actions.act_window">
         <field name="name">Bajas por validar</field>
         <field name="res_model">biocreto.inventario.conteo</field>
         <field name="view_mode">list,form</field>
+        <field name="view_ids" eval="[Command.clear(),
+            Command.create({'sequence': 1, 'view_mode': 'list', 'view_id': ref('biocreto_inventario_bajas_view_list')}),
+            Command.create({'sequence': 2, 'view_mode': 'form', 'view_id': ref('biocreto_inventario_conteo_view_form')})]"/>
         <field name="domain">[('state', '=', 'enviado'), ('linea_ids.cant_malogrado', '&gt;', 0)]</field>
         <field name="search_view_id" ref="biocreto_inventario_conteo_view_search"/>
         <field name="help" type="html">
@@ -296,12 +341,6 @@
         </field>
     </record>
 
-    <record id="action_biocreto_inventario_bajas_view_list" model="ir.actions.act_window.view">
-        <field name="sequence" eval="1"/>
-        <field name="view_mode">list</field>
-        <field name="view_id" ref="biocreto_inventario_bajas_view_list"/>
-        <field name="act_window_id" ref="action_biocreto_inventario_bajas"/>
-    </record>
 
 
     <!--
