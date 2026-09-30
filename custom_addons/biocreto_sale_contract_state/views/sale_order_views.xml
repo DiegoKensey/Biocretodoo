@@ -51,6 +51,46 @@
                         invisible="state != 'programado'"/>
             </xpath>
 
+            <!-- v19.0.1.3.0: los asesores no envían cotizaciones por correo
+                 desde Odoo (descargan el PDF). Se ocultan los CUATRO botones
+                 de envío nativos, en todos los estados
+                 (sale/views/sale_order_views.xml:288-305, :328-343). Se
+                 ocultan en vez de quitarse para no romper otros xpath que
+                 los usen como ancla. -->
+            <xpath expr="//header/button[@id='quotation_send_primary']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//header/button[@id='quotation_send']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//header/button[@id='send_proforma_primary']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//header/button[@id='send_proforma']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- v19.0.1.3.0: "Preprogramar" ocupa el sitio del Enviar
+                 primario (Cotización → Preprogramado). En Cotización el
+                 Confirmar nativo sigue como secundario. -->
+            <xpath expr="//header/button[@id='quotation_send_primary']" position="after">
+                <button string="Preprogramar"
+                        name="action_biocreto_preprogramar"
+                        type="object"
+                        class="btn-primary"
+                        invisible="state != 'draft'"/>
+            </xpath>
+
+            <!-- v19.0.1.3.0: "Regresar" (Preprogramado → Cotización),
+                 secundario, detrás del Confirmar secundario nativo para
+                 que en Preprogramado el primario (Confirmar) vaya delante. -->
+            <xpath expr="//header/button[@name='action_confirm'][not(@id)]" position="after">
+                <button string="Regresar"
+                        name="action_biocreto_regresar"
+                        type="object"
+                        invisible="state != 'sent'"/>
+            </xpath>
+
             <!-- Cancelar: agregar 'programado' a los estados desde donde
                  se puede cancelar. -->
             <xpath expr="//header/button[@name='action_cancel']" position="attributes">
@@ -188,6 +228,10 @@
         <field name="arch" type="xml">
             <xpath expr="//filter[@name='my_sale_orders_filter']" position="after">
                 <separator/>
+                <!-- v19.0.1.3.0: 'sent' se muestra como Preprogramado. -->
+                <filter name="filter_state_preprogramado"
+                        string="Preprogramado"
+                        domain="[('state', '=', 'sent')]"/>
                 <filter name="filter_state_contract"
                         string="En Contrato"
                         domain="[('state', '=', 'contract')]"/>

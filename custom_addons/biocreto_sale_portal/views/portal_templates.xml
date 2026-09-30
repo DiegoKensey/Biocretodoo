@@ -42,8 +42,22 @@
                 <t t-else="">Contratos</t>
             </li>
         </xpath>
-        <xpath expr="//li[contains(@t-elif, 'page_name == ')]" position="attributes">
-            <attribute name="t-elif">page_name == 'order' or sale_order and sale_order.state not in ('sent', 'cancel', 'contract')</attribute>
+        <!-- v19.0.2.2.0: xpath acotado al <li> de "Órdenes de venta" (el
+             hermano con t-elif sobre sale_order que sigue a
+             portal_breadcrumbs_sale). El anterior,
+             //li[contains(@t-elif, 'page_name == ')], casaba PRIMERO con
+             el <li> de "Direcciones" del portal base
+             (portal/views/portal_templates.xml:125), le ponía la condición
+             de ventas y dejaba intacto el de ventas. -->
+        <xpath expr="//li[@id='portal_breadcrumbs_sale']/following-sibling::li[contains(@t-elif, 'sale_order')]" position="attributes">
+            <attribute name="t-elif">page_name == 'order' or sale_order and sale_order.state not in ('draft', 'sent', 'cancel', 'contract')</attribute>
+        </xpath>
+        <!-- v19.0.2.2.0: una cotización en 'draft' ahora se lista en "Mis
+             cotizaciones"; su miga debe volver a /my/quotes y no a
+             /my/orders. El nativo solo contemplaba 'sent' y 'cancel'
+             (sale/views/sale_portal_templates.xml:6). -->
+        <xpath expr="//li[@id='portal_breadcrumbs_sale']" position="attributes">
+            <attribute name="t-if">page_name == 'quote' or sale_order and sale_order.state in ('draft', 'sent', 'cancel')</attribute>
         </xpath>
     </template>
 

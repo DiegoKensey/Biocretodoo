@@ -95,3 +95,8 @@ Odoo uses three inheritance types declared in `__manifest__.py` / model class:
 - `_name` (new model) — creates a new DB table
 - `_inherit` without `_name` (in-place extension) — adds fields/methods to existing model
 - `_inherit` with `_name` (prototype/delegation inheritance) — copies behavior to a new model
+
+## BIOCRETO — advertencias de despliegue
+
+- Después de `-u sale`, actualizar también `biocreto_sale_contract_state`: si no, la etiqueta del estado `sent` vuelve a "Cotización enviada" en lugar de "Preprogramado".
+  - Verificado en Prueba (2026-09-30): un `-u sale` ya arrastra a `biocreto_sale_contract_state` y conserva "Preprogramado". Lo que sí la revierte es recargar las traducciones **con sobrescritura** (`--i18n-overwrite` o Ajustes → Idiomas → Actualizar marcando sobrescribir). En ese caso, `-u biocreto_sale_contract_state` la restaura: su `<function>` `_biocreto_init_etiqueta_preprogramado` la vuelve a escribir.

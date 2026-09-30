@@ -1,6 +1,6 @@
 {
     'name': 'BIOCRETO - Portal del Cliente',
-    'version': '19.0.2.1.0',
+    'version': '19.0.2.2.0',
     'category': 'Sales',
     'summary': 'Personalización del portal cliente para el flujo Cotización → Contrato → Orden de Venta.',
     'description': """
@@ -20,6 +20,11 @@ v19.0.1.2.0:
   nativo portal.signature_form, un widget activo a la vez).
 - Ruta /my/orders/<id>/sign_contract/<kind> que escribe los campos
   biocreto_firma_contrato* y/o biocreto_firma_jefe_obra* segun kind.
+
+v19.0.2.2.0:
+
+- "Mis cotizaciones" lista Cotizacion ('draft') y Preprogramado ('sent');
+  la miga de pan de una cotizacion en 'draft' vuelve a /my/quotes.
 """,
     'author': 'BIOCRETO',
     'license': 'LGPL-3',

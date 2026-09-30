@@ -1,7 +1,7 @@
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 
 class SaleOrder(models.Model):
@@ -15,9 +15,17 @@ class SaleOrder(models.Model):
     # El ORDEN visual del statusbar lo controla statusbar_visible en la
     # vista (paso obligado: selection_add por sí solo no garantiza el
     # orden visual deseado en la statusbar).
+    #
+    # v19.0.1.3.0: 'sent' se reutiliza como "Preprogramado" (cotización
+    # con fecha de vaceo reservada). Solo cambia la ETIQUETA: el valor
+    # nativo se conserva y el ORM prioriza la etiqueta de la extensión
+    # (`values_add.get(key) or values[key]`, odoo/orm/fields_selection.py
+    # :166-169). Al ser un valor ya existente no necesita `ondelete`.
+    # La traducción es_PE vive en i18n/es_419.po de este módulo.
     # ─────────────────────────────────────────────────────────────────
     state = fields.Selection(
         selection_add=[
+            ('sent', 'Preprogramado'),
             ('contract', 'Contrato'),
             ('programado', 'Programado'),
             ('sale',),
@@ -97,6 +105,108 @@ class SaleOrder(models.Model):
                 )
             return False
         return super()._confirmation_error_message()
+
+    # ─────────────────────────────────────────────────────────────────
+    # v19.0.1.3.0 — Traducción de la etiqueta "Preprogramado".
+    #
+    # El selection_add solo cambia el bucket en_US: al reflejar la
+    # selección, Odoo FUSIONA el JSONB (`COALESCE(name, '{}') ||
+    # EXCLUDED.name`, odoo/addons/base/models/ir_model.py:171-176) y el
+    # es_PE nativo "Cotización enviada" sobrevive. Tampoco basta el .po:
+    # sin --i18n-overwrite el valor que ya existe gana
+    # (odoo/tools/translate.py:1702-1705). Por eso se escribe la
+    # traducción explícitamente, en todos los idiomas instalados, desde
+    # un <function> de data que corre en cada -u de este módulo
+    # (data/sale_order_state_data.xml). Mismo patrón que
+    # biocreto_sale_extension/hooks.py:51-91.
+    # ─────────────────────────────────────────────────────────────────
+    @api.model
+    def _biocreto_init_etiqueta_preprogramado(self):
+        idiomas = {code for code, _name in self.env['res.lang'].get_installed()} | {'en_US'}
+        filas = self.env['ir.model.fields.selection'].sudo().search([
+            ('field_id.model', 'in', ('sale.order', 'sale.report')),
+            ('field_id.name', '=', 'state'),
+            ('value', '=', 'sent'),
+        ])
+        for fila in filas:
+            fila.update_field_translations('name', {lang: 'Preprogramado' for lang in idiomas})
+        return True
+
+    # ─────────────────────────────────────────────────────────────────
+    # v19.0.1.3.0 — TRANSICIÓN  Cotización → Preprogramado (botón
+    # "Preprogramar"). Es el ÚNICO camino que pone 'sent': los nativos
+    # quedan cerrados más abajo (action_quotation_sent y message_post).
+    #
+    # Valida primero TODOS los pedidos y luego escribe una sola vez, para
+    # no dejar un lote a medias. Write normal (no tracking_disable como
+    # el nativo, sale_order.py:1702) para que el seguimiento del campo
+    # `state` (tracking=3) deje el cambio en el chatter.
+    #
+    # Los textos de la fecha de vaceo son los mismos de la Validación 3
+    # de biocreto_sale_extension (models/sale_order.py:597-605). No se
+    # reutiliza ese helper: valida además líneas y campos técnicos, que
+    # no se exigen para preprogramar.
+    # ─────────────────────────────────────────────────────────────────
+    def action_biocreto_preprogramar(self):
+        for order in self:
+            if order.state != 'draft':
+                raise UserError(_(
+                    "Solo se puede preprogramar una cotización en estado "
+                    "Cotización. %(pedido)s está en «%(estado)s».",
+                    pedido=order.name,
+                    estado=dict(order._fields['state']._description_selection(order.env)).get(order.state),
+                ))
+            if not order.biocreto_fecha_vaceo_inicio or not order.biocreto_fecha_vaceo_fin:
+                raise UserError(_(
+                    "Debe registrar la Fecha de vaceo (inicio y fin) en "
+                    "Información de Suministro antes de continuar."
+                ))
+            if order.biocreto_fecha_vaceo_fin < order.biocreto_fecha_vaceo_inicio:
+                raise UserError(_(
+                    "La Fecha de vaceo (fin) no puede ser anterior al inicio."
+                ))
+        self.write({'state': 'sent'})
+        return True
+
+    # ─────────────────────────────────────────────────────────────────
+    # v19.0.1.3.0 — TRANSICIÓN  Preprogramado → Cotización (botón
+    # "Regresar"). Reutiliza action_draft: el nativo acepta 'sent' y
+    # limpia la firma de cotización (sale_order.py:1044-1051), y el
+    # override de este módulo limpia las firmas de contrato/JO.
+    # ─────────────────────────────────────────────────────────────────
+    def action_biocreto_regresar(self):
+        for order in self:
+            if order.state != 'sent':
+                raise UserError(_(
+                    "Solo se puede regresar a Cotización un pedido "
+                    "Preprogramado. %(pedido)s está en «%(estado)s».",
+                    pedido=order.name,
+                    estado=dict(order._fields['state']._description_selection(order.env)).get(order.state),
+                ))
+        return self.action_draft()
+
+    # ─────────────────────────────────────────────────────────────────
+    # v19.0.1.3.0 — CIERRE de los caminos nativos que ponen 'sent'.
+    #
+    # 1) action_quotation_sent (sale_order.py:1142-1150): lo llaman la
+    #    acción "Mark Quotation as Sent" del menú Acción y el procesado
+    #    de un pago PENDIENTE del portal (payment_transaction.py:52-54).
+    #    Se anula SIN super() y SIN error: un UserError dentro del
+    #    post-procesado del pago lo rompería. El nativo no devuelve nada
+    #    (None) y el pago no usa el retorno, así que se devuelve None.
+    # ─────────────────────────────────────────────────────────────────
+    def action_quotation_sent(self):
+        return None
+
+    # 2) message_post con `mark_so_as_sent` (sale_order.py:1700-1702):
+    #    lo inyecta action_quotation_send al abrir el asistente de correo
+    #    con plantilla (:1073-1079). Se apaga la clave ANTES del super()
+    #    para que el mensaje se registre igual pero el estado no cambie.
+    def message_post(self, **kwargs):
+        orders = self
+        if self.env.context.get('mark_so_as_sent'):
+            orders = self.with_context(mark_so_as_sent=False)
+        return super(SaleOrder, orders).message_post(**kwargs)
 
     # ─────────────────────────────────────────────────────────────────
     # TRANSICIÓN  Contrato → Programado

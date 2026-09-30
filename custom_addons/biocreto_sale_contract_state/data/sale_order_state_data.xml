@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- v19.0.1.3.0: escribe "Preprogramado" como traducción de la
+         etiqueta del estado 'sent' (sale.order y sale.report) en todos
+         los idiomas instalados. Corre en cada -u/-i de este módulo; ver
+         el porqué en _biocreto_init_etiqueta_preprogramado
+         (models/sale_order.py). Idempotente. -->
+    <function model="sale.order" name="_biocreto_init_etiqueta_preprogramado"/>
+
+</odoo>

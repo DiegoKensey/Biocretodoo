@@ -16,6 +16,21 @@ class BiocretoCustomerPortal(CustomerPortal):
             ('state', '=', 'contract'),
         ]
 
+    # v19.0.2.2.0: "Mis cotizaciones" lista Cotización ('draft') y
+    # Preprogramado ('sent'). El nativo solo listaba 'sent'
+    # (sale/controllers/portal.py:31-35), que en BIOCRETO ya no significa
+    # "enviada por correo" sino fecha reservada. Se conserva el resto del
+    # dominio de super() y solo se sustituye la hoja de estado. El
+    # contador del inicio del portal usa este mismo método (:22-24).
+    def _prepare_quotations_domain(self, partner):
+        domain = super()._prepare_quotations_domain(partner)
+        return [
+            ('state', 'in', ('draft', 'sent'))
+            if isinstance(leaf, (list, tuple)) and leaf and leaf[0] == 'state'
+            else leaf
+            for leaf in domain
+        ]
+
     def _prepare_home_portal_values(self, counters):
         values = super()._prepare_home_portal_values(counters)
         if 'contract_count' in counters:
