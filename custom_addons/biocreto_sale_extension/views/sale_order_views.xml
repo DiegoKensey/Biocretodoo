@@ -161,24 +161,37 @@
             <xpath expr="//page[@name='customer_signature']/group" position="attributes">
                 <attribute name="string">FIRMA COTIZACIÓN</attribute>
             </xpath>
-            <xpath expr="//page[@name='customer_signature']/group" position="after">
-                <group string="FIRMA CONTRATO"
-                       name="biocreto_firma_contrato_group">
-                    <group string="Cliente"
-                           name="biocreto_firma_contrato_cliente">
-                        <field name="biocreto_firma_contrato_por"
-                               readonly="biocreto_firma_contrato"/>
-                        <field name="biocreto_firma_contrato_fecha"
-                               readonly="biocreto_firma_contrato"/>
-                        <field name="biocreto_firma_contrato" widget="image"/>
+            <!-- v19.0.1.16.0: el APARTADO B (firmas del CONTRATO) sale de
+                 la pestaña nativa, que solo se ve en modo desarrollador
+                 (groups="base.group_no_one", sale_order_views.xml:911), y
+                 pasa a una pestaña propia visible para cualquier usuario
+                 del formulario, sin `groups`. La pestaña nativa conserva
+                 solo su grupo de FIRMA COTIZACIÓN (signature, signed_by,
+                 signed_on), sin duplicar campos.
+
+                 Visible desde Contrato en adelante, o en cualquier estado
+                 si ya existe alguna firma de contrato. Todo de solo
+                 lectura: las firmas se capturan en el portal
+                 (biocreto_sale_portal, /sign_contract/<kind>). -->
+            <xpath expr="//page[@name='customer_signature']" position="after">
+                <page string="Firmas del contrato"
+                      name="biocreto_firmas_contrato"
+                      invisible="state not in ('contract', 'programado', 'sale') and not biocreto_firma_contrato and not biocreto_firma_contrato_fecha and not biocreto_firma_jefe_obra and not biocreto_firma_jefe_obra_fecha">
+                    <group name="biocreto_firma_contrato_group">
+                        <group string="Cliente"
+                               name="biocreto_firma_contrato_cliente">
+                            <field name="biocreto_firma_contrato" widget="image" readonly="1"/>
+                            <field name="biocreto_firma_contrato_por" readonly="1"/>
+                            <field name="biocreto_firma_contrato_fecha" readonly="1"/>
+                        </group>
+                        <group string="Responsable de Obra"
+                               name="biocreto_firma_jefe_obra_group">
+                            <field name="biocreto_firma_jefe_obra" widget="image" readonly="1"/>
+                            <field name="biocreto_firma_jefe_obra_por" readonly="1"/>
+                            <field name="biocreto_firma_jefe_obra_fecha" readonly="1"/>
+                        </group>
                     </group>
-                    <group string="Jefe de Obra"
-                           name="biocreto_firma_jefe_obra_group">
-                        <field name="biocreto_firma_jefe_obra_por"/>
-                        <field name="biocreto_firma_jefe_obra_fecha"/>
-                        <field name="biocreto_firma_jefe_obra" widget="image"/>
-                    </group>
-                </group>
+                </page>
             </xpath>
 
             <!-- Tag de estado de diseño: DENTRO del oe_title, justo encima

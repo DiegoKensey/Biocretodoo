@@ -202,7 +202,7 @@
                                 </t>
                             </li>
                             <li>
-                                <strong>Jefe de Obra:</strong>
+                                <strong>Responsable de Obra:</strong>
                                 <t t-if="sale_order.biocreto_firma_jefe_obra_fecha">
                                     <span class="text-success">
                                         <i class="fa fa-check-circle me-1"/>firmado por
@@ -226,7 +226,7 @@
                             </a>
                             <a class="btn btn-outline-primary"
                                t-attf-href="/my/orders/#{sale_order.id}?access_token=#{sale_order.access_token}&amp;sign=jefe_obra">
-                                Firmar como Jefe de Obra
+                                Firmar como Responsable de Obra
                             </a>
                             <a class="btn btn-outline-primary"
                                t-attf-href="/my/orders/#{sale_order.id}?access_token=#{sale_order.access_token}&amp;sign=ambos">
@@ -238,8 +238,8 @@
                         <div t-if="biocreto_sign_kind in ('cliente', 'jefe_obra', 'ambos')"
                              class="mt-3 border-top pt-3">
                             <h5 t-if="biocreto_sign_kind == 'cliente'">Firma del Cliente</h5>
-                            <h5 t-if="biocreto_sign_kind == 'jefe_obra'">Firma del Jefe de Obra</h5>
-                            <h5 t-if="biocreto_sign_kind == 'ambos'">Firma (Cliente y Jefe de Obra)</h5>
+                            <h5 t-if="biocreto_sign_kind == 'jefe_obra'">Firma del Responsable de Obra</h5>
+                            <h5 t-if="biocreto_sign_kind == 'ambos'">Firma (Cliente y Responsable de Obra)</h5>
 
                             <t t-call="portal.signature_form">
                                 <t t-set="call_url"

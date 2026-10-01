@@ -1,6 +1,6 @@
 {
     'name': 'BIOCRETO - Portal del Cliente',
-    'version': '19.0.2.2.0',
+    'version': '19.0.2.3.0',
     'category': 'Sales',
     'summary': 'Personalización del portal cliente para el flujo Cotización → Contrato → Orden de Venta.',
     'description': """
@@ -16,7 +16,7 @@ v19.0.1.2.0:
 - Bloque "Contrato de Suministro" en /my/orders/<id> cuando la orden
   esta en contract/programado/sale.
 - Boton "Descargar Contrato (PDF)" ruteado a PlutoPrint.
-- 3 modos de firma: Cliente / Jefe de Obra / Ambos (reusan el widget
+- 3 modos de firma: Cliente / Responsable de Obra / Ambos (reusan el widget
   nativo portal.signature_form, un widget activo a la vez).
 - Ruta /my/orders/<id>/sign_contract/<kind> que escribe los campos
   biocreto_firma_contrato* y/o biocreto_firma_jefe_obra* segun kind.
@@ -25,6 +25,12 @@ v19.0.2.2.0:
 
 - "Mis cotizaciones" lista Cotizacion ('draft') y Preprogramado ('sent');
   la miga de pan de una cotizacion en 'draft' vuelve a /my/quotes.
+
+v19.0.2.3.0:
+
+- "Jefe de Obra" pasa a "Responsable de Obra" en los textos del portal y
+  del chatter. La clave tecnica 'jefe_obra' (enlaces ?sign=jefe_obra) no
+  cambia.
 """,
     'author': 'BIOCRETO',
     'license': 'LGPL-3',

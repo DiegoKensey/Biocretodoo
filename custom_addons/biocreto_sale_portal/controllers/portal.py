@@ -303,8 +303,8 @@ class BiocretoCustomerPortal(CustomerPortal):
             # ya completo. Mensaje corto sin PDF.
             etiqueta = {
                 'cliente': _('el cliente'),
-                'jefe_obra': _('el jefe de obra'),
-                'ambos': _('el cliente y el jefe de obra'),
+                'jefe_obra': _('el responsable de obra'),
+                'ambos': _('el cliente y el responsable de obra'),
             }.get(kind, '')
             order_sudo.message_post(
                 body=_(

@@ -124,12 +124,16 @@ class SaleOrder(models.Model):
         help="Monto fijo en S/ que el cliente deja como adelanto. El saldo "
              "(amount_total - adelanto) se calcula automaticamente.",
     )
+    # v19.0.1.16.0: "Jefe de obra" pasa a "Responsable de obra" SOLO en
+    # las etiquetas. Los nombres técnicos (`*_jefe_obra*`) se conservan:
+    # renombrarlos exigiría migrar columnas y adjuntos, y la clave
+    # 'jefe_obra' va en los enlaces de firma ya enviados (?sign=jefe_obra).
     biocreto_firma_jefe_obra = fields.Binary(
-        string="Firma JO",
+        string="Firma del responsable de obra",
         attachment=True,
     )
-    biocreto_firma_jefe_obra_por = fields.Char(string="Firmado por JO")
-    biocreto_firma_jefe_obra_fecha = fields.Datetime(string="Firmado el (JO)")
+    biocreto_firma_jefe_obra_por = fields.Char(string="Firmado por (responsable de obra)")
+    biocreto_firma_jefe_obra_fecha = fields.Datetime(string="Fecha de firma (responsable de obra)")
 
     # v19.0.1.7.3: firma del CONTRATO (separada de la cotizacion).
     # El nativo `signature`/`signed_by`/`signed_on` (addons/sale/models/

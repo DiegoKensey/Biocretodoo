@@ -983,7 +983,7 @@
                          t-att-src="image_data_uri(o.biocreto_firma_jefe_obra)"
                          class="firma-img"/>
                 </div>
-                <p class="firma-label">V°B° JEFE DE OBRA</p>
+                <p class="firma-label">V°B° RESPONSABLE DE OBRA</p>
                 <p class="firma-meta"><t t-out="o.biocreto_firma_jefe_obra_por or ''"/></p>
             </div>
         </div>
